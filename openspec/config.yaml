@@ -1,0 +1,35 @@
+schema: spec-driven
+
+context: |
+  Viết mọi artifact OpenSpec (proposal, design, spec, tasks) bằng tiếng Việt.
+  Giữ nguyên tiếng Anh cho: tên subsystem/model/class/method, tên file/path,
+  identifier kỹ thuật, tên repo reference, API field name.
+  Code (Ruby, RSpec, view, config) luôn viết bằng tiếng Anh — chỉ artifact
+  spec/docs mới dùng tiếng Việt.
+  Mỗi feature phải có RSpec spec viết TRƯỚC khi code implementation
+  (TDD, red-green-refactor) — tasks.md phải liệt kê bước viết spec trước
+  bước viết code cho từng task triển khai tính năng.
+
+rules:
+  proposal:
+    - Viết bằng tiếng Việt, giữ thuật ngữ kỹ thuật bằng tiếng Anh
+    - Nêu rõ phần nào ngoài scope (out of scope)
+  design:
+    - Viết bằng tiếng Việt, giữ thuật ngữ kỹ thuật bằng tiếng Anh
+  specs:
+    - Viết bằng tiếng Việt, giữ thuật ngữ kỹ thuật bằng tiếng Anh
+  tasks:
+    - Viết bằng tiếng Việt, giữ thuật ngữ kỹ thuật bằng tiếng Anh
+    - Mỗi task code tính năng phải tách thành 2 bước con: (1) viết RSpec spec
+      mô tả behavior mong muốn, chạy failing; (2) viết code tối thiểu để spec
+      pass, rồi refactor
+
+operations:
+  apply:
+    guidance:
+      - Với mỗi task triển khai tính năng: viết spec RSpec thất bại trước,
+        sau đó mới viết code hiện thực, không viết code trước spec
+      - Tóm tắt kết quả test bằng tiếng Việt, ngắn gọn
+  archive:
+    guidance:
+      - Tóm tắt kết quả archive bằng tiếng Việt trước khi hoàn tất

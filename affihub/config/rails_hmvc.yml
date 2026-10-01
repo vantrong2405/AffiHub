@@ -1,0 +1,37 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Rails HMVC Configuration
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Project type: "api" or "web"
+# Affects templates and generators
+type: api
+
+# ─────────────────────────────────────────────────────────────────────────────
+# API configuration
+# ─────────────────────────────────────────────────────────────────────────────
+
+api:
+  controllers:
+    parent: MainController
+    actions: ['index', 'show', 'create', 'update', 'destroy']
+  operations:
+    parent: MainOperation
+    actions: ['index', 'show', 'create', 'update', 'destroy']
+  forms:
+    parent: MainForm
+    actions: ['create', 'update']
+
+# ─────────────────────────────────────────────────────────────────────────────
+# WEB configuration
+# ─────────────────────────────────────────────────────────────────────────────
+
+web:
+  controllers:
+    parent: MainController
+    actions: ['index', 'show', 'new', 'edit', 'create', 'update', 'destroy']
+  operations:
+    parent: MainOperation
+    actions: ['index', 'show', 'new', 'edit', 'create', 'update', 'destroy']
+  forms:
+    parent: MainForm
+    actions: ['create', 'update', 'new', 'edit']

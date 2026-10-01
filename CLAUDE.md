@@ -1,0 +1,83 @@
+# CLAUDE.md
+
+Workspace-level rules for `pj-affihub` — the root folder holding child projects
+(currently `affihub`, the POC Rails monolith). **`.git` lives at the workspace root**, not inside
+any child project — the whole workspace (root config + every child project) is one git repo/one
+history. "Child repo" below means a child project directory, not a separate `.git`. These rules
+apply across all of them; each child project's own `CLAUDE.md` still governs its own code style
+and stack.
+
+## 1. Config lives at the root only
+
+- All workspace-level config/rule/skill/spec tooling lives here, at the root: `.claude/` (skills),
+  `.agents/` (Codex skill mirror), `openspec/` (change proposals/specs), `CLAUDE.md`/`AGENTS.md`.
+  OpenSpec changes target code in child repos (currently `affihub`) but the proposal/spec/tasks
+  artifacts themselves are tracked at the root, not duplicated per child repo.
+- Don't install tooling or write persistent rules/skills into a child repo's own directory for
+  setup/workflow purposes — only for a code change the user actually asked for in that repo. A
+  child repo's own `.github/` CI config, `.rubocop.yml`, etc. (things that must physically live
+  next to that repo's code/CI) stay in the child repo.
+- Unsure whether something counts as "child repo config" vs "workspace rule"? Ask first.
+- `AGENTS.md` at the root is a symlink to `CLAUDE.md` (Codex/Claude compatibility).
+
+## 2. Always load the child repo's own CLAUDE.md before coding in it
+
+This root `CLAUDE.md` covers cross-repo rules only. **Before writing/editing code in a child repo
+(e.g. `affihub/`), read that repo's own `CLAUDE.md` first** — it has the stack, architecture,
+language convention, and TDD rules for that repo specifically. Root rules and child rules both
+apply; child rules never override root safety rules (git push, DB safety) but do govern everything
+repo-specific (test framework, commands, domain model, coding language). When a second child repo
+is added, the same applies to it — load its own `CLAUDE.md`, don't assume `affihub`'s rules carry
+over.
+
+## 3. Git push safety — never force push
+
+Never use `git push --force`, `git push -f`, or `git push --force-with-lease` in any repo/branch.
+Never `git push` to a protected branch (`main`/`master`) on your own initiative — ask first.
+If a pushed commit needs correction, add a follow-up commit; don't amend + force-push.
+
+## 4. Commit messages
+
+Before the first commit of a task, ask the user whether to append `[skip ci]`. Apply that choice
+to every commit for that task across repos in this workspace. Never rewrite an already-pushed
+commit to add/remove it — use a follow-up commit instead.
+
+## 5. Database setup (affihub)
+
+`affihub` uses two local Postgres databases, both local/disposable for this POC (not shared team DBs):
+
+```bash
+cd affihub
+rtk bin/rails db:create    # creates affihub_development and affihub_test if missing
+rtk bin/rails db:prepare   # create + migrate + seed, idempotent
+```
+
+## 6. Running RSpec (affihub)
+
+**Always run with `RAILS_ENV=test` explicit — never bare `rspec`/`bundle exec rspec`.** By default
+run one spec file; for a user-requested, explicitly bounded scope, one command may list multiple
+spec files. Never run spec files in parallel (they share the local test DB).
+
+```bash
+cd affihub
+RAILS_ENV=test rtk bundle exec rspec spec/path/to/file_spec.rb
+# bounded scope example:
+RAILS_ENV=test rtk bundle exec rspec spec/path/a_spec.rb spec/path/b_spec.rb
+```
+
+Don't run the whole suite (no path) unless the user asks for it.
+
+## 7. Token-efficient shell usage (rtk)
+
+**Always run shell commands through `rtk <command>`** — it's the token-optimized proxy, put `rtk`
+in front of the real command (`rtk git status`, `rtk bin/rails ...`, `rtk bundle exec rspec ...`).
+The Claude Code hook rewrites plain commands to their `rtk` form automatically, but write it
+explicitly when authoring commands by hand (scripts, docs, this file) rather than relying on the
+hook. Meta commands (`rtk gain`, `rtk discover`, `rtk proxy <cmd>`) are always called directly —
+they have no non-`rtk` form. See the global `~/.claude/RTK.md` for the full command reference.
+
+## 8. Future child repos
+
+When a new child repo is added under this root, give it its own `CLAUDE.md` for its own stack/code
+style. Only promote a rule here if it's genuinely cross-repo (git safety, DB safety, commit
+convention, shared skills/tooling) — don't duplicate a single repo's stack details into this file.
