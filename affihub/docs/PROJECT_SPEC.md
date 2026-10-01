@@ -123,4 +123,41 @@ Không coi các thứ sau là Done: mock/hard-coded product, fake affiliate URL,
 
 ## POC Definition of Done (34 bước)
 
-Xem đầy đủ trong master prompt gốc §39. Tóm tắt: login → connect Codex → test prompt thật → connect ACCESSTRADE → import/normalize product thật (có original_url + affiliate_url thật) → filter/score → chọn product → Codex generate content → review/edit/regenerate → approve → connect Facebook → discover Pages thật → chọn Page → tạo Publication → Post Now/Schedule → background job → PublisherResolver → MetaGraphPublisher → Facebook thật nhận post → lưu provider_post_id/published_at/metadata thật → status Published (hoặc Failed thật nếu provider fail).
+Danh sách đầy đủ, tự chứa (không còn tham chiếu "master prompt gốc" ngoài repo). Task `07-poc-dashboard-e2e-verification` tasks.md 4.1 ghi Pass/Fail từng bước đúng thứ tự này vào `affihub/docs/verification/dod-evidence.md`.
+
+1. Seed user tồn tại trong DB (`db:seed` đã chạy, credential đọc từ ENV hoặc dev default)
+2. Login thành công bằng seed user
+3. Dashboard hiển thị đúng trạng thái "chưa connect" trước khi thao tác gì
+4. Bấm Connect Codex, hoàn tất OAuth/PKCE thật với `auth.openai.com`
+5. `AIConnection` được tạo, trạng thái connected
+6. Test Connection gửi prompt thật, nhận response thật qua `chatgpt.com/backend-api/codex/responses`
+7. Nhập credential ACCESSTRADE thật, tạo `AffiliateConnection`
+8. Import Product thật từ ACCESSTRADE API vào Product Library
+9. Mỗi Product import có `original_product_url` thật
+10. Mỗi Product import có `affiliate_url` thật
+11. Filter Product theo category/price/rating/discount hoạt động đúng trên data thật
+12. Score Product tính đúng theo công thức đã chốt (design.md change 03), không ra `NaN`/lỗi khi `sold`/`max_sold_seen` = 0
+13. Chọn 1 Product từ danh sách đã filter/score
+14. Bấm Generate Content cho Product đó
+15. Codex sinh content thật (hook/caption/CTA/hashtags) từ facts thật của Product
+16. `affiliate_url` được application tự attach vào Content, không phải AI trả về
+17. Content ở trạng thái Review ngay sau khi generate
+18. Review nội dung, Edit `body` nếu cần (vẫn giữ nguyên `affiliate_url`/`product_id`)
+19. Regenerate nếu cần — `body` ghi đè trên cùng Content, `generation_count` tăng, không tạo Content mới
+20. Approve Content, chuyển sang Approved
+21. Bấm Connect Facebook, hoàn tất OAuth thật với `facebook.com`
+22. `SocialConnection` được tạo, token (long-lived) lưu mã hoá
+23. Discover Page thật qua Facebook Graph API
+24. Chọn 1 Page, tạo/sync `SocialDestination`
+25. Tạo Publication từ Content Approved + SocialDestination đã chọn
+26. Bấm Post Now (hoặc Schedule với thời điểm tương lai)
+27. Request claim atomic `draft`→`scheduled` thành công, `PublishJob` được enqueue
+28. `PublishJob` claim atomic `scheduled`→`publishing` thành công (chỉ 1 job chạy cho 1 Publication)
+29. `PublisherResolver` chọn đúng `MetaGraphPublisher` cho provider Facebook
+30. `MetaGraphPublisher` gọi Meta Graph API thật, `POST /feed` với `message` = `content.body` + `content.affiliate_url` ghép lại (xem design.md change 06)
+31. Bài đăng xuất hiện thật trên Facebook Page (xác nhận bằng mắt/link bài đăng thật)
+32. `provider_post_id`/`published_url` (qua `permalink_url`)/`published_at` thật được lưu vào Publication
+33. Publication chuyển `status: Published` thật ít nhất 1 lần trong demo chính (Failed thật kèm `error_code`/`error_message` được chấp nhận cho các lần thử phụ/case lỗi provider, nhưng DoD KHÔNG coi là Done nếu demo chính không có ít nhất 1 Publication Published thật)
+34. Dashboard hiển thị đúng recent publication vừa tạo (status/thời gian khớp DB)
+
+DoD SHALL chỉ coi Done khi cả 34 bước trên đều Pass thật (không chấp nhận partial/skip).
