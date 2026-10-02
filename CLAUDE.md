@@ -42,6 +42,18 @@ Before the first commit of a task, ask the user whether to append `[skip ci]`. A
 to every commit for that task across repos in this workspace. Never rewrite an already-pushed
 commit to add/remove it — use a follow-up commit instead.
 
+### Required commits for major features
+
+- A major feature (a complete capability or vertical slice, usually involving multiple layers/files)
+  must be committed once its implementation is complete and its required self-checks pass. For
+  `affihub`, run the relevant RSpec specs with the explicit `RAILS_ENV=test` command above and
+  perform any required manual verification before committing. Do not leave a verified major
+  feature sitting uncommitted while moving on to another feature.
+- Report the passing verification and the commit hash to the user. If verification fails, fix the
+  feature and rerun the relevant checks before committing.
+- This requirement does not make small edits or documentation-only changes mandatory commits;
+  use judgment for those. Preserve the `[skip ci]` choice rule above for every commit in the task.
+
 ## 5. Database setup (affihub)
 
 `affihub` uses two local Postgres databases, both local/disposable for this POC (not shared team DBs):
