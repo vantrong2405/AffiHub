@@ -2,7 +2,7 @@
 
 ## 1. Porting Note
 
-- [ ] 1.1 Đọc lại phần publishing/scheduling/retry/status của `gitroomhq/postiz-app` (đào sâu hơn phần đã đọc ở change 05), đối chiếu Meta Graph API docs cho endpoint publish lên Page hiện hành. Viết `affihub/docs/reference-analysis/publication-workflow.md` đủ mục template, verify: file tồn tại
+- [x] 1.1 Đọc lại phần publishing/scheduling/retry/status của `gitroomhq/postiz-app` (đào sâu hơn phần đã đọc ở change 05), đối chiếu Meta Graph API docs cho endpoint publish lên Page hiện hành. Viết `affihub/docs/reference-analysis/publication-workflow.md` đủ mục template, verify: file tồn tại (Meta docs trả HTTP 429; giới hạn này và mục cần xác minh trước live publish được ghi rõ trong note.)
 
 ## 2. Migration bổ sung (nếu cần)
 

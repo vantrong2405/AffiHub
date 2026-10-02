@@ -12,7 +12,7 @@
 ## 3. Facebook App credential config (thiếu hoàn toàn ở bản trước — cần trước khi build authorize URL)
 
 - [x] 3.1 Tạo Facebook Developer App thật (nếu chưa có), ghi App ID/App Secret vào `config/credentials.yml.enc` (namespace `facebook: {app_id:, app_secret:}`), verify: Rails credentials giải mã thành công và cả hai giá trị khớp env mà không lộ plaintext.
-- [ ] 3.2 Set redirect URI trong Facebook Developer App settings = `http://localhost:4000/social_connections/callback` (khớp đúng route sẽ tạo ở task 4.7), verify: redirect URI hiển thị đúng trong Facebook App dashboard
+- [x] 3.2 Set redirect URI trong Facebook Developer App settings = `http://localhost:4000/social_connections/callback` (khớp đúng route sẽ tạo ở task 4.7), verify: redirect URI hiển thị đúng trong Facebook App dashboard
 - [x] 3.3 Ghi giới hạn app Development/test mode và quyền Page vào Porting Note; live access vẫn cần cấu hình app thật
 
 ## 4. Connect Facebook — authorize + callback round-trip qua session (xem design.md Decision 1b)
@@ -53,5 +53,5 @@
 
 ## 9. Verify thủ công end-to-end phase này
 
-- [ ] 9.1 Connect Facebook thật, discover Page thật, chọn 1 Page thật tạo SocialDestination thành công qua UI
+- [x] 9.1 Connect Facebook thật, discover Page thật, chọn 1 Page thật tạo SocialDestination thành công qua UI
 - [x] 9.2 Chạy task scoped RSpec command, verify: 19 examples, 0 failures
