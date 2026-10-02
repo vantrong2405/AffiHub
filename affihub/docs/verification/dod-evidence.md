@@ -2,7 +2,7 @@
 
 Ngày chạy: 2026-10-03 (Asia/Ho_Chi_Minh; tiếp tục xác minh phiên ngày 02)
 
-Đây là kết quả trên môi trường development hiện có, không phải xác nhận DoD hoàn tất. Playwright đăng nhập bằng seed user và kiểm tra Dashboard ở desktop/mobile. Facebook OAuth đã hoàn tất sau khi tạo Meta app có use case Pages API; quyền Page được cấp và Page `Test mail` đã được chọn. Codex Test Connection trả về `Hello!`. Không tìm thấy Dataminer CSV trong workspace, Downloads hoặc Desktop, nên đã tạo một CSV một dòng theo cùng schema từ thông tin sản phẩm công khai trên Shopee để tiếp tục kiểm tra boundary/import. Bộ lọc nhận dòng này, nhưng ACCESSTRADE từ chối campaign chưa đăng ký; không có Product hay affiliate link nào được lưu. Không tạo dữ liệu sản phẩm, nội dung hay publication giả.
+Đây là kết quả trên môi trường development hiện có, không phải xác nhận DoD hoàn tất. Playwright đăng nhập bằng seed user và kiểm tra Dashboard ở desktop/mobile. Ngày 2026-10-03, tạo user isolated `codex-e2e@affihub.local` không có connection ban đầu để xác minh Codex OAuth thật; login ChatGPT tài khoản `trongdn2405@gmail.com` hoàn tất, callback quay về Affihub, AIConnection chuyển Connected và Test Connection trả `Hello!`. User isolated đã được xóa sau khi verify (không có Product/Content); ảnh được giữ làm evidence: [Codex OAuth + Test Connection](codex-oauth-test-connection.png), [Dashboard của user E2E sau OAuth](dashboard-codex-e2e-user.png). Phần còn lại của bảng là các bước đã chạy trên user demo gốc; bằng chứng phân chia user/session này không chứng minh toàn chuỗi 34 bước trên cùng một user. Facebook OAuth đã hoàn tất bằng app `affihub-poc` (App ID `1106312038560548`); quyền Page được cấp và Page `Test mail` đã được chọn trên user demo gốc. Không tìm thấy Dataminer CSV phù hợp trong workspace, Downloads, Desktop hoặc kết quả Spotlight theo tên Dataminer. Đã tạo trước đó một CSV một dòng theo cùng schema từ thông tin sản phẩm công khai trên Shopee để thử boundary/import; bộ lọc nhận dòng này, nhưng ACCESSTRADE từ chối campaign chưa đăng ký. Không có Product hay affiliate link nào được lưu; không tạo dữ liệu sản phẩm, nội dung hay publication giả.
 
 Ảnh Dashboard hiện trạng: [dashboard-current-state.png](dashboard-current-state.png). Ảnh chỉ chứng minh màn hình và trạng thái hiện tại, không phải bằng chứng cho một bài Facebook đã đăng.
 
@@ -16,10 +16,10 @@ Codex Test Connection chạy lại trong phiên này thành công, trả `Hello!
 |---:|---|---|
 | 1 | PASS | Seed user `demo@affihub.local` tồn tại và đăng nhập được bằng credential dev mặc định. |
 | 2 | PASS | Đăng nhập thành công qua Playwright; redirect tới Dashboard. |
-| 3 | FAIL | Không kiểm tra được trạng thái ban đầu chưa kết nối; DB đã có Codex và ACCESSTRADE connection trước lần chạy này. |
-| 4 | FAIL | Chưa chạy lại trọn OAuth/PKCE thật trong phiên e2e có bằng chứng lưu được. |
-| 5 | PASS | Dashboard đọc AIConnection của demo user với trạng thái connected. |
-| 6 | PASS | Chạy lại Test Connection thật trong phiên này; UI nhận `Codex responded: Hello!`. Ảnh: [Codex Test Connection](codex-test-connection.png). |
+| 3 | PASS | User isolated `codex-e2e@affihub.local` bắt đầu không có connection nào; AI Connection page hiển thị CTA Kết nối Codex trước khi OAuth. |
+| 4 | PASS | Connect Codex từ UI → đăng nhập ChatGPT thật (`trongdn2405@gmail.com`) → callback localhost → quay về AI Connection Connected. Task 02.10.3 đã verify. |
+| 5 | PASS | Dashboard của user E2E phản ánh AI connected, ACCESSTRADE/Facebook chưa kết nối; ảnh [Dashboard user E2E](dashboard-codex-e2e-user.png). |
+| 6 | PASS | Test Connection thật sau OAuth trả `Codex responded: Hello!`; ảnh [Codex OAuth + Test Connection](codex-oauth-test-connection.png). |
 | 7 | PASS | Credential ACCESSTRADE thật từ ENV đã được lưu vào AffiliateConnection mã hóa. |
 | 8 | FAIL | Import CSV cùng schema từ listing Shopee thật; row qua filter/rank nhưng lần gọi campaign ACCESSTRADE (`4751584435713464237`) trả về `You have not registered for campaign: Shopee Việt Nam Smartlink cho tất cả thiết bị`. Yêu cầu tham gia vẫn `Pending` khi kiểm tra lại 2026-10-03. Thông báo campaign ghi tạm ngưng duyệt Publisher mới từ 26/05/2026; chỉ trường hợp đặc biệt được nhân sự phụ trách xem xét. Một campaign merchant khác `Suntory Shopee PUB` không áp dụng cho SKU granola này. Ảnh: [Product Library trống](product-library-empty.png), [campaign Pending](accesstrade-campaign-pending.png). Nguồn facts: [Shopee product listing](https://shopee.vn/Ng%C5%AF-C%E1%BB%91c-Granola-%C4%82n-Ki%C3%AAng-Nhi%E1%BB%81u-H%E1%BA%A1t-70-y%E1%BA%BFn-m%E1%BA%A1ch-H%C5%A9-500g-i.441745099.22873387114) và [shop listing](https://shopee.vn/anan_shop_mypham). |
 | 9 | FAIL | ACCESSTRADE không cấp tracking link nên Product không được lưu. |
@@ -34,7 +34,7 @@ Codex Test Connection chạy lại trong phiên này thành công, trả `Hello!
 | 18 | FAIL | Chưa có Content thật để review/edit. |
 | 19 | FAIL | Chưa có Content thật để xác minh regenerate trên cùng bản. |
 | 20 | FAIL | Chưa có Content thật để approve. |
-| 21 | PASS | Meta OAuth hoàn tất bằng app `affihub-poc-pages`; app nhận các quyền `pages_show_list`, `pages_read_engagement`, `pages_manage_posts`. |
+| 21 | PASS | Meta OAuth hoàn tất bằng app `affihub-poc` (App ID `1106312038560548`); app nhận các quyền `pages_show_list`, `pages_read_engagement`, `pages_manage_posts`. |
 | 22 | PASS | Callback thật tạo SocialConnection Facebook cho demo user. |
 | 23 | PASS | Discover Page gọi Meta Graph API thật và trả về Page `Test mail` (`1103223882865504`). |
 | 24 | PASS | Chọn và lưu Page `Test mail` làm SocialDestination thành công. |
