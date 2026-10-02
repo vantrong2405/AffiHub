@@ -1,4 +1,4 @@
-<% content_for :title, "Publication Status" %>
+<% content_for :title, "Trạng thái bài đăng · Affihub" %>
 <% content = @publication.content %>
 <% destination = @publication.social_destination %>
 <% retryable = @publication.status_failed? || (@publication.status_publishing? && @publication.last_attempt_at && @publication.last_attempt_at < Publication::STALE_PUBLISHING_AFTER.ago) %>
@@ -6,11 +6,11 @@
 <section class="w-full max-w-4xl space-y-5" aria-labelledby="publication-title">
   <header class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
     <div>
-      <p class="text-sm font-medium text-muted">Facebook Page · <%= destination.name %></p>
-      <h1 id="publication-title" class="mt-1 text-xl font-semibold text-foreground">Publication Status</h1>
-      <p class="mt-1 text-sm text-muted">Status: <span class="font-semibold text-foreground"><%= @publication.status.humanize %></span></p>
+      <p class="text-sm font-medium text-muted">FACEBOOK PAGE · <%= destination.name %></p>
+      <h1 id="publication-title" class="mt-1 text-2xl font-semibold text-foreground">Trạng thái bài đăng</h1>
+      <p class="mt-1 text-sm text-muted">Trạng thái: <span class="font-semibold text-foreground"><%= @publication.status.humanize %></span></p>
     </div>
-    <%= link_to "Create another Publication", new_publication_path, class: "inline-flex min-h-10 items-center justify-center rounded-xl border border-border-strong bg-surface px-4 py-2 text-sm font-medium text-foreground hover:bg-button-hover" %>
+    <%= link_to "Tạo bài đăng khác", new_publication_path, class: "inline-flex min-h-10 items-center justify-center rounded-xl border border-border-strong bg-surface px-4 py-2 text-sm font-medium text-foreground hover:bg-button-hover" %>
   </header>
 
   <article class="rounded-xl border border-border-strong bg-surface p-4 sm:p-6">
@@ -22,21 +22,21 @@
   </article>
 
   <dl class="grid grid-cols-1 gap-4 rounded-xl border border-border-strong bg-surface p-4 sm:grid-cols-2 sm:p-5">
-    <div><dt class="text-xs font-medium text-muted">Provider post ID</dt><dd class="mt-1 break-all text-sm text-foreground"><%= @publication.provider_post_id.presence || "—" %></dd></div>
-    <div><dt class="text-xs font-medium text-muted">Published at</dt><dd class="mt-1 text-sm text-foreground"><%= @publication.published_at&.to_fs(:long) || "—" %></dd></div>
-    <div class="sm:col-span-2"><dt class="text-xs font-medium text-muted">Published URL</dt><dd class="mt-1 break-all text-sm text-foreground"><%= @publication.published_url ? link_to(@publication.published_url, @publication.published_url, target: "_blank", rel: "noopener noreferrer", class: "underline decoration-border-strong underline-offset-4") : "—" %></dd></div>
+    <div><dt class="text-xs font-medium text-muted">Mã bài đăng từ Facebook</dt><dd class="mt-1 break-all text-sm text-foreground"><%= @publication.provider_post_id.presence || "—" %></dd></div>
+    <div><dt class="text-xs font-medium text-muted">Thời gian xuất bản</dt><dd class="mt-1 text-sm text-foreground"><%= @publication.published_at&.to_fs(:long) || "—" %></dd></div>
+    <div class="sm:col-span-2"><dt class="text-xs font-medium text-muted">Liên kết bài đăng</dt><dd class="mt-1 break-all text-sm text-foreground"><%= @publication.published_url ? link_to(@publication.published_url, @publication.published_url, target: "_blank", rel: "noopener noreferrer", class: "underline decoration-border-strong underline-offset-4") : "—" %></dd></div>
     <% if @publication.error_code.present? || @publication.error_message.present? %>
-      <div><dt class="text-xs font-medium text-muted">Error code</dt><dd class="mt-1 text-sm text-foreground"><%= @publication.error_code %></dd></div>
-      <div><dt class="text-xs font-medium text-muted">Error</dt><dd class="mt-1 text-sm text-foreground"><%= @publication.error_message %></dd></div>
+      <div><dt class="text-xs font-medium text-muted">Mã lỗi</dt><dd class="mt-1 text-sm text-foreground"><%= @publication.error_code %></dd></div>
+      <div><dt class="text-xs font-medium text-muted">Chi tiết</dt><dd class="mt-1 text-sm text-foreground"><%= @publication.error_message %></dd></div>
     <% end %>
   </dl>
 
   <% if @publication.status_draft? %>
     <div class="flex flex-col gap-3 rounded-xl border border-border-strong bg-surface p-4 sm:flex-row sm:items-end sm:justify-between sm:p-5">
-      <%= button_to "Post now", post_now_publication_path(@publication), method: :post, class: "inline-flex min-h-11 cursor-pointer items-center justify-center rounded-xl bg-primary px-5 py-2 text-sm font-medium text-primary-foreground hover:bg-primary-hover" %>
+      <%= button_to "Đăng ngay", post_now_publication_path(@publication), method: :post, class: "inline-flex min-h-11 cursor-pointer items-center justify-center rounded-xl bg-primary px-5 py-2 text-sm font-medium text-primary-foreground hover:bg-primary-hover" %>
       <%= form_with url: schedule_publication_path(@publication), method: :post, class: "flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-end" do |form| %>
-        <div class="space-y-1.5"><%= form.label :scheduled_at, "Schedule for", class: "block text-xs font-medium text-muted" %><%= form.datetime_local_field :scheduled_at, value: 1.hour.from_now.strftime("%Y-%m-%dT%H:%M"), required: true, class: "h-11 rounded-xl border border-border-strong bg-surface px-3 text-base text-foreground md:text-sm" %></div>
-        <%= form.submit "Schedule", class: "inline-flex min-h-11 cursor-pointer items-center justify-center rounded-xl border border-border-strong bg-surface px-4 py-2 text-sm font-medium text-foreground hover:bg-button-hover" %>
+        <div class="space-y-1.5"><%= form.label :scheduled_at, "Thời gian đăng", class: "block text-xs font-medium text-muted" %><%= form.datetime_local_field :scheduled_at, value: 1.hour.from_now.strftime("%Y-%m-%dT%H:%M"), required: true, class: "h-11 rounded-xl border border-border-strong bg-surface px-3 text-base text-foreground md:text-sm" %></div>
+        <%= form.submit "Lên lịch", class: "inline-flex min-h-11 cursor-pointer items-center justify-center rounded-xl border border-border-strong bg-surface px-4 py-2 text-sm font-medium text-foreground hover:bg-button-hover" %>
       <% end %>
     </div>
   <% end %>
@@ -44,20 +44,20 @@
   <% if retryable %>
     <% if @publication.ambiguous_outcome? %>
       <section data-controller="dialog">
-        <button type="button" data-action="dialog#open" class="inline-flex min-h-11 items-center justify-center rounded-xl border border-border-strong bg-surface px-4 py-2 text-sm font-medium text-foreground hover:bg-button-hover">Retry Publication</button>
+        <button type="button" data-action="dialog#open" class="inline-flex min-h-11 items-center justify-center rounded-xl border border-border-strong bg-surface px-4 py-2 text-sm font-medium text-foreground hover:bg-button-hover">Thử đăng lại</button>
         <dialog data-dialog-target="dialog" class="w-[min(32rem,calc(100%-2rem))] rounded-xl border border-border-strong bg-surface p-0 text-foreground shadow-xl backdrop:bg-black/40">
           <div class="space-y-4 p-5">
             <h2 class="text-base font-semibold">Possible duplicate post</h2>
             <p class="text-sm leading-5 text-muted">Facebook may have accepted the earlier request before the connection failed. Retrying can publish a duplicate.</p>
             <div class="flex justify-end gap-2">
-              <button type="button" data-action="dialog#close" class="inline-flex min-h-10 items-center justify-center rounded-xl border border-border-strong px-4 text-sm font-medium">Cancel</button>
-              <%= button_to "Confirm retry", retry_publication_path(@publication), method: :post, params: { confirm_duplicate_risk: true }, class: "inline-flex min-h-10 cursor-pointer items-center justify-center rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground" %>
+              <button type="button" data-action="dialog#close" class="inline-flex min-h-10 items-center justify-center rounded-xl border border-border-strong px-4 text-sm font-medium">Để sau</button>
+              <%= button_to "Vẫn thử đăng", retry_publication_path(@publication), method: :post, params: { confirm_duplicate_risk: true }, class: "inline-flex min-h-10 cursor-pointer items-center justify-center rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground" %>
             </div>
           </div>
         </dialog>
       </section>
     <% else %>
-      <%= button_to "Retry Publication", retry_publication_path(@publication), method: :post, class: "inline-flex min-h-11 cursor-pointer items-center justify-center rounded-xl border border-border-strong bg-surface px-4 py-2 text-sm font-medium text-foreground hover:bg-button-hover" %>
+      <%= button_to "Thử đăng lại", retry_publication_path(@publication), method: :post, class: "inline-flex min-h-11 cursor-pointer items-center justify-center rounded-xl border border-border-strong bg-surface px-4 py-2 text-sm font-medium text-foreground hover:bg-button-hover" %>
     <% end %>
   <% end %>
 </section>

@@ -1,17 +1,17 @@
-<% content_for :title, "ACCESSTRADE Connection" %>
+<% content_for :title, "ACCESSTRADE · Kết nối" %>
 <% api_key_invalid = @form.errors[:api_key].present? %>
 
 <section aria-labelledby="affiliate-connection-title" class="w-full max-w-lg rounded-xl border border-border-strong bg-surface p-4 sm:p-5">
   <div class="mb-5">
-    <h1 id="affiliate-connection-title" class="text-xl font-semibold text-foreground">Connect ACCESSTRADE</h1>
+    <p class="text-xs font-semibold uppercase tracking-wide text-muted">KẾT NỐI AFFILIATE</p>
+    <h1 id="affiliate-connection-title" class="mt-2 text-xl font-semibold text-foreground">ACCESSTRADE</h1>
     <p class="mt-2 text-sm leading-5 text-muted">
-      Add your API token to create tracking links for product URLs you import.
-      ACCESSTRADE does not search the product catalog.
+      Nhập API token để tạo affiliate link cho các URL sản phẩm bạn tải lên. ACCESSTRADE không tìm kiếm danh mục sản phẩm.
     </p>
   </div>
 
-  <div class="mb-5 rounded-lg bg-background p-3 text-sm leading-5 text-foreground">
-    Your token is sent only from this server and stored encrypted. Access is confirmed when a tracking link is created.
+  <div class="mb-5 rounded-xl bg-background p-3 text-sm leading-5 text-foreground">
+    Token chỉ được gửi từ máy chủ và lưu dưới dạng mã hóa. Hệ thống xác nhận quyền truy cập khi tạo affiliate link.
   </div>
 
   <%= form_with scope: :affiliate_connection, url: affiliate_connection_path, method: :post do |form| %>
@@ -31,7 +31,7 @@
               (api_key_invalid ? "border-red-500 focus:border-red-500 focus:ring-red-500/10" : "border-border-strong focus:border-focus focus:ring-focus")
             ] %>
       <p id="affiliate-api-key-hint" class="text-xs leading-4 text-muted">
-        Create or copy an API Access Key from your ACCESSTRADE account.
+        Tạo hoặc sao chép API Access Key từ tài khoản ACCESSTRADE của bạn.
       </p>
       <% if @form.errors[:api_key].present? %>
         <p id="affiliate-api-key-error" role="alert" class="text-xs leading-4 text-red-600"><%= @form.errors[:api_key].to_sentence %></p>
@@ -39,7 +39,7 @@
     </div>
 
     <div class="mt-5">
-      <%= form.submit "Save API token",
+      <%= form.submit "Lưu API token",
             class: "inline-flex min-h-11 w-full cursor-pointer items-center justify-center rounded-xl bg-primary px-4 py-2 text-sm font-medium leading-tight text-primary-foreground transition-colors hover:bg-primary-hover md:min-h-10" %>
     </div>
   <% end %>

@@ -6,6 +6,10 @@ Ngày chạy: 2026-10-02 (Asia/Ho_Chi_Minh)
 
 Ảnh Dashboard hiện trạng: [dashboard-current-state.png](dashboard-current-state.png). Ảnh chỉ chứng minh màn hình và trạng thái hiện tại, không phải bằng chứng cho một bài Facebook đã đăng.
 
+Ảnh kiểm tra tiếp tục ngày 2026-10-02: [Product Library đang trống](product-library-empty.png) và [campaign Shopee đang Pending trên ACCESSTRADE](accesstrade-campaign-pending.png). Nội dung campaign ghi ACCESSTRADE tạm ngưng duyệt Publisher mới từ 26/05/2026 đến khi có thông báo mới; trường hợp đặc biệt cần liên hệ nhân sự phụ trách để được xem xét.
+
+Codex Test Connection chạy lại trong phiên này thành công, trả `Hello!`: [ảnh kết quả](codex-test-connection.png).
+
 | Bước | Kết quả | Bằng chứng / ghi chú |
 |---:|---|---|
 | 1 | PASS | Seed user `demo@affihub.local` tồn tại và đăng nhập được bằng credential dev mặc định. |
@@ -13,9 +17,9 @@ Ngày chạy: 2026-10-02 (Asia/Ho_Chi_Minh)
 | 3 | FAIL | Không kiểm tra được trạng thái ban đầu chưa kết nối; DB đã có Codex và ACCESSTRADE connection trước lần chạy này. |
 | 4 | FAIL | Chưa chạy lại trọn OAuth/PKCE thật trong phiên e2e có bằng chứng lưu được. |
 | 5 | PASS | Dashboard đọc AIConnection của demo user với trạng thái connected. |
-| 6 | PASS | Test Connection thật đã gọi Codex endpoint và nhận phản hồi thành công trong lần xác minh trước. |
+| 6 | PASS | Chạy lại Test Connection thật trong phiên này; UI nhận `Codex responded: Hello!`. Ảnh: [Codex Test Connection](codex-test-connection.png). |
 | 7 | PASS | Credential ACCESSTRADE thật từ ENV đã được lưu vào AffiliateConnection mã hóa. |
-| 8 | FAIL | Import CSV cùng schema từ listing Shopee thật; row qua filter/rank nhưng lần gọi campaign ACCESSTRADE (`4751584435713464237`) trả về `You have not registered for campaign: Shopee Việt Nam Smartlink cho tất cả thiết bị`. Sau đó đã đăng nhập ACCESSTRADE và gửi yêu cầu tham gia campaign; giao diện hiện `Pending`, chưa được duyệt nên chưa thể chạy lại import thành công. Nguồn facts: [Shopee product listing](https://shopee.vn/Ng%C5%AF-C%E1%BB%91c-Granola-%C4%82n-Ki%C3%AAng-Nhi%E1%BB%81u-H%E1%BA%A1t-70-y%E1%BA%BFn-m%E1%BA%A1ch-H%C5%A9-500g-i.441745099.22873387114) và [shop listing](https://shopee.vn/anan_shop_mypham). |
+| 8 | FAIL | Import CSV cùng schema từ listing Shopee thật; row qua filter/rank nhưng lần gọi campaign ACCESSTRADE (`4751584435713464237`) trả về `You have not registered for campaign: Shopee Việt Nam Smartlink cho tất cả thiết bị`. Đã gửi yêu cầu tham gia; giao diện hiện `Pending`. Campaign ghi rõ đang tạm ngưng duyệt Publisher mới từ 26/05/2026; chỉ trường hợp đặc biệt được nhân sự phụ trách xem xét, nên chờ tự động không phải đường xử lý đáng tin cậy. Ảnh: [Product Library trống](product-library-empty.png), [campaign Pending](accesstrade-campaign-pending.png). Nguồn facts: [Shopee product listing](https://shopee.vn/Ng%C5%AF-C%E1%BB%91c-Granola-%C4%82n-Ki%C3%AAng-Nhi%E1%BB%81u-H%E1%BA%A1t-70-y%E1%BA%BFn-m%E1%BA%A1ch-H%C5%A9-500g-i.441745099.22873387114) và [shop listing](https://shopee.vn/anan_shop_mypham). |
 | 9 | FAIL | ACCESSTRADE không cấp tracking link nên Product không được lưu. |
 | 10 | FAIL | Không có Product affiliate URL; API trả về campaign chưa đăng ký. |
 | 11 | FAIL | Chưa kiểm tra filter trên tập Product thật được import. |

@@ -6,7 +6,7 @@
     </div>
     <span class="inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium <%= connected ? "bg-emerald-50 text-emerald-700" : "bg-neutral-bg text-neutral" %>">
       <span aria-hidden="true" class="size-1.5 rounded-full <%= connected ? "bg-emerald-600" : "bg-neutral" %>"></span>
-      <%= connected ? "Đã kết nối" : "Chưa kết nối" %>
+      <%= local_assigns[:state_label] || (connected ? "Đã kết nối" : "Chưa kết nối") %>
     </span>
   </div>
   <%= link_to action, path, class: "mt-5 inline-flex min-h-10 items-center justify-center rounded-xl border border-border-strong bg-surface px-3.5 text-sm font-medium text-foreground hover:bg-button-hover" %>

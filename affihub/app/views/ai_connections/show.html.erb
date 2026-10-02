@@ -1,23 +1,25 @@
-<% content_for :title, "AI Connection" %>
+<% content_for :title, "Codex · Kết nối" %>
 
 <div class="w-full max-w-sm rounded-xl border border-border-strong bg-surface p-6">
-  <h1 class="mb-4 text-lg font-semibold text-foreground">AI Connection (Codex)</h1>
+  <p class="text-xs font-semibold uppercase tracking-wide text-muted">KẾT NỐI AI</p>
+  <h1 class="mt-2 mb-4 text-xl font-semibold text-foreground">Codex</h1>
 
   <% if @ai_connection&.status_connected? %>
     <div class="mb-4 flex items-center gap-2">
-      <span class="rounded-full bg-success-bg px-2.5 py-0.5 text-xs font-medium text-success">Connected</span>
+      <span class="rounded-full bg-success-bg px-2.5 py-1 text-xs font-medium text-success">Đã kết nối</span>
       <% if @ai_connection.chatgpt_plan_type.present? %>
-        <span class="text-xs text-muted">Plan: <%= @ai_connection.chatgpt_plan_type %></span>
+        <span class="text-xs text-muted">Gói: <%= @ai_connection.chatgpt_plan_type %></span>
       <% end %>
     </div>
 
-    <%= button_to "Test Connection", test_connection_ai_connection_path, method: :post,
-          class: "w-full rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary-hover" %>
+    <p class="mb-4 text-sm leading-6 text-muted">Tài khoản Codex sẵn sàng tạo bản nháp. Nội dung luôn cần bạn duyệt trước khi đăng.</p>
+    <%= button_to "Kiểm tra kết nối", test_connection_ai_connection_path, method: :post,
+          class: "min-h-11 w-full rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary-hover" %>
   <% else %>
-    <p class="mb-4 text-sm text-muted">Not connected yet. Connect your ChatGPT account to use Codex.</p>
+    <p class="mb-4 text-sm leading-6 text-muted">Kết nối tài khoản ChatGPT để sử dụng Codex tạo nội dung từ thông tin sản phẩm.</p>
 
-    <%= button_to "Connect Codex", connect_ai_connection_path, method: :post,
-          class: "w-full rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary-hover",
+    <%= button_to "Kết nối Codex", connect_ai_connection_path, method: :post,
+          class: "min-h-11 w-full rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary-hover",
           form: { data: { turbo: false } } %>
   <% end %>
 </div>

@@ -1,22 +1,22 @@
-<% content_for :title, "Facebook Connection" %>
+<% content_for :title, "Facebook · Kết nối" %>
 
 <section class="w-full max-w-3xl space-y-5" aria-labelledby="social-connection-title">
   <header>
-    <p class="text-sm font-medium text-muted">Social accounts</p>
-    <h1 id="social-connection-title" class="mt-1 text-xl font-semibold text-foreground">Facebook Connection</h1>
-    <p class="mt-1 text-sm text-muted">Connect your account, then choose the Page used for publishing.</p>
+    <p class="text-sm font-medium text-muted">KẾT NỐI MẠNG XÃ HỘI</p>
+    <h1 id="social-connection-title" class="mt-1 text-2xl font-semibold text-foreground">Facebook</h1>
+    <p class="mt-1 text-sm text-muted">Kết nối tài khoản, sau đó chọn Page sẽ nhận bài đăng.</p>
   </header>
 
   <article class="rounded-xl border border-border-strong bg-surface p-4 sm:p-6">
     <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div>
-        <h2 class="text-base font-semibold text-foreground">Facebook account</h2>
-        <p class="mt-1 text-sm text-muted"><%= @social_connection ? "Connected" : "Not connected" %></p>
+        <h2 class="text-base font-semibold text-foreground">Tài khoản Facebook</h2>
+        <p class="mt-1 text-sm text-muted"><%= @social_connection ? "Đã kết nối" : "Chưa kết nối" %></p>
       </div>
       <% if @social_connection %>
-        <%= link_to "Manage Pages", facebook_pages_path, class: "inline-flex min-h-11 items-center justify-center rounded-xl bg-primary px-5 py-2 text-sm font-medium text-primary-foreground hover:bg-primary-hover" %>
+        <%= link_to "Quản lý Pages", facebook_pages_path, class: "inline-flex min-h-11 items-center justify-center rounded-xl bg-primary px-5 py-2 text-sm font-medium text-primary-foreground hover:bg-primary-hover" %>
       <% else %>
-        <%= link_to "Connect Facebook", connect_social_connections_path, class: "inline-flex min-h-11 items-center justify-center rounded-xl bg-primary px-5 py-2 text-sm font-medium text-primary-foreground hover:bg-primary-hover" %>
+        <%= link_to "Kết nối Facebook", connect_social_connections_path, class: "inline-flex min-h-11 items-center justify-center rounded-xl bg-primary px-5 py-2 text-sm font-medium text-primary-foreground hover:bg-primary-hover" %>
       <% end %>
     </div>
   </article>

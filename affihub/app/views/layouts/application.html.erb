@@ -1,37 +1,72 @@
 <!DOCTYPE html>
-<html>
+<html lang="vi">
   <head>
     <title><%= content_for(:title) || "Affihub" %></title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="application-name" content="Affihub">
-    <meta name="mobile-web-app-capable" content="yes">
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
-
-    <%= yield :head %>
-
-    <%# Enable PWA manifest for installable apps (make sure to enable in config/routes.rb too!) %>
-    <%#= tag.link rel: "manifest", href: pwa_manifest_path(format: :json) %>
-
-    <link rel="icon" href="/icon.png" type="image/png">
-    <link rel="icon" href="/icon.svg" type="image/svg+xml">
-    <link rel="apple-touch-icon" href="/icon.png">
-
-    <%# Includes all stylesheet files in app/assets/stylesheets %>
     <%= stylesheet_link_tag :app, "data-turbo-track": "reload" %>
     <%= javascript_importmap_tags %>
   </head>
-
-  <body class="bg-background text-foreground">
-    <main class="container mx-auto flex min-h-screen w-full max-w-6xl flex-col items-stretch px-5 py-8">
-      <% if flash[:notice] %>
-        <div class="mx-auto mb-4 w-full max-w-sm rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700"><%= flash[:notice] %></div>
-      <% end %>
-      <% if flash[:alert] %>
-        <div class="mx-auto mb-4 w-full max-w-sm rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"><%= flash[:alert] %></div>
-      <% end %>
-      <%= yield %>
-    </main>
+  <body class="min-h-screen bg-background text-foreground antialiased">
+    <% if current_user.present? %>
+      <div class="min-h-screen lg:flex">
+        <aside class="hidden w-64 shrink-0 border-r border-border-strong bg-surface lg:fixed lg:inset-y-0 lg:flex lg:flex-col">
+          <a href="<%= root_path %>" class="flex h-20 items-center gap-3 border-b border-border-strong px-6" aria-label="Affihub, về Tổng quan">
+            <span class="grid size-9 place-items-center rounded-xl bg-primary text-sm font-bold text-primary-foreground">A</span>
+            <span class="text-lg font-semibold tracking-tight">affihub</span>
+          </a>
+          <nav class="flex-1 space-y-7 px-3 py-6" aria-label="Điều hướng chính">
+            <div>
+              <p class="px-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">Quy trình</p>
+              <div class="mt-2 space-y-1">
+                <%= link_to "Tổng quan", root_path, class: "block rounded-xl px-3 py-2.5 text-sm font-medium #{current_page?(root_path) ? 'bg-background text-foreground' : 'text-muted hover:bg-background hover:text-foreground'}", aria: (current_page?(root_path) ? { current: "page" } : {}) %>
+                <%= link_to "Kho sản phẩm", products_path, class: "block rounded-xl px-3 py-2.5 text-sm font-medium #{request.path.start_with?('/products') ? 'bg-background text-foreground' : 'text-muted hover:bg-background hover:text-foreground'}", aria: (request.path.start_with?('/products') ? { current: "page" } : {}) %>
+                <%= link_to "Facebook Pages", facebook_pages_path, class: "block rounded-xl px-3 py-2.5 text-sm font-medium #{request.path.start_with?('/facebook_pages') ? 'bg-background text-foreground' : 'text-muted hover:bg-background hover:text-foreground'}", aria: (request.path.start_with?('/facebook_pages') ? { current: "page" } : {}) %>
+              </div>
+            </div>
+            <div>
+              <p class="px-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">Kết nối</p>
+              <div class="mt-2 space-y-1">
+                <%= link_to "Codex", ai_connection_path, class: "block rounded-xl px-3 py-2.5 text-sm font-medium #{request.path.start_with?('/ai_connection') ? 'bg-background text-foreground' : 'text-muted hover:bg-background hover:text-foreground'}" %>
+                <%= link_to "ACCESSTRADE", new_affiliate_connection_path, class: "block rounded-xl px-3 py-2.5 text-sm font-medium #{request.path.start_with?('/affiliate_connection') ? 'bg-background text-foreground' : 'text-muted hover:bg-background hover:text-foreground'}" %>
+                <%= link_to "Facebook", social_connections_path, class: "block rounded-xl px-3 py-2.5 text-sm font-medium #{request.path.start_with?('/social_connections') ? 'bg-background text-foreground' : 'text-muted hover:bg-background hover:text-foreground'}" %>
+              </div>
+            </div>
+          </nav>
+          <div class="border-t border-border-strong p-4">
+            <p class="truncate px-2 text-xs text-muted"><%= current_user.email %></p>
+            <%= button_to "Đăng xuất", logout_path, method: :delete, class: "mt-2 min-h-10 w-full rounded-xl px-3 text-left text-sm font-medium text-muted hover:bg-background hover:text-foreground" %>
+          </div>
+        </aside>
+        <div class="min-w-0 flex-1 lg:pl-64">
+          <header class="flex h-14 items-center justify-between border-b border-border-strong bg-surface px-4 sm:px-6 lg:hidden">
+            <a href="<%= root_path %>" class="flex items-center gap-2 font-semibold"><span class="grid size-8 place-items-center rounded-xl bg-primary text-sm text-primary-foreground">A</span>affihub</a>
+            <%= button_to "Đăng xuất", logout_path, method: :delete, class: "min-h-10 px-2 text-sm font-medium text-muted" %>
+          </header>
+          <main class="mx-auto w-full max-w-7xl px-4 py-6 pb-24 sm:px-6 sm:py-8 lg:px-10 lg:py-10 lg:pb-10">
+            <% flash.each do |type, message| %>
+              <div role="status" class="mb-6 rounded-xl border border-border-strong bg-surface px-4 py-3 text-sm <%= type.to_sym == :alert ? 'text-error' : 'text-foreground' %>"><%= message %></div>
+            <% end %>
+            <%= yield %>
+          </main>
+          <nav class="fixed inset-x-0 bottom-0 z-10 grid grid-cols-4 border-t border-border-strong bg-surface px-2 pb-[env(safe-area-inset-bottom)] lg:hidden" aria-label="Điều hướng di động">
+            <%= link_to "Tổng quan", root_path, class: "flex min-h-14 items-center justify-center text-xs font-medium #{current_page?(root_path) ? 'text-foreground' : 'text-muted'}" %>
+            <%= link_to "Sản phẩm", products_path, class: "flex min-h-14 items-center justify-center text-xs font-medium #{request.path.start_with?('/products') ? 'text-foreground' : 'text-muted'}" %>
+            <%= link_to "Pages", facebook_pages_path, class: "flex min-h-14 items-center justify-center text-xs font-medium #{request.path.start_with?('/facebook_pages') ? 'text-foreground' : 'text-muted'}" %>
+            <%= link_to "Kết nối", social_connections_path, class: "flex min-h-14 items-center justify-center text-xs font-medium #{request.path.match?(%r{/(ai_connection|affiliate_connection|social_connections)}) ? 'text-foreground' : 'text-muted'}" %>
+          </nav>
+        </div>
+      </div>
+    <% else %>
+      <main class="flex min-h-screen items-center justify-center px-4 py-10">
+        <div class="w-full max-w-md">
+          <% flash.each do |type, message| %>
+            <div role="alert" class="mb-4 rounded-xl border border-border-strong bg-surface px-4 py-3 text-sm text-error"><%= message %></div>
+          <% end %>
+          <%= yield %>
+        </div>
+      </main>
+    <% end %>
   </body>
 </html>
