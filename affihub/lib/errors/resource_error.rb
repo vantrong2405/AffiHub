@@ -11,13 +11,13 @@ module Errors
       # Set errors from message or resource
       @errors = if message.is_a?(Array)
                   message
-                elsif message.present?
-                  [message]
-                elsif resource.respond_to?(:errors) && resource.errors.any?
+      elsif message.present?
+                  [ message ]
+      elsif resource.respond_to?(:errors) && resource.errors.any?
                   resource.errors.full_messages
-                else
+      else
                   []
-                end
+      end
 
       super(@errors.first || "Error with resource #{resource.class.name}")
     end

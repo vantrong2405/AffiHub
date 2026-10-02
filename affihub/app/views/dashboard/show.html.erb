@@ -1,0 +1,68 @@
+<% content_for :title, "Tổng quan · Affihub" %>
+
+<div class="w-full space-y-8">
+  <header class="flex flex-col gap-4 border-b border-border-strong pb-6 sm:flex-row sm:items-end sm:justify-between">
+    <div>
+      <p class="text-sm font-medium text-muted">AFFIHUB / TỔNG QUAN</p>
+      <h1 class="mt-2 text-3xl font-semibold tracking-tight text-foreground">Bắt đầu với chiến dịch của bạn</h1>
+      <p class="mt-2 max-w-2xl text-sm leading-6 text-muted">Kết nối dịch vụ, chọn sản phẩm và theo dõi nội dung đã xuất bản tại đây.</p>
+    </div>
+    <%= button_to "Đăng xuất", logout_path, method: :delete, class: "inline-flex min-h-10 items-center justify-center rounded-xl border border-border-strong bg-surface px-4 text-sm font-medium text-foreground hover:bg-button-hover" %>
+  </header>
+
+  <section aria-labelledby="connections-heading">
+    <div class="mb-4 flex items-end justify-between gap-4">
+      <div>
+        <h2 id="connections-heading" class="text-lg font-semibold text-foreground">Kết nối dịch vụ</h2>
+        <p class="mt-1 text-sm text-muted">Ba kết nối cần cho quy trình tạo và đăng nội dung.</p>
+      </div>
+    </div>
+
+    <div class="grid gap-4 md:grid-cols-3">
+      <%= render "connection_card", name: "Codex", detail: @ai_connection&.status_connected? ? "Sẵn sàng tạo nội dung" : "Cần kết nối để tạo nội dung", connected: @ai_connection&.status_connected?, path: ai_connection_path, action: @ai_connection&.status_connected? ? "Xem kết nối" : "Kết nối Codex" %>
+      <%= render "connection_card", name: "ACCESSTRADE", detail: @affiliate_connection ? "Sẵn sàng nhập sản phẩm" : "Cần kết nối để nhập sản phẩm", connected: @affiliate_connection.present?, path: new_affiliate_connection_path, action: @affiliate_connection ? "Xem kết nối" : "Kết nối ACCESSTRADE" %>
+      <%= render "connection_card", name: "Facebook Page", detail: @social_connection ? "Tài khoản Facebook đã kết nối" : "Cần kết nối để đăng bài", connected: @social_connection.present?, path: social_connections_path, action: @social_connection ? "Quản lý Page" : "Kết nối Facebook" %>
+    </div>
+  </section>
+
+  <section aria-labelledby="workflow-heading" class="rounded-xl border border-border-strong bg-surface p-5 sm:p-6">
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <h2 id="workflow-heading" class="text-lg font-semibold text-foreground">Tiếp tục quy trình</h2>
+        <p class="mt-1 text-sm text-muted">Từ Product Library, chọn sản phẩm để tạo nội dung và gửi duyệt.</p>
+      </div>
+      <%= link_to "Mở Product Library", products_path, class: "inline-flex min-h-10 items-center justify-center rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary-hover" %>
+    </div>
+  </section>
+
+  <section aria-labelledby="publications-heading">
+    <div class="mb-4 flex items-end justify-between gap-4">
+      <div>
+        <h2 id="publications-heading" class="text-lg font-semibold text-foreground">Publication gần đây</h2>
+        <p class="mt-1 text-sm text-muted">Trạng thái cập nhật từ các lần đăng của bạn.</p>
+      </div>
+      <%= link_to "Xem Product Library", products_path, class: "text-sm font-medium text-foreground underline decoration-border-strong underline-offset-4 hover:decoration-foreground" %>
+    </div>
+
+    <div class="overflow-hidden rounded-xl border border-border-strong bg-surface">
+      <% if @recent_publications.any? %>
+        <ul class="divide-y divide-border-strong">
+          <% @recent_publications.each do |publication| %>
+            <li class="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+              <div class="min-w-0">
+                <%= link_to publication.content.product.title.presence || "Nội dung sản phẩm", publication_path(publication), class: "block truncate text-sm font-medium text-foreground hover:underline" %>
+                <p class="mt-1 text-xs text-muted"><%= publication.created_at.strftime("%d/%m/%Y · %H:%M") %> · <%= publication.social_destination.name %></p>
+              </div>
+              <span class="inline-flex w-fit rounded-full px-2.5 py-1 text-xs font-medium <%= publication_status_classes(publication.status) %>"><%= publication_status_label(publication.status) %></span>
+            </li>
+          <% end %>
+        </ul>
+      <% else %>
+        <div class="px-5 py-10 text-center">
+          <p class="text-sm font-medium text-foreground">Chưa có Publication nào</p>
+          <p class="mt-1 text-sm text-muted">Sau khi duyệt nội dung và đăng lên Page, trạng thái sẽ xuất hiện tại đây.</p>
+        </div>
+      <% end %>
+    </div>
+  </section>
+</div>

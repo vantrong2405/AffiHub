@@ -1,0 +1,46 @@
+<% content_for :title, "ACCESSTRADE Connection" %>
+<% api_key_invalid = @form.errors[:api_key].present? %>
+
+<section aria-labelledby="affiliate-connection-title" class="w-full max-w-lg rounded-xl border border-border-strong bg-surface p-4 sm:p-5">
+  <div class="mb-5">
+    <h1 id="affiliate-connection-title" class="text-xl font-semibold text-foreground">Connect ACCESSTRADE</h1>
+    <p class="mt-2 text-sm leading-5 text-muted">
+      Add your API token to create tracking links for product URLs you import.
+      ACCESSTRADE does not search the product catalog.
+    </p>
+  </div>
+
+  <div class="mb-5 rounded-lg bg-background p-3 text-sm leading-5 text-foreground">
+    Your token is sent only from this server and stored encrypted. Access is confirmed when a tracking link is created.
+  </div>
+
+  <%= form_with scope: :affiliate_connection, url: affiliate_connection_path, method: :post do |form| %>
+    <div class="space-y-1.5">
+      <%= form.label :api_key, "API token", class: "block w-fit text-sm font-medium text-foreground" %>
+      <%= form.password_field :api_key,
+            required: true,
+            autocomplete: "off",
+            autocapitalize: "none",
+            spellcheck: false,
+            aria: {
+              invalid: (true if api_key_invalid),
+              describedby: ["affiliate-api-key-hint", ("affiliate-api-key-error" if api_key_invalid)].compact.join(" ")
+            },
+            class: [
+              "w-full h-11 md:h-10 rounded-xl border bg-surface px-4 text-base text-foreground outline-hidden transition-colors placeholder:text-muted md:text-sm focus:ring-2",
+              (api_key_invalid ? "border-red-500 focus:border-red-500 focus:ring-red-500/10" : "border-border-strong focus:border-focus focus:ring-focus")
+            ] %>
+      <p id="affiliate-api-key-hint" class="text-xs leading-4 text-muted">
+        Create or copy an API Access Key from your ACCESSTRADE account.
+      </p>
+      <% if @form.errors[:api_key].present? %>
+        <p id="affiliate-api-key-error" role="alert" class="text-xs leading-4 text-red-600"><%= @form.errors[:api_key].to_sentence %></p>
+      <% end %>
+    </div>
+
+    <div class="mt-5">
+      <%= form.submit "Save API token",
+            class: "inline-flex min-h-11 w-full cursor-pointer items-center justify-center rounded-xl bg-primary px-4 py-2 text-sm font-medium leading-tight text-primary-foreground transition-colors hover:bg-primary-hover md:min-h-10" %>
+    </div>
+  <% end %>
+</section>

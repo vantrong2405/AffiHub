@@ -1,0 +1,23 @@
+<% content_for :title, "AI Connection" %>
+
+<div class="w-full max-w-sm rounded-xl border border-border-strong bg-surface p-6">
+  <h1 class="mb-4 text-lg font-semibold text-foreground">AI Connection (Codex)</h1>
+
+  <% if @ai_connection&.status_connected? %>
+    <div class="mb-4 flex items-center gap-2">
+      <span class="rounded-full bg-success-bg px-2.5 py-0.5 text-xs font-medium text-success">Connected</span>
+      <% if @ai_connection.chatgpt_plan_type.present? %>
+        <span class="text-xs text-muted">Plan: <%= @ai_connection.chatgpt_plan_type %></span>
+      <% end %>
+    </div>
+
+    <%= button_to "Test Connection", test_connection_ai_connection_path, method: :post,
+          class: "w-full rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary-hover" %>
+  <% else %>
+    <p class="mb-4 text-sm text-muted">Not connected yet. Connect your ChatGPT account to use Codex.</p>
+
+    <%= button_to "Connect Codex", connect_ai_connection_path, method: :post,
+          class: "w-full rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary-hover",
+          form: { data: { turbo: false } } %>
+  <% end %>
+</div>

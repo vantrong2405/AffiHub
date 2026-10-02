@@ -104,3 +104,13 @@ rule, Client = I/O only, easier to test and swap independently).
 - State-changing actions that must not double-fire (Post Now, Retry, `PublishJob` claiming
   Scheduled→Publishing) use an atomic `update_all(status: ...)` with a `WHERE status = <source>`
   condition, checking the affected-row count — never a plain read-then-write.
+
+## 7. Seed user (login credential for manual verify steps)
+
+POC has no signup — `db/seeds.rb` creates exactly one `User` via `find_or_create_by!`. Use these
+credentials for every "Verify thủ công" manual-login step across changes 01–07:
+
+- development/test: `demo@affihub.local` / `password123` (fixed fallback, only used when
+  `SEED_USER_EMAIL`/`SEED_USER_PASSWORD` are unset and `Rails.env` is not `production`).
+- production: no fallback — `SEED_USER_EMAIL`/`SEED_USER_PASSWORD` must be set in the deploy
+  environment or `db:seed` raises immediately instead of creating a default-password user.

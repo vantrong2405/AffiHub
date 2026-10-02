@@ -33,8 +33,11 @@ over.
 ## 3. Git push safety — never force push
 
 Never use `git push --force`, `git push -f`, or `git push --force-with-lease` in any repo/branch.
-Never `git push` to a protected branch (`main`/`master`) on your own initiative — ask first.
-If a pushed commit needs correction, add a follow-up commit; don't amend + force-push.
+Use `develop` as the integration branch for day-to-day development: create it from `main` when it
+does not exist, make feature commits there, and push development work to `origin/develop`.
+**Never push commits directly to `main`/`master.** Promote verified work from `develop` to `main`
+through a pull request or an explicit merge/release step. If a pushed commit needs correction, add a
+follow-up commit; don't amend + force-push.
 
 ## 4. Commit messages
 

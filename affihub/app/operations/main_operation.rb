@@ -4,8 +4,8 @@ class MainOperation
   attr_reader :params, :current_user, :form, :errors
 
   class << self
-    def call(*args)
-      itself = new(*args)
+    def call(*args, **kwargs)
+      itself = new(*args, **kwargs)
       itself.call
       itself
     end
@@ -22,7 +22,7 @@ class MainOperation
   end
 
   def success?
-    @errors.empty?
+    errors.empty?
   end
 
   def error?

@@ -1,0 +1,35 @@
+<% content_for :title, "Content · #{@product.title}" %>
+
+<section class="w-full max-w-5xl space-y-5" aria-labelledby="contents-title">
+  <%= link_to "← #{@product.title}", product_path(@product), class: "inline-flex min-h-10 items-center text-sm font-medium text-muted underline decoration-border-strong underline-offset-4 hover:text-foreground" %>
+  <header class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+    <div>
+      <p class="text-sm font-medium text-muted">Product Content</p>
+      <h1 id="contents-title" class="mt-1 text-xl font-semibold text-foreground"><%= @product.title %></h1>
+      <p class="mt-1 text-sm text-muted">Each draft has its own review status and history.</p>
+    </div>
+    <%= link_to "Generate new Content", new_content_path(product_id: @product.id), class: "inline-flex min-h-11 items-center justify-center rounded-xl bg-primary px-5 py-2 text-sm font-medium text-primary-foreground hover:bg-primary-hover" %>
+  </header>
+
+  <% if @contents.any? %>
+    <div class="space-y-3">
+      <% @contents.each do |content| %>
+        <article class="rounded-xl border border-border-strong bg-surface p-4 sm:p-5">
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div class="min-w-0">
+              <p class="text-xs font-medium uppercase tracking-wide text-muted"><%= content.status %> · <%= content.created_at.to_fs(:long) %></p>
+              <p class="mt-2 line-clamp-3 whitespace-pre-wrap text-sm leading-6 text-foreground"><%= content.body.presence || "No copy yet" %></p>
+            </div>
+            <%= link_to "Open Content", content_path(content), class: "inline-flex min-h-10 shrink-0 items-center justify-center rounded-xl border border-border-strong bg-surface px-4 py-2 text-sm font-medium text-foreground hover:bg-button-hover" %>
+          </div>
+        </article>
+      <% end %>
+    </div>
+  <% else %>
+    <section class="rounded-xl border border-border-strong bg-surface px-5 py-10 text-center">
+      <h2 class="text-base font-semibold text-foreground">No Content yet</h2>
+      <p class="mx-auto mt-2 max-w-lg text-sm leading-5 text-muted">Generate a first draft from this product's facts.</p>
+      <%= link_to "Generate Content", new_content_path(product_id: @product.id), class: "mt-4 inline-flex min-h-11 items-center justify-center rounded-xl bg-primary px-5 py-2 text-sm font-medium text-primary-foreground hover:bg-primary-hover" %>
+    </section>
+  <% end %>
+</section>

@@ -1,0 +1,41 @@
+# Codex OAuth/API config. Verified against decolua/9router
+# (open-sse/providers/registry/codex.js) — see docs/reference-analysis/ai-connection.md.
+# cli_version tracks the real Codex CLI build OpenAI's backend expects in the User-Agent/
+# originator headers — bump it when the reference repo bumps CODEX_CLI_VERSION.
+default: &default
+  client_id: app_EMoamEEZ73f0CkXaXp7hrann
+  authorize_url: https://auth.openai.com/oauth/authorize
+  token_url: https://auth.openai.com/oauth/token
+  issuer: https://auth.openai.com
+  jwks_url: https://auth.openai.com/.well-known/jwks.json
+  id_token_algorithm: RS256
+  id_token_leeway_seconds: 30
+  responses_url: https://chatgpt.com/backend-api/codex/responses
+  model: gpt-6-luna
+  scope: "openid profile email offline_access"
+  code_challenge_method: S256
+  callback_port: 1455
+  callback_host: localhost
+  callback_path: /auth/callback
+  callback_timeout_seconds: 120
+  cli_version: "0.159.0"
+  open_timeout: 5
+  read_timeout: 60
+  write_timeout: 30
+  refresh_lead_minutes: 10
+  extra_authorize_params:
+    id_token_add_organizations: "true"
+    codex_cli_simplified_flow: "true"
+    originator: codex_cli_rs
+
+development:
+  <<: *default
+  app_base_url: http://localhost:4000
+
+test:
+  <<: *default
+  app_base_url: http://localhost:4000
+
+production:
+  <<: *default
+  app_base_url: <%= ENV.fetch("APP_BASE_URL", "http://localhost:4000") %>

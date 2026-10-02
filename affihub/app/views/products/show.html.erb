@@ -1,0 +1,64 @@
+<% content_for :title, @product.title %>
+
+<section class="w-full max-w-4xl space-y-5" aria-labelledby="product-title">
+  <%= link_to "← Product Library", products_path, class: "inline-flex min-h-10 items-center text-sm font-medium text-muted underline decoration-border-strong underline-offset-4 hover:text-foreground" %>
+
+  <article class="rounded-xl border border-border-strong bg-surface p-4 sm:p-6">
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div class="min-w-0">
+        <p class="text-sm text-muted"><%= @product.merchant %><%= " · #{@product.category}" if @product.category.present? %></p>
+        <h1 id="product-title" class="mt-1 text-xl font-semibold text-foreground"><%= @product.title %></h1>
+      </div>
+      <span class="shrink-0 rounded-lg bg-background px-3 py-2 text-sm font-medium text-foreground"><%= @product.is_mall? ? "Shopee Mall" : "Shopee product" %></span>
+    </div>
+
+    <dl class="mt-6 grid grid-cols-2 gap-x-4 gap-y-5 border-t border-border-strong pt-5 sm:grid-cols-3">
+      <% [
+        ["Price", @product.price && number_to_currency(@product.price, unit: "₫", precision: 0, delimiter: ".", format: "%n %u")],
+        ["Original price", @product.original_price && number_to_currency(@product.original_price, unit: "₫", precision: 0, delimiter: ".", format: "%n %u")],
+        ["Discount", @product.discount && number_to_percentage(@product.discount, precision: 0)],
+        ["Rating", @product.rating],
+        ["Sold", @product.sold && number_with_delimiter(@product.sold, delimiter: ".")],
+        ["Last imported", @product.last_synced_at&.to_fs(:long)]
+      ].each do |label, value| %>
+        <div>
+          <dt class="text-xs font-medium text-muted"><%= label %></dt>
+          <dd class="mt-1 text-sm font-medium text-foreground"><%= value.presence || "—" %></dd>
+        </div>
+      <% end %>
+    </dl>
+  </article>
+
+  <section class="rounded-xl border border-border-strong bg-surface p-4 sm:p-5" aria-labelledby="product-links-title">
+    <h2 id="product-links-title" class="text-base font-semibold text-foreground">Product links</h2>
+    <div class="mt-4 space-y-4">
+      <div>
+        <h3 class="text-xs font-medium text-muted">Original product URL</h3>
+        <% if @product.original_product_url.present? %>
+          <%= link_to @product.original_product_url, @product.original_product_url, target: "_blank", rel: "noopener noreferrer", class: "mt-1 block break-all text-sm text-foreground underline decoration-border-strong underline-offset-4" %>
+        <% else %>
+          <p class="mt-1 text-sm text-muted">Not available</p>
+        <% end %>
+      </div>
+      <div>
+        <h3 class="text-xs font-medium text-muted">ACCESSTRADE affiliate URL</h3>
+        <% if @product.affiliate_url.present? %>
+          <%= link_to @product.affiliate_url, @product.affiliate_url, target: "_blank", rel: "noopener noreferrer", class: "mt-1 block break-all text-sm text-foreground underline decoration-border-strong underline-offset-4" %>
+        <% else %>
+          <p class="mt-1 text-sm text-muted">Not available</p>
+        <% end %>
+      </div>
+    </div>
+  </section>
+
+  <section class="flex flex-col gap-3 rounded-xl border border-border-strong bg-surface p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5" aria-labelledby="product-content-title">
+    <div>
+      <h2 id="product-content-title" class="text-base font-semibold text-foreground">Content for this product</h2>
+      <p class="mt-1 text-sm text-muted">Generate a new draft or open an earlier version.</p>
+    </div>
+    <div class="flex flex-col gap-2 sm:flex-row">
+      <%= link_to "View Content", contents_path(product_id: @product.id), class: "inline-flex min-h-11 items-center justify-center rounded-xl border border-border-strong bg-surface px-4 py-2 text-sm font-medium text-foreground hover:bg-button-hover" %>
+      <%= link_to "Generate Content", new_content_path(product_id: @product.id), class: "inline-flex min-h-11 items-center justify-center rounded-xl bg-primary px-5 py-2 text-sm font-medium text-primary-foreground hover:bg-primary-hover" %>
+    </div>
+  </section>
+</section>

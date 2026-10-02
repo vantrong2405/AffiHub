@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class ApiController < MainController
+class APIController < MainController
   before_action :set_default_format
 
   private

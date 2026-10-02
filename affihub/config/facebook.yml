@@ -1,0 +1,31 @@
+default: &default
+  api_version: v25.0
+  authorize_url: https://www.facebook.com
+  authorize_path: /v25.0/dialog/oauth
+  token_url: https://graph.facebook.com/oauth/access_token
+  graph_url: https://graph.facebook.com
+  pages_path: me/accounts
+  pages_fields: id,name,picture{url}
+  page_token_path: "%{page_id}"
+  page_token_fields: access_token
+  page_feed_path: "%{page_id}/feed"
+  permalink_path: "%{post_id}"
+  permalink_fields: permalink_url
+  permissions:
+    - pages_show_list
+    - pages_read_engagement
+    - pages_manage_posts
+  open_timeout: 10
+  read_timeout: 30
+  write_timeout: 30
+
+development:
+  <<: *default
+
+test:
+  <<: *default
+  app_id: test-facebook-app
+  app_secret: test-facebook-secret
+
+production:
+  <<: *default

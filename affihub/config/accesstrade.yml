@@ -1,0 +1,19 @@
+default: &default
+  base_url: https://api.accesstrade.vn
+  link_path: /v1/product_link/create
+  campaign_id: "4751584435713464237"
+  utm_source: affihub
+  batch_size: 20
+  timeout: 30
+  retries: 3
+  retry_backoff_seconds: 1
+  batch_delay_seconds: 1
+
+development:
+  <<: *default
+
+test:
+  <<: *default
+
+production:
+  <<: *default

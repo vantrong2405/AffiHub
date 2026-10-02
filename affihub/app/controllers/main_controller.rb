@@ -3,4 +3,5 @@
 class MainController < ApplicationController
   include Renderable
   include Errorable
+  include OperationRenderable
 end

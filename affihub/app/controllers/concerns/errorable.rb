@@ -18,21 +18,21 @@ module Errorable
     Rails.logger.error(error.backtrace.join("\n"))
 
     render json: {
-      error: 'Internal Server Error',
-      message: 'Something went wrong'
+      error: "Internal Server Error",
+      message: "Something went wrong"
     }, status: :internal_server_error
   end
 
   def handle_not_found(error)
     render json: {
-      error: 'Not Found',
+      error: "Not Found",
       message: error.message
     }, status: :not_found
   end
 
   def handle_validation_error(error)
     render json: {
-      error: 'Validation Failed',
+      error: "Validation Failed",
       message: error.message,
       errors: error.record.errors.full_messages
     }, status: :unprocessable_entity
@@ -40,7 +40,7 @@ module Errorable
 
   def handle_resource_error(error)
     render json: {
-      error: 'Resource Error',
+      error: "Resource Error",
       message: error.message,
       resource: error.resource.class.name,
       errors: error.errors

@@ -7,11 +7,11 @@ Nguồn: master prompt user cung cấp (xem `.claude` instructions). File này l
 Vertical slice chạy thật end-to-end, Rails backend:
 
 ```
-Affiliate Source (ACCESSTRADE)
-→ Import Product thật
+Product facts CSV (Dataminer)
+→ pipeline tự filter/rank; ACCESSTRADE tạo affiliate link thật cho mọi dòng đủ điều kiện
 → Product Library
 → Filter / Score
-→ Select Product
+→ User chọn Product trong Product Library
 → AI Generate Content (Codex)
 → Human Review → Approve
 → Facebook Page
@@ -37,7 +37,8 @@ Trước khi code subsystem lớn: viết Porting Note vào `docs/reference-anal
 
 | Thành phần | Chọn |
 |---|---|
-| Affiliate | ACCESSTRADE (Shopee products qua source ACCESSTRADE cung cấp) |
+| Affiliate provider | ACCESSTRADE (API token, tạo tracking link từ URL sản phẩm có sẵn) |
+| Product facts input | CSV do user upload theo schema Dataminer của `tunguyendg/aff-pipeline`; không có automated catalog discovery trong POC |
 | AI | OpenAI Codex (authenticated connection) |
 | Social | Facebook |
 | Destination | Facebook Page |
@@ -52,7 +53,7 @@ KHÔNG làm trong V1: Facebook Group/Profile, TikTok/Instagram/YouTube/LinkedIn/
 | Facebook Page detail | `thenavidm/facebook-mcp` | Meta auth, Page discovery, Page token, publishing, Graph API |
 | Meta official docs | developers.facebook.com | Source of truth cho API capability hiện tại, verify trước khi implement — không dùng deprecated API, không browser automation cho FB Page |
 | AI auth | `decolua/9router` | OAuth/PKCE/callback/token exchange/refresh, provider abstraction (chỉ implement Codex, nhưng học cách abstract) |
-| Affiliate pipeline | `tunguyendg/aff-pipeline` | Primary: ACCESSTRADE ingestion, normalize, filter, scoring, ranking, affiliate links |
+| Affiliate pipeline | `tunguyendg/aff-pipeline` | Primary: Dataminer CSV ingestion, normalize, dedupe, filter, scoring, ranking, ACCESSTRADE affiliate-link batches |
 | Affiliate secondary | `Duke0503/shopee-aff` | Chỉ dùng khi aff-pipeline thiếu kiến trúc (workers, batch, tracking) |
 | Shopee-specific | `bcat95/shopee-aff` | Search/offers/short links/conversions — phải phân loại Official/Unofficial/Reverse-engineered/Deprecated |
 
@@ -65,11 +66,11 @@ Thứ tự ưu tiên khi cần: Social core → Postiz first. Facebook Page → 
 - Affiliate Provider/Connection + `Product` (Product Library)
 - `SocialConnection` (Facebook, != SocialDestination)
 - `SocialDestination` (Facebook Page cụ thể — publication phải reference destination, không reference generic Facebook provider)
-- `Content` (lifecycle: Generated → Review → Approved; actions: Preview/Edit/Regenerate/Approve/Reject)
+- `Content` (Product has_many Contents; mỗi bản có lifecycle độc lập Generated → Review → Approved/Rejected; actions: Preview/Edit/Regenerate/Approve/Reject; Approved terminal theo từng bản, không khóa Product)
 - `Publication` (1 Content + 1 Destination; lifecycle: Draft → Scheduled → Publishing → Published, hoặc → Failed → retry → Publishing)
 
 ### Product fields (conceptual)
-`affiliate_provider, source_product_id, merchant, title, description, images, price, original_price, discount, category, rating, sold, commission, original_product_url, affiliate_url, raw_source_data, last_synced_at`. Field thiếu → nullable. `original_product_url` != `affiliate_url`, cả hai đều lấy từ provider thật, AI không được generate.
+`user_id, affiliate_provider, source_product_id, merchant, title, description, images, price, original_price, discount, category, rating, sold, is_mall, commission, original_product_url, affiliate_url, raw_source_data, last_synced_at`. CSV không có field nào thì để nullable. `original_product_url` lấy từ CSV; `affiliate_url` lấy từ ACCESSTRADE, AI không được generate. Product Library chỉ truy cập Product thuộc user hiện tại.
 
 ### Publication fields (conceptual)
 `content_id, social_destination_id, status, scheduled_at, provider_post_id, published_url, published_at, error_code, error_message, attempt_count, last_attempt_at, provider_metadata`
@@ -90,11 +91,12 @@ Publish luôn qua background job (`PublishJob`), không giữ HTTP request chờ
 
 AI nhận product facts thật (title, description, price, original_price, discount, rating, sold, affiliate context, platform=Facebook, tone) → trả hook/caption/CTA/hashtags. Application tự attach `affiliate_url`. AI KHÔNG được: invent product/ID/facts/affiliate URL, đổi affiliate URL, invent price/discount/rating/sold/feature/promotion/commission, execute SQL, đọc raw credentials, log credentials, bypass approval, tự set Publication=Published, fake provider response/success, publish tới destination chưa chọn.
 
-Human review bắt buộc: Generated → Review → Approved → Publication. Regenerate chỉ đổi content, không đổi Product ID/facts/affiliate URL.
+Human review bắt buộc cho từng Content: Generated → Review → Approved → Publication (hoặc Rejected). Một Product có thể có nhiều Content; Regenerate chỉ đổi bản đang thao tác, không đổi Product ID/facts/affiliate URL. Approved là terminal của bản đó nhưng không ngăn tạo Content mới từ cùng Product.
 
 ## Source of truth
 
-- Affiliate provider = product data + affiliate URL
+- Uploaded Dataminer CSV = product facts supplied to the POC
+- ACCESSTRADE = generated affiliate URL; it is not treated as a searchable product catalog
 - Rails DB = application state
 - AI = content generation engine (không phải source of truth cho product/price/status)
 - User = approval
@@ -105,7 +107,7 @@ Human review bắt buộc: Generated → Review → Approved → Publication. Re
 1. Reference analysis → `docs/reference-analysis/` + Porting Notes
 2. Rails foundation (domain tối thiểu ở trên)
 3. Codex auth (9Router ref) — DoD: Rails gửi prompt thật, nhận response thật qua Test Connection UI
-4. Affiliate pipeline (aff-pipeline ref) — DoD: product thật trong DB + original_product_url thật + affiliate_url thật
+4. Affiliate pipeline (`aff-pipeline` ref) — DoD: Product facts thật từ CSV trong DB + `original_product_url` từ CSV + `affiliate_url` thật do ACCESSTRADE tạo
 5. AI content (Product → Codex → Content) — DoD: content chỉ dựa facts thật + affiliate URL app attach
 6. Facebook Page (Postiz + facebook-mcp + Meta docs) — DoD: connect FB thật, lấy Page thật, sync SocialDestination
 7. Publication (Postiz ref) — Post Now rồi Schedule — DoD: post thật xuất hiện trên FB Page, provider result lưu thật, status=Published
@@ -132,12 +134,12 @@ Danh sách đầy đủ, tự chứa (không còn tham chiếu "master prompt g�
 5. `AIConnection` được tạo, trạng thái connected
 6. Test Connection gửi prompt thật, nhận response thật qua `chatgpt.com/backend-api/codex/responses`
 7. Nhập credential ACCESSTRADE thật, tạo `AffiliateConnection`
-8. Import Product thật từ ACCESSTRADE API vào Product Library
+8. Upload/import Product facts thật từ Dataminer CSV; pipeline tự filter/rank và ACCESSTRADE tạo affiliate link thật cho mọi dòng đủ điều kiện trong lúc import (POC không có bước user chọn Product trước khi tạo link)
 9. Mỗi Product import có `original_product_url` thật
 10. Mỗi Product import có `affiliate_url` thật
 11. Filter Product theo category/price/rating/discount hoạt động đúng trên data thật
-12. Score Product tính đúng theo công thức đã chốt (design.md change 03), không ra `NaN`/lỗi khi `sold`/`max_sold_seen` = 0
-13. Chọn 1 Product từ danh sách đã filter/score
+12. Score Product tính đúng theo weighted sum từ `aff-pipeline` đã chốt trong design.md change 03, không lỗi với `sold`/`rating`/`discount` thiếu hoặc bằng 0
+13. Sau khi import và tạo affiliate link xong, chọn 1 Product từ Product Library đã filter/score
 14. Bấm Generate Content cho Product đó
 15. Codex sinh content thật (hook/caption/CTA/hashtags) từ facts thật của Product
 16. `affiliate_url` được application tự attach vào Content, không phải AI trả về

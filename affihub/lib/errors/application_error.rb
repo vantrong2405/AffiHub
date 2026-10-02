@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class ApplicationError < StandardError
+class Errors::ApplicationError < StandardError
   attr_reader :status, :error_code, :details
 
   def initialize(message = nil, status: :unprocessable_entity, error_code: nil, details: {})
@@ -11,19 +11,19 @@ class ApplicationError < StandardError
   end
 end
 
-class NotFoundError < ApplicationError
+class Errors::NotFoundError < Errors::ApplicationError
   def initialize(message = "Resource not found", **options)
     super(message, status: :not_found, **options)
   end
 end
 
-class UnauthorizedError < ApplicationError
+class Errors::UnauthorizedError < Errors::ApplicationError
   def initialize(message = "Unauthorized access", **options)
     super(message, status: :unauthorized, **options)
   end
 end
 
-class ForbiddenError < ApplicationError
+class Errors::ForbiddenError < Errors::ApplicationError
   def initialize(message = "Access forbidden", **options)
     super(message, status: :forbidden, **options)
   end

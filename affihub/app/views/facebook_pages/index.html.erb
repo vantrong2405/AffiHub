@@ -1,0 +1,53 @@
+<% content_for :title, "Facebook Pages" %>
+
+<section class="w-full max-w-4xl space-y-5" aria-labelledby="facebook-pages-title">
+  <%= link_to "← Facebook Connection", social_connections_path, class: "inline-flex min-h-10 items-center text-sm font-medium text-muted underline decoration-border-strong underline-offset-4 hover:text-foreground" %>
+  <header class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+    <div>
+      <p class="text-sm font-medium text-muted">Publishing destinations</p>
+      <h1 id="facebook-pages-title" class="mt-1 text-xl font-semibold text-foreground">Facebook Pages</h1>
+      <p class="mt-1 text-sm text-muted">Choose a Page you manage. Its access token is stored separately for publishing.</p>
+    </div>
+    <% if @social_connection %>
+      <%= link_to "Refresh Page list", facebook_pages_path, class: "inline-flex min-h-10 items-center justify-center rounded-xl border border-border-strong bg-surface px-4 py-2 text-sm font-medium text-foreground hover:bg-button-hover" %>
+    <% end %>
+  </header>
+
+  <% if @social_connection.nil? %>
+    <section class="rounded-xl border border-border-strong bg-surface px-5 py-10 text-center">
+      <h2 class="text-base font-semibold text-foreground">Connect Facebook first</h2>
+      <p class="mx-auto mt-2 max-w-lg text-sm leading-5 text-muted">Connect your Facebook account before choosing a Page.</p>
+      <%= link_to "Connect Facebook", connect_social_connections_path, class: "mt-4 inline-flex min-h-11 items-center justify-center rounded-xl bg-primary px-5 py-2 text-sm font-medium text-primary-foreground hover:bg-primary-hover" %>
+    </section>
+  <% elsif @pages.empty? %>
+    <section class="rounded-xl border border-border-strong bg-surface px-5 py-10 text-center">
+      <h2 class="text-base font-semibold text-foreground">No Pages found</h2>
+      <p class="mx-auto mt-2 max-w-lg text-sm leading-5 text-muted">This Facebook account does not currently expose any Pages that you can manage.</p>
+    </section>
+  <% else %>
+    <div class="space-y-3">
+      <% @pages.each do |page| %>
+        <% page_id = page.fetch("id") %>
+        <article class="flex flex-col gap-3 rounded-xl border border-border-strong bg-surface p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+          <div class="flex min-w-0 items-center gap-3">
+            <% image_url = page.dig("picture", "data", "url") %>
+            <% if image_url.present? %>
+              <%= image_tag image_url, alt: "", class: "h-11 w-11 rounded-full border border-border-strong object-cover" %>
+            <% else %>
+              <span class="flex h-11 w-11 items-center justify-center rounded-full bg-background text-sm font-semibold text-muted"><%= page.fetch("name").first %></span>
+            <% end %>
+            <div class="min-w-0">
+              <h2 class="truncate text-sm font-semibold text-foreground"><%= page.fetch("name") %></h2>
+              <p class="mt-1 text-xs text-muted">Page ID · <%= page_id %></p>
+            </div>
+          </div>
+          <% if @destinations[page_id] %>
+            <span class="inline-flex min-h-10 items-center rounded-xl bg-background px-4 text-sm font-medium text-foreground">Connected Page</span>
+          <% else %>
+            <%= button_to "Use this Page", sync_facebook_page_path, method: :post, params: { page_id: page_id }, class: "inline-flex min-h-11 cursor-pointer items-center justify-center rounded-xl bg-primary px-5 py-2 text-sm font-medium text-primary-foreground hover:bg-primary-hover" %>
+          <% end %>
+        </article>
+      <% end %>
+    </div>
+  <% end %>
+</section>

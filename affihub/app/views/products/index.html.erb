@@ -1,0 +1,118 @@
+<% content_for :title, "Product Library" %>
+<% catalog_config = Rails.application.config_for(:product_catalog) %>
+<% category_options = catalog_config.categories.map { |category| [category.fetch(:name), category.fetch(:id)] } %>
+<% filters_active = @filters.values.any?(&:present?) %>
+
+<section class="w-full max-w-6xl space-y-5" aria-labelledby="products-title">
+  <header class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div>
+      <p class="text-sm font-medium text-muted">Affiliate products</p>
+      <h1 id="products-title" class="mt-1 text-xl font-semibold text-foreground">Product Library</h1>
+      <p class="mt-1 text-sm text-muted">Compare product facts and open the source or tracking link.</p>
+    </div>
+    <span class="text-sm text-muted"><%= @products.size %> products</span>
+  </header>
+
+  <section class="rounded-xl border border-border-strong bg-surface p-4 sm:p-5" aria-labelledby="import-title">
+    <div class="mb-4">
+      <h2 id="import-title" class="text-base font-semibold text-foreground">Import Dataminer CSV</h2>
+      <p class="mt-1 text-sm text-muted">Shopee Vietnam products only. ACCESSTRADE creates tracking links for products that pass your catalog rules.</p>
+    </div>
+    <%= form_with url: import_products_path, method: :post, multipart: true, class: "flex flex-col gap-3 sm:flex-row sm:items-end" do |form| %>
+      <div class="min-w-0 flex-1 space-y-1.5">
+        <%= form.label :file, "CSV file", class: "block text-sm font-medium text-foreground" %>
+        <%= form.file_field :file, accept: ".csv,text/csv", required: true,
+              class: "block min-h-11 w-full rounded-xl border border-border-strong bg-surface px-3 py-2 text-base text-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-background file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-foreground md:text-sm" %>
+        <p class="text-xs leading-4 text-muted">Required columns: idx, name, url, price, rating, sold, discount, is_mall, location, is_ad, image. Maximum 10 MB.</p>
+      </div>
+      <%= form.submit "Import products", class: "inline-flex min-h-11 cursor-pointer items-center justify-center rounded-xl bg-primary px-5 py-2 text-sm font-medium text-primary-foreground hover:bg-primary-hover sm:w-auto" %>
+    <% end %>
+  </section>
+
+  <section class="rounded-xl border border-border-strong bg-surface p-4 sm:p-5" aria-labelledby="filters-title">
+    <div class="mb-4 flex items-center justify-between gap-3">
+      <div>
+        <h2 id="filters-title" class="text-base font-semibold text-foreground">Filter products</h2>
+        <p class="mt-1 text-sm text-muted">Narrow the list by category and product facts.</p>
+      </div>
+      <% if filters_active %>
+        <%= link_to "Clear filters", products_path, class: "text-sm font-medium text-foreground underline decoration-border-strong underline-offset-4" %>
+      <% end %>
+    </div>
+    <%= form_with url: products_path, method: :get, class: "grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6" do |form| %>
+      <div class="space-y-1.5 lg:col-span-2">
+        <%= form.label :category, "Category", class: "block text-sm font-medium text-foreground" %>
+        <%= form.select :category, options_for_select([["All categories", ""]] + category_options, @filters[:category]), {}, class: "h-11 w-full rounded-xl border border-border-strong bg-surface px-3 text-base text-foreground focus:border-focus focus:outline-hidden focus:ring-2 focus:ring-focus md:text-sm" %>
+      </div>
+      <% { min_price: "Min price", max_price: "Max price", min_rating: "Min rating", min_discount: "Min discount (%)" }.each do |field, label| %>
+        <div class="space-y-1.5">
+          <%= form.label field, label, class: "block text-sm font-medium text-foreground" %>
+          <%= form.number_field field, value: @filters[field], min: 0, step: (field == :min_rating ? 0.1 : 1), class: "h-11 w-full rounded-xl border border-border-strong bg-surface px-3 text-base text-foreground focus:border-focus focus:outline-hidden focus:ring-2 focus:ring-focus md:text-sm" %>
+        </div>
+      <% end %>
+      <div class="flex items-end">
+        <%= form.submit "Apply filters", class: "inline-flex min-h-11 w-full cursor-pointer items-center justify-center rounded-xl border border-border-strong bg-surface px-4 py-2 text-sm font-medium text-foreground hover:bg-button-hover" %>
+      </div>
+    <% end %>
+  </section>
+
+  <% if @products.any? %>
+    <div class="hidden overflow-hidden rounded-xl border border-border-strong bg-surface md:block">
+      <table class="w-full table-fixed text-left text-sm">
+        <thead class="border-b border-border-strong bg-background text-xs font-medium uppercase tracking-wide text-muted">
+          <tr>
+            <th class="w-[38%] px-4 py-3">Product</th>
+            <th class="w-[14%] px-3 py-3">Price</th>
+            <th class="w-[12%] px-3 py-3">Rating</th>
+            <th class="w-[12%] px-3 py-3">Sold</th>
+            <th class="w-[12%] px-3 py-3">Discount</th>
+            <th class="w-[12%] px-3 py-3">Category</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-border-strong">
+          <% @products.each do |product| %>
+            <tr class="hover:bg-background">
+              <td class="px-4 py-3">
+                <%= link_to product.title, product_path(product), class: "block truncate font-medium text-foreground underline decoration-transparent underline-offset-4 hover:decoration-border-strong" %>
+                <span class="mt-1 block truncate text-xs text-muted"><%= product.merchant %></span>
+              </td>
+              <td class="px-3 py-3 font-medium text-foreground"><%= number_to_currency(product.price, unit: "₫", precision: 0, delimiter: ".", format: "%n %u") if product.price %></td>
+              <td class="px-3 py-3 text-foreground"><%= product.rating || "—" %></td>
+              <td class="px-3 py-3 text-foreground"><%= number_with_delimiter(product.sold, delimiter: ".") if product.sold %></td>
+              <td class="px-3 py-3 text-foreground"><%= product.discount ? "#{number_to_percentage(product.discount, precision: 0)}" : "—" %></td>
+              <td class="px-3 py-3 text-muted"><%= product.category.presence || "Uncategorized" %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="space-y-3 md:hidden">
+      <% @products.each do |product| %>
+        <article class="rounded-xl border border-border-strong bg-surface p-4" aria-label="<%= product.title %>">
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <h2 class="truncate text-base font-semibold text-foreground"><%= product.title %></h2>
+              <p class="mt-1 text-xs text-muted"><%= product.merchant %> · <%= product.category.presence || "Uncategorized" %></p>
+            </div>
+            <span class="shrink-0 text-sm font-semibold text-foreground"><%= number_to_currency(product.price, unit: "₫", precision: 0, delimiter: ".", format: "%n %u") if product.price %></span>
+          </div>
+          <dl class="mt-4 grid grid-cols-3 gap-2 border-t border-border-strong pt-3 text-sm">
+            <div><dt class="text-xs text-muted">Rating</dt><dd class="mt-1 font-medium text-foreground"><%= product.rating || "—" %></dd></div>
+            <div><dt class="text-xs text-muted">Sold</dt><dd class="mt-1 font-medium text-foreground"><%= number_with_delimiter(product.sold, delimiter: ".") if product.sold %></dd></div>
+            <div><dt class="text-xs text-muted">Discount</dt><dd class="mt-1 font-medium text-foreground"><%= product.discount ? number_to_percentage(product.discount, precision: 0) : "—" %></dd></div>
+          </dl>
+          <%= link_to "View product", product_path(product), class: "mt-4 inline-flex min-h-10 w-full items-center justify-center rounded-xl border border-border-strong bg-surface px-4 py-2 text-sm font-medium text-foreground hover:bg-button-hover" %>
+        </article>
+      <% end %>
+    </div>
+  <% else %>
+    <section class="rounded-xl border border-border-strong bg-surface px-5 py-10 text-center" aria-labelledby="empty-products-title">
+      <h2 id="empty-products-title" class="text-base font-semibold text-foreground"><%= filters_active ? "No products match these filters" : "Your product library is empty" %></h2>
+      <p class="mx-auto mt-2 max-w-lg text-sm leading-5 text-muted"><%= filters_active ? "Clear or adjust the filters to see more products." : "Upload a Dataminer CSV to bring in product facts and create ACCESSTRADE tracking links." %></p>
+      <% if filters_active %>
+        <%= link_to "Clear filters", products_path, class: "mt-4 inline-flex min-h-10 items-center justify-center rounded-xl border border-border-strong bg-surface px-4 text-sm font-medium text-foreground hover:bg-button-hover" %>
+      <% end %>
+    </section>
+  <% end %>
+</section>

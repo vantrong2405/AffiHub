@@ -1,0 +1,47 @@
+default: &default
+  csv_max_bytes: 10485760
+  top_n: 30
+  filters:
+    min_rating: 4.0
+    min_sold: 100
+    exclude_ads: true
+    min_price:
+    max_price:
+    require_keywords:
+      - yến mạch
+      - yen mach
+      - oat
+      - oats
+      - quaker
+    exclude_keywords:
+      - test
+      - fake
+  score_weights:
+    sold: 1.0
+    rating: 100
+    is_mall: 200
+    discount: 1
+  categories:
+    - id: A
+      name: Yến mạch nguyên chất
+      match_keywords:
+        - yến mạch
+        - yen mach
+        - oatmeal
+        - oats
+      exclude_keywords:
+        - granola
+    - id: B
+      name: Granola
+      match_keywords:
+        - granola
+      exclude_keywords: []
+
+development:
+  <<: *default
+
+test:
+  <<: *default
+
+production:
+  <<: *default

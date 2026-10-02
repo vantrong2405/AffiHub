@@ -1,0 +1,38 @@
+<% content_for :title, "Review Content · #{@content.product.title}" %>
+<% product = @content.product %>
+
+<section class="w-full max-w-4xl space-y-5" aria-labelledby="content-review-title">
+  <%= link_to "← All Content for product", contents_path(product_id: product.id), class: "inline-flex min-h-10 items-center text-sm font-medium text-muted underline decoration-border-strong underline-offset-4 hover:text-foreground" %>
+  <header class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+    <div>
+      <p class="text-sm font-medium text-muted">Content review · Version <%= @content.generation_count + 1 %></p>
+      <h1 id="content-review-title" class="mt-1 text-xl font-semibold text-foreground"><%= product.title %></h1>
+      <p class="mt-1 text-sm text-muted">Status: <span class="font-semibold text-foreground"><%= @content.status.humanize %></span></p>
+    </div>
+    <%= link_to "Generate another version", new_content_path(product_id: product.id), class: "inline-flex min-h-10 items-center justify-center rounded-xl border border-border-strong bg-surface px-4 py-2 text-sm font-medium text-foreground hover:bg-button-hover" %>
+  </header>
+
+  <%= form_with model: @content, url: content_path(@content), method: :patch, class: "space-y-3 rounded-xl border border-border-strong bg-surface p-4 sm:p-6" do |form| %>
+    <%= form.label :body, "Draft copy", class: "block text-sm font-semibold text-foreground" %>
+    <%= form.text_area :body, rows: 14, readonly: !@content.status_review?, class: "w-full rounded-xl border border-border-strong bg-background p-3 text-base leading-6 text-foreground focus:border-focus focus:outline-hidden focus:ring-2 focus:ring-focus md:text-sm" %>
+    <% if @content.status_review? %>
+      <%= form.submit "Save edits", class: "inline-flex min-h-11 cursor-pointer items-center justify-center rounded-xl border border-border-strong bg-surface px-4 py-2 text-sm font-medium text-foreground hover:bg-button-hover" %>
+    <% end %>
+    <% if @content.affiliate_url.present? %>
+      <p class="border-t border-border-strong pt-3 text-sm text-muted">Affiliate link is attached by the app: <%= link_to @content.affiliate_url, @content.affiliate_url, target: "_blank", rel: "noopener noreferrer", class: "break-all font-medium text-foreground underline decoration-border-strong underline-offset-4" %></p>
+    <% end %>
+  <% end %>
+
+  <div class="flex flex-col gap-2 sm:flex-row">
+    <% if @content.status_approved? %>
+      <%= link_to "Create Publication", new_publication_path(content_id: @content.id), class: "inline-flex min-h-11 items-center justify-center rounded-xl bg-primary px-5 py-2 text-sm font-medium text-primary-foreground hover:bg-primary-hover" %>
+    <% end %>
+    <% if @content.status_review? %>
+      <%= button_to "Approve this version", approve_content_path(@content), method: :post, class: "inline-flex min-h-11 cursor-pointer items-center justify-center rounded-xl bg-primary px-5 py-2 text-sm font-medium text-primary-foreground hover:bg-primary-hover" %>
+      <%= button_to "Reject this version", reject_content_path(@content), method: :post, class: "inline-flex min-h-11 cursor-pointer items-center justify-center rounded-xl border border-border-strong bg-surface px-4 py-2 text-sm font-medium text-foreground hover:bg-button-hover" %>
+    <% end %>
+    <% if @content.status_review? || @content.status_rejected? %>
+      <%= button_to "Regenerate this version", regenerate_content_path(@content), method: :post, class: "inline-flex min-h-11 cursor-pointer items-center justify-center rounded-xl border border-border-strong bg-surface px-4 py-2 text-sm font-medium text-foreground hover:bg-button-hover" %>
+    <% end %>
+  </div>
+</section>
