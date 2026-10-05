@@ -30,20 +30,18 @@ repo-specific (test framework, commands, domain model, coding language). When a 
 is added, the same applies to it — load its own `CLAUDE.md`, don't assume `affihub`'s rules carry
 over.
 
-## 3. Git push safety — never force push
+## 3. Git push safety
 
-Never use `git push --force`, `git push -f`, or `git push --force-with-lease` in any repo/branch.
-Use `develop` as the integration branch for day-to-day development: create it from `main` when it
-does not exist, make feature commits there, and push development work to `origin/develop`.
-**Never push commits directly to `main`/`master.** Promote verified work from `develop` to `main`
-through a pull request or an explicit merge/release step. If a pushed commit needs correction, add a
-follow-up commit; don't amend + force-push.
+`git push --force` / `-f` / `--force-with-lease` is allowed when the user explicitly asks for it
+in the moment — do not use it on your own initiative, and still name what it will overwrite before
+running it. Use `develop` as the integration branch for day-to-day development: create it from
+`main` when it does not exist, make feature commits there, and push development work to
+`origin/develop`. **Never push commits directly to `main`/`master`.** Promote verified work from
+`develop` to `main` through a pull request or an explicit merge/release step.
 
 ## 4. Commit messages
 
-Before the first commit of a task, ask the user whether to append `[skip ci]`. Apply that choice
-to every commit for that task across repos in this workspace. Never rewrite an already-pushed
-commit to add/remove it — use a follow-up commit instead.
+Don't append `[skip ci]` by default; add it only if the user asks for it in the moment.
 
 ### Required commits for major features
 
