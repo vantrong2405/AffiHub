@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "name": "brainstorm",
+  "owner": "tomazwang",
+  "repo": "agent-toolkit",
+  "path": "plugins/brainstorming/skills/brainstorm",
+  "branch": "main",
+  "sha": "257912fa7977ba5cb160194ec1b9f98aa97164cb",
+  "source": "manual"
+}

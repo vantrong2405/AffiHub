@@ -1,10 +1,11 @@
 # Architecture Overview
 
-Navigation/index only — **not** the source of truth for behavior. If anything here conflicts with
-an OpenSpec artifact (`../../../openspec/changes/0X-*/specs/**/spec.md` or `design.md`), the
-OpenSpec artifact wins; fix this file to match, not the other way around. Purpose of this file:
-let a developer get oriented on the full file/folder layout and domain model in 5 minutes before
-touching any code, without having to open 7 OpenSpec changes first.
+Navigation/index only — **not** the source of truth for product direction or behavior. The current
+product vision and next-phase scope live in `docs/PROJECT_SPEC.md`. This overview maps the Rails
+implementation and OpenSpec work from the earlier, narrower POC. Reconcile those older artifacts
+with the current spec before continuing feature work; do not treat this historical build sequence
+as the new roadmap. Purpose of this file: let a developer get oriented on the existing
+file/folder layout and implementation in 5 minutes before touching code.
 
 Read this **before** writing or editing any code in this repo (see root rule in `../../CLAUDE.md`).
 
@@ -12,12 +13,17 @@ Read this **before** writing or editing any code in this repo (see root rule in 
 
 | Source | What it's for |
 |---|---|
-| `docs/PROJECT_SPEC.md` | Full scope, domain model, reference-repo map, 34-step DoD |
+| `docs/PROJECT_SPEC.md` | Video product scope, Facebook Page workflow, phase boundaries, provider choices, repo-first process |
 | `../../CLAUDE.md` (this file's section "HMVC layers") | Code-level convention: Operation `call`/`step_*`, Controller JSON-vs-HTML split, no Query layer, ERB not Slim |
-| `../../openspec/changes/0X-*/proposal.md` + `design.md` + `specs/**/spec.md` | Per-capability behavior contract + technical decisions — authoritative, this file only summarizes |
+| `../../openspec/changes/0X-*/proposal.md` + `design.md` + `specs/**/spec.md` | Earlier POC's per-capability behavior contracts and technical decisions; review against the current project spec before extending them |
 | `docs/reference-analysis/<subsystem>.md` | Porting Note per subsystem (written during `tasks.md` execution, before implementing that subsystem) — not written yet, one per capability below |
 
-## 2. Build order (7 sequential OpenSpec changes)
+## 2. Earlier POC build order (historical OpenSpec changes)
+
+The sequence below documents the existing Codex + ACCESSTRADE + Facebook text-content
+implementation. It is not the roadmap for the video product in `docs/PROJECT_SPEC.md`. Active
+change `07` is on hold; do not continue its remaining manual verification. Create a separate
+implementation change after the project owner reviews the video workflow.
 
 Mỗi change N phân biệt 2 gate riêng (xem `proposal.md` của từng change, mục "Precondition"):
 - **Code gate** (đủ để bắt đầu viết task code/test của change N+1): change N hoàn tất mọi task TRỪ nhóm "Verify thủ công" cuối cùng.
@@ -104,3 +110,13 @@ rule, Client = I/O only, easier to test and swap independently).
 - State-changing actions that must not double-fire (Post Now, Retry, `PublishJob` claiming
   Scheduled→Publishing) use an atomic `update_all(status: ...)` with a `WHERE status = <source>`
   condition, checking the affected-row count — never a plain read-then-write.
+
+## 7. Seed user (login credential for manual verify steps)
+
+POC has no signup — `db/seeds.rb` creates exactly one `User` via `find_or_create_by!`. Use these
+credentials for every "Verify thủ công" manual-login step across changes 01–07:
+
+- development/test: `demo@affihub.local` / `password123` (fixed fallback, only used when
+  `SEED_USER_EMAIL`/`SEED_USER_PASSWORD` are unset and `Rails.env` is not `production`).
+- production: no fallback — `SEED_USER_EMAIL`/`SEED_USER_PASSWORD` must be set in the deploy
+  environment or `db:seed` raises immediately instead of creating a default-password user.
