@@ -121,68 +121,54 @@ rtk bin/ci                    # runs the project's full CI pipeline (config/ci.r
 
 Credentials: `config/master.key` (not committed) decrypts `config/credentials.yml.enc` — use `bin/rails credentials:edit` to change secrets. External credentials (Meta, Google, LLM, MuAPI, optional TTS) must be encrypted at rest per the project spec — never logged or exposed to the frontend.
 
-## HMVC layers (rails_hmvc)
+## Application layers and Service convention
 
 This app uses [`rails_hmvc`](https://github.com/TOMOSIA-VIETNAM/rails_hmvc) (vendored at
 `vendor/bundle/ruby/3.3.0/gems/rails_hmvc-0.1.2` — read the generator templates there directly
-when in doubt, don't guess the convention) — initialized with `--type=api` (`config/rails_hmvc.yml`).
-Controllers stay thin; business logic and I/O go through the generated layers:
+when in doubt, don't guess the convention) for its generated Rails scaffold. Controllers stay thin;
+application behavior goes through explicit Service classes called by the controller:
 
 | Layer | Responsibility | Lives in |
 |---|---|---|
 | Controller | HTTP only — receive request, return response | `app/controllers/` |
 | Form | Validate/transform input params | `app/forms/` |
-| Operation | Business logic | `app/operations/` |
+| Service | One named application action and its I/O | `app/services/` |
 | Serializer | Format JSON output | `app/serializers/` |
 | Error | Standardized error handling | `lib/errors/`, `app/controllers/concerns/errorable.rb` |
 | Decorator | View-only formatting/display logic (not HMVC-generated; see below) | `app/decorators/` |
 
-There is no Query/Service layer — the gem does not define one. Filtering/scoping data lives in a
-model scope or inside the relevant Operation, not in a new `app/queries/*`/`app/services/*`
-directory. Do not introduce one of your own; it's not part of this project's HMVC contract.
+Local import, preview, and export are real AffiHub MVP features, not a separate demo mode. Do not add
+a `Demo` namespace or `demo_*` code filenames; name code after the product resource or action, such
+as `VideoProjectsController`, `VideoImportService`, and `RenderVersionExportService`.
 
-### Operation convention — `call` + `step_*`, generated, not hand-rolled
+### Service convention — clear action names, called by controllers
 
-Generate a new resource's full HMVC stack rather than hand-rolling a fat controller:
+Keep controllers responsible for HTTP input and response only. Put domain work in a focused service
+under `app/services/`; use a form under `app/forms/` for input validation when needed. Name the file
+after its top-level class in snake case, for example `app/services/video_import_service.rb` defines
+`VideoImportService`.
 
-Prefer Rails-provided generators (`bin/rails generate` / `bin/rails g`) for files and components
-Rails or the installed project generators support, including models, migrations, controllers,
-Operations, and their layers. Inspect and adapt generated files to the project conventions; create
-files manually only when no suitable generator exists.
+Services expose `#call` and receive only the values they need. A service that handles a command may
+expose `success?` and `errors` so the controller can use the shared `ServiceRenderable` response
+helper. Read services expose their loaded data to the controller for rendering. Do not put model
+queries, file persistence, or business decisions in a controller action.
 
 ```bash
-rtk bin/rails g hmvc:controller v1/<resource> --type=api
-rtk bin/rails g hmvc:operation <Namespace>::<Name> step_a step_b step_c
+rtk bin/rails g controller VideoProjects index create show
 ```
 
-The Operation generator wires up a `#call` method that runs the `step_*` private methods you name,
-in order, as stubs — you fill in the bodies. **Name each `step_*` after the concrete business
-action it performs** (`step_validate_import_params`, `step_import_source_asset`,
-`step_build_scene_prompts`, `step_create_render_job!`) — never a vague verb alone (`step_build`,
-`step_process`, `step_handle`, `step_persist`). A reviewer should know what broke from the step
-name alone, without opening the method body.
-
-Every Operation inherits from `MainOperation`, which already provides:
-
-- `self.call(*args)` — builds an instance and calls `#call` on it, returns the instance.
-- `attr_reader :params, :current_user, :form, :errors`.
-- `success?` / `error?` (based on `errors.empty?`).
-- `errors` (delegates to `@form.errors` unless the Operation sets its own).
-
-A controller action calls `operator = XxxOperation.call(params:)`, then renders based on
-`operator.success?`/`operator.errors` — it never inspects or mutates a model directly.
-
-Every Controller action calling an Operation MUST merge `current_user:` into the params hash
-passed to it (`ApplicationController#current_user`, added in change `01-poc-foundation-domain-model`,
-reads `User.find_by(id: session[:user_id])`, memoized):
+For example, an HTML command controller calls a service and delegates its response shape to the
+shared helper:
 
 ```ruby
-operator = SomeOperation.call(params: params.to_unsafe_h.merge(current_user:))
+service = VideoImportService.new(file: params[:file])
+service.call
+render_service(service, success: -> { video_project_path(service.video_project) }, failure: :index)
 ```
 
-`MainOperation#initialize` already reads `params[:current_user]` into `attr_reader :current_user`
-— every Operation from change `02` onward can rely on `current_user` being present without
-re-deriving it from session.
+Pass `current_user:` explicitly only to services whose behavior is scoped to the signed-in user.
+The generated `MainOperation` remains scaffold support for existing generated code; do not create
+new product Operations in `app/operations/`.
 
 ### Controller: `Renderable`/`Errorable` are JSON-only — HTML controllers must know this
 
@@ -193,25 +179,25 @@ this repo) always call `render json: ...` — that is correct for `ApiController
 in the minimal UI) are server-rendered HTML pages, not a JSON API consumed by a frontend. For an
 HTML controller (inherits `MainController` directly, **not** `ApiController`):
 
-- Still call `operator = XxxOperation.call(params:)` — keep the controller thin, same as the API
-  convention. Command/form actions use the shared response helper below. Read-only actions
-  (`index`, `show`, `status`, dashboard) render the Operation's view data directly on success;
+- Call a focused Service from the controller and keep model access inside that Service. Command/form
+  actions use the shared response helper below. Read-only actions (`index`, `show`, `status`, dashboard)
+  render the Service's view data directly on success;
   they must not query or mutate models in the Controller.
-- Turn command/form `operator.success?`/`operator.errors` into a response through the shared
-  `OperationRenderable` concern (`app/controllers/concerns/operation_renderable.rb`, created in
+- Turn command/form `service.success?`/`service.errors` into a response through the shared
+  `ServiceRenderable` concern (`app/controllers/concerns/service_renderable.rb`, created in
   change `01-poc-foundation-domain-model`, included in `MainController` so every HTML controller
-  has it) — **do not** hand-roll `if operator.success? ... else ... end` + `render`/`redirect_to`
-  per command action; call `render_operation operator, success: <path or options>, notice: "...", failure:
+  has it) — **do not** hand-roll `if service.success? ... else ... end` + `render`/`redirect_to`
+  per command action; call `render_service service, success: <path or options>, notice: "...", failure:
   <optional explicit action>`. This keeps the success/failure shape (flash key, HTTP status on
   failure, default failure action per verb) identical across every command controller action instead of each one
   inventing its own. Signature:
 
   ```ruby
   # success: redirect_to success, flash[:notice] = notice
-  # failure: flash.now[:alert] = alert || operator.errors.full_messages.to_sentence
+  # failure: flash.now[:alert] = alert || service.errors.full_messages.to_sentence
   #          render (failure || default action for action_name — :new for create, :edit for update,
   #          action_name.to_sym otherwise), status: :unprocessable_entity
-  render_operation(operator, success:, failure: nil, notice: nil, alert: nil)
+  render_service(service, success:, failure: nil, notice: nil, alert: nil)
   ```
 
   Do **not** call `render_resource`/`render_collection` (`Renderable`'s helpers) from an HTML
@@ -236,6 +222,22 @@ it. This applies to every screen in the minimal UI (login, dashboard, product li
 review, social connections, publications). Enforced in `../openspec/config.yaml` rules for the
 `tasks`/`apply` artifacts too — don't bypass it when writing OpenSpec tasks either.
 
+### UI components: daisyUI
+
+- Use daisyUI 5.7.47 with the app's Tailwind CSS 4 build for standard controls and containers.
+  Install it as an npm dev dependency in `package.json` and load it with `@plugin "daisyui"` in
+  `app/assets/tailwind/application.css`; commit the lockfile so the Tailwind build resolves the
+  same plugin version on every machine.
+- In ERB, use daisyUI classes such as `btn`, `card`, `file-input`, `alert`, and `badge` whenever a
+  matching component exists. Tailwind utilities may handle page layout, spacing, and responsive
+  behavior; do not recreate daisyUI component styling with custom CSS.
+- Prefer browser-native form behavior and daisyUI components. Add Stimulus or other browser logic
+  only for a user interaction that native HTML, Rails, Turbo, and daisyUI do not provide.
+- daisyUI handles component appearance. Rails Services and models still own upload validation,
+  persistence, preview, and local export behavior.
+- Write Vietnamese labels as direct actions and state the supported file type, next step, and local
+  storage/posting outcome. Do not label a shipped AffiHub MVP workflow as a demo.
+
 ## View logic: Decorator/Helper, not RSpec view specs
 
 Don't write RSpec specs that test view/template logic (conditional rendering, formatting, display
@@ -256,31 +258,14 @@ per serializer. Don't add a second serializer gem (e.g. `alba`); one library per
 
 Always define namespaced classes with the compact form:
 
-```ruby
-# Good — greppable/searchable (incl. GitHub code search), one declaration per file
-class Sessions::AuthenticateOperation < MainOperation
-end
-```
-
-Not the nested-block form:
-
-```ruby
-# Bad — harder to grep/search for "Sessions::AuthenticateOperation" as a literal string
-module Sessions
-  class AuthenticateOperation < MainOperation
-  end
-end
-```
-
-Reason: the compact form keeps the full namespaced class name as one literal string in the source,
-which is what GitHub/grep/ripgrep search on — the nested form splits it across two lines and is
-harder for humans and code search to find. Applies to all namespaced classes/modules in this repo
-(Operations, Forms, Serializers, Decorators, etc.), not just Operations.
+Use a top-level class name that states the resource or action when a feature belongs to one area of
+the app (`VideoImportService`, `VideoProjectsController`). Add a namespace only when multiple
+subdomains need a real boundary; do not create a namespace just to label a flow "demo" or "MVP".
 
 ## Doc comments: YARD style on every Helper/Decorator/Controller/Service method
 
 Every method defined in `app/helpers/*`, `app/decorators/*`, `app/controllers/*`, or any
-service-like object (Operation, Form, etc.) gets a short YARD-style doc comment above its
+service-like object (Service, Form, etc.) gets a short YARD-style doc comment above its
 definition, so another dev can tell what it does without reading the body:
 
 ```ruby

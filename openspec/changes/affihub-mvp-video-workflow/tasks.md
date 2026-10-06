@@ -1,0 +1,109 @@
+# Tasks
+
+## 1. Nền tảng domain và luồng video local
+
+- [x] 1.1 Khảo sát repository; hiện chưa có Rails scaffold, nên khởi tạo nền Rails 8.1.3/Ruby 3.3, PostgreSQL, Solid Queue, Hotwire/Tailwind/Propshaft/importmap và RSpec/FactoryBot theo `affihub/CLAUDE.md`, giữ nguyên tài liệu hiện có. Kiểm chứng: scaffold khởi động được, RSpec chạy được trong `RAILS_ENV=test`, và `OVERVIEW.md` cập nhật đường dẫn code/spec thực tế cùng change đang triển khai.
+- [x] 1.2 Viết RSpec cho lifecycle `VideoProject`, source và render reference; chạy `RAILS_ENV=test rtk bundle exec rspec <spec file>` và xác nhận đỏ đúng behavior.
+- [x] 1.3 Tạo domain/migration nền cho project, source, render version và trạng thái job; chạy cùng spec với `RAILS_ENV=test rtk bundle exec rspec <spec file>` tới xanh, rồi refactor.
+- [x] 1.4 Viết RSpec request/Service cho import video local: không cần credential, không gọi API social, không ghi platform ID giả và export MP4 chỉ từ render local; chạy đúng file với `RAILS_ENV=test` và xác nhận đỏ.
+- [x] 1.5 Cài daisyUI 5.7.47 cho Tailwind CSS 4; ghi quy ước vào `affihub/CLAUDE.md` và quyết định vào `design.md`; gọi skill `ui-ux`, dùng component daisyUI, đặt tên lớp theo resource/action và viết hướng dẫn thao tác MVP rõ ràng, không viết RSpec cho template. Kiểm chứng: request/Service spec xanh và kiểm tra thủ công luồng import → preview → tải MP4 trên desktop/mobile.
+- [ ] 1.6 Viết RSpec cho nền reliability dùng chung: claim nguyên tử, lease/heartbeat, fencing worker cũ, durable outbound attempt ở `Submitting`, không gửi attempt thứ hai khi attempt cũ chưa reconcile, manual retry bị chặn đến khi sender cũ dừng và timeout cửa sổ request đã hết, sweeper lease hết hạn, checkpoint, audit và redaction token/authorization/signed upload URI trong log; xác nhận đỏ.
+- [ ] 1.7 Implement claim/lease/fencing/checkpoint/outbound attempt/sweeper và log redaction dùng chung; worker mới reconcile attempt đang `Submitting` trước retry. Kiểm chứng: RSpec xanh, attempt cũ không nhân đôi và side effect chưa rõ được giữ chặn.
+
+## 2. Spike kết nối Meta sớm
+
+- [ ] 2.1 Viết Porting Note cho Meta OAuth/Page/Reels theo tài liệu Meta và provider reference Postiz đã pin; ghi ngày, SHA/file, permission, upload/process/publish/status/error. Kiểm chứng: note phân biệt contract chính thức với phần chỉ tham khảo.
+- [ ] 2.2 Viết RSpec cho OAuth callback, state ngẫu nhiên/hết hạn/dùng một lần/gắn phiên, PKCE khi provider hỗ trợ, callback allowlist, từ chối replay/đổi phiên, credential mã hóa khi lưu và secret không lộ ở log/response, chọn Page và smoke flow publish cuối; chạy file với `RAILS_ENV=test` và xác nhận đỏ.
+- [ ] 2.3 Làm spike Meta backend trên Page/app-role test: API config đưa vào YAML/`Rails.application.config_for`, Client dùng một private HTTP request method chung và RSpec chỉ stub boundary HTTP; log không lộ auth header/signed upload URI; chạy spec xanh. Kiểm chứng: điều tra bằng tài liệu/API chính thức xem Page video source/ID có thể được đọc và tải theo quyền app hiện có hay không; thử route nếu được hỗ trợ và được cấp quyền, nếu không ghi bằng chứng cùng lý do hoãn, không dựng connector giả; đồng thời upload MP4 tối giản, poll tới trạng thái cuối và lưu post ID/permalink thật.
+- [ ] 2.4 Gọi `ui-ux` trước khi dựng kết nối Meta, xử lý OAuth callback và chọn Page; không viết view spec. Kiểm chứng: request specs xanh và kiểm tra thủ công trạng thái chưa kết nối, chọn Page, lỗi quyền và secret không xuất hiện trên giao diện.
+
+## 3. Source local, editor và render
+
+- [ ] 3.1 Viết Porting Note FFmpeg trước code; ghi build/license, filter liên quan và cách xác minh input/output. Kiểm chứng: trim, crop, scale, blur, audio, overlay và `delogo` được gắn với tài liệu/source cụ thể.
+- [ ] 3.2 Viết RSpec cho import MP4/MOV, magic bytes/MIME, giới hạn file, `ffprobe` metadata, xử lý file lỗi, an toàn path worker, provenance file do chủ dự án xuất từ YouTube Studio/Takeout và không gọi downloader YouTube cho file đó; chạy đúng file với `RAILS_ENV=test` và xác nhận đỏ.
+- [ ] 3.3 Implement local import/inspection nền; không đưa path người dùng vào shell string và không chạy media work trong request. Kiểm chứng: RSpec xanh với file hợp lệ, sai MIME và file vượt giới hạn.
+- [ ] 3.4 Viết RSpec cho trim/chia đoạn 1–2 giây, retime 1×/2×, audio, crop/nền, filter, subtitle/logo, undo vùng gỡ logo tĩnh và lỗi/giới hạn worker; xác nhận đỏ.
+- [ ] 3.5 Implement cấu hình edit và FFmpeg render; giới hạn gỡ logo vào vùng tĩnh, giữ audio theo lựa chọn và không sửa source. Kiểm chứng: RSpec xanh và so sánh duration/metadata đầu ra bằng `ffprobe`.
+- [ ] 3.6 Viết RSpec cho render version bất biến, profile MP4 H.264/AAC 1080×1920 30 fps và local export không tạo Publication; xác nhận đỏ.
+- [ ] 3.7 Implement render version/export; render lại tạo version mới và lỗi worker giữ nguyên source/version cũ. Kiểm chứng: RSpec xanh và kiểm tra hai file version khác nhau sau lần render lại.
+- [ ] 3.8 Viết RSpec cho frame comparison lấy mẫu theo timecode, frame nguồn/render và timestamp; xác nhận lỗi khi không thể tạo frame hoặc timecode ngoài duration trước khi làm UI.
+- [ ] 3.9 Gọi `ui-ux` trước khi dựng timeline, preview nguồn/render và frame comparison; không viết view spec. Kiểm chứng: request/Service specs xanh và kiểm tra thủ công preview khớp MP4 ở 1×/2×, timecode và overlay.
+
+## 4. Tạo video AI, cost gate và TTS
+
+- [ ] 4.1 Viết Porting Note cho MoneyPrinterTurbo v1.3.8/pinned commit, MuAPI, LLM, stock provider, VieNeu-TTS và fallback; ghi endpoint/schema, license, state, pricing và file source đã đọc. Kiểm chứng: note chỉ rõ mọi giả định còn cần spike.
+- [ ] 4.2 Chạy spike VieNeu-TTS với đúng request/response của MPT `_openai_compatible_tts`; ghi kết quả và lựa chọn fallback Edge/Azure nếu không tương thích. Kiểm chứng: lưu request mẫu, audio mẫu tiếng Việt và thời gian/RTF đo được.
+- [ ] 4.3 Viết RSpec cho input bắt buộc topic/language/tone/target duration; profile mặc định `seedance-lite-t2v`/480p, 5 scene × 6 giây, giới hạn scene 3–12 giây, đầu ra clip/voiceover/subtitle/preview MP4, script/scene approval, báo giá MuAPI `estimate-cost` theo prompt/duration/resolution thật của từng scene, tổng hợp MuAPI/LLM/stock/TTS-fallback/unknown, job budget và xác nhận trước job tính phí; xác nhận đỏ.
+- [ ] 4.4 Implement MPT Client/AI flow và assembly đủ clip/voiceover/subtitle/preview MP4; endpoint/model/ID/timeout nằm trong YAML qua `Rails.application.config_for`, mỗi Client có private request method dùng chung và lấy báo giá dynamic MuAPI theo input thật. Kiểm chứng: RSpec xanh và không gửi job nếu thiếu xác nhận, vượt trần hoặc thiếu phí bắt buộc.
+- [ ] 4.5 Viết RSpec cho task ID, chi phí thực tế, restart/checkpoint/outbound attempt, timeout `OutcomeUnknown`, reconcile trước retry, ba lựa chọn xử lý thủ công có audit, MPT state lookup sau restart và trạng thái TTS fallback; xác nhận đỏ.
+- [ ] 4.6 Implement persistence/polling/recovery cho AI worker, cấu hình MPT state bền và health check đúng Docker topology; chứng minh MPT task/queue còn tra cứu được qua restart trước khi bật nhánh trả phí. Kiểm chứng: RSpec xanh, restart thử resume/reconcile không tạo job thứ hai và UI báo rõ TTS fallback.
+- [ ] 4.7 Gọi `ui-ux` cho topic/language/tone/target duration, script, scene prompts, báo giá, consent và xử lý `OutcomeUnknown`; UI dùng tiếng Việt, không viết RSpec cho template. Kiểm chứng: RSpec của bước approve/budget/reconcile xanh và kiểm tra thủ công luồng AI text-to-video khác rõ stock montage.
+
+## 5. MetaGraphPublisher và review flow
+
+- [ ] 5.1 Viết RSpec cho Publication theo destination, manual confirmation, caption riêng, preflight gate, timeout ba trạng thái xử lý thủ công có audit và status chỉ thành `Published` sau xác nhận cuối từ platform; xác nhận đỏ.
+- [ ] 5.2 Implement `MetaGraphPublisher` cụ thể dựa trên Porting Note/tài liệu Meta; cấu hình API vào YAML/`config_for`, dùng private request method của Client và không tạo abstraction chung quá sớm. Kiểm chứng: RSpec xanh cùng smoke test Page test lưu permalink/provider ID.
+- [ ] 5.3 Gọi `ui-ux` trước khi dựng review/caption/confirmation và xử lý kết quả chưa rõ; không viết view spec. Kiểm chứng: request specs xanh, kiểm tra thủ công đúng render version/Page/caption trước nút xác nhận và không nhầm kết quả thủ công với `Published`.
+
+## 6. URL ingestion, discovery và throttling
+
+- [ ] 6.1 Viết Porting Note cho `yt-dlp`, YouTube-approved media route và YouTube discovery API; ghi ngày/version, URL mẫu, provenance, attribution, lỗi/rate limit. Kiểm chứng: `search.list` là keyword search, `videos.list(chart=mostPopular)` chỉ là regional/category chart, YouTube media không bị chuyển sang `yt-dlp` và TikTok/Instagram không có crawler tự động.
+- [ ] 6.2 Viết RSpec cho download job nền, timeout/fallback, 10 lượt bắt đầu trong 60 phút, reserve slot nguyên tử khi cạnh tranh slot cuối, HTTPS/host allowlist, mọi DNS answer/private-IP/metadata-IP/redirect và DNS-rebinding SSRF rejection, downloader protocol limits, YouTube owner-export provenance và discovery chỉ qua API chính thức; xác nhận đỏ.
+- [ ] 6.3 Implement URL download/discovery clients và worker; `yt-dlp` chỉ cho nguồn phù hợp ngoài YouTube, kiểm tra từng DNS answer/redirect, ghim kết nối vào IP public đã xác minh hoặc egress proxy tương đương, chặn địa chỉ private/reserved/metadata, giới hạn protocol và cấu hình egress worker; map `search.list` tới keyword và `videos.list(chart=mostPopular)` tới chart theo region/category có nhãn rõ. Endpoint/config để YAML/`config_for`, HTTP client dùng private request method chung. Kiểm chứng: RSpec xanh; lỗi rate-limit không sinh retry storm và import file vẫn chạy.
+- [ ] 6.4 Gọi `ui-ux` cho nhập URL, discovery, attribution, cảnh báo quyền sử dụng và fallback import; không viết view spec. Kiểm chứng: request specs xanh và kiểm tra thủ công các trạng thái thành công/thất bại/chờ giới hạn.
+
+## 7. TikTok, Instagram và YouTube connections/publishers
+
+- [ ] 7.1 Viết Porting Note riêng cho TikTok, Instagram Reels và YouTube, dựa trên API docs chính thức và source tham khảo đã pin; ghi OAuth/access tier, consent, upload protocol, poll/error/quota và review gate. Kiểm chứng: mỗi nền tảng có contract riêng, Instagram dùng Facebook Login/Page selection qua `/me/accounts` và lưu Page token + `instagram_business_account` mapping, scope được xác minh theo docs hiện hành, không lấy Postiz làm API truth; xác minh TikTok có expose creator cap động ở API nào, nếu không thì ghi rõ không có tín hiệu API.
+- [ ] 7.2 Viết RSpec cho OAuth state ngẫu nhiên/hết hạn/dùng một lần/gắn phiên, PKCE khi provider hỗ trợ, callback allowlist, credential mã hóa khi lưu/ẩn khỏi response, signed upload URI không lộ log và từ chối replay/đổi phiên cho TikTok, Instagram, YouTube; đồng thời kiểm tra TikTok destination, `creator_info`, privacy/disclosure consent, cap chính thức nếu API công bố và fallback `Chưa thể kiểm tra` nếu không, creator-disabled interaction bị khóa, Commercial Content mặc định tắt, branded content không tương thích `SELF_ONLY`, snapshot consent trong Schedule, recheck trước chạy, `FILE_UPLOAD` checkpoint/chunks, poll và `OutcomeUnknown`; xác nhận đỏ.
+- [ ] 7.3 Implement TikTok backend OAuth/publish flow; dùng YAML/`config_for` và private request method chung, lưu consent snapshot cùng app-local cap và creator-cap signal nếu API chính thức cung cấp, recheck settings trước claim/send, báo rõ cap chưa thể kiểm tra nếu provider không expose, giữ `SELF_ONLY` gate chưa audit, `PUBLIC_TO_EVERYONE` acceptance production và `is_aigc` đúng consent. Kiểm chứng: RSpec xanh và smoke test trên creator account test.
+- [ ] 7.4 Viết RSpec cho Instagram OAuth qua Facebook Login, `/me/accounts` Page selection, Page Access Token + `instagram_business_account` mapping, Business/Page eligibility, resumable upload trực tiếp, upload status, truy vấn `content_publishing_limit` hiện hành trước publish, `media_publish`, checkpoint/restart và `OutcomeUnknown`; xác nhận đỏ.
+- [ ] 7.5 Implement Instagram connection/publisher theo tài liệu Meta hiện hành; đọc cap hiện hành trước publish, config trong YAML/`config_for`, HTTP method chung trong Client, không cần public media URL. Kiểm chứng: RSpec xanh và smoke test dùng local file tới media ID/permalink cuối.
+- [ ] 7.6 Viết RSpec cho YouTube OAuth/channel, resumable `videos.insert`, xác nhận điều khoản upload, privacy, made-for-kids, synthetic-media disclosure, checkpoint/restart, quota exhaustion và bộ đếm riêng cho `search.list`/`videos.insert`; xác nhận đỏ.
+- [ ] 7.7 Implement YouTube backend connection/publisher sau đối chiếu quota/compliance docs; config trong YAML/`config_for`, Client dùng private request method chung, đếm `search.list`/`videos.insert` do AffiHub tạo và không giả định biết quota của app khác. Kiểm chứng: RSpec xanh, quota cạn chỉ chặn thao tác YouTube liên quan, smoke test lưu video ID/permalink/privacy.
+- [ ] 7.8 Gọi `ui-ux` trước khi dựng OAuth, chọn account/channel, consent/privacy/disclosure, xác nhận điều khoản YouTube và màn xử lý `OutcomeUnknown` cho TikTok, Instagram, YouTube; không viết view spec. Kiểm chứng: request specs xanh và kiểm tra thủ công lựa chọn consent đúng account/destination, secret không lộ và trạng thái reconcile rõ ràng.
+
+## 8. Preflight toàn project
+
+- [ ] 8.1 Viết RSpec cho audit read-only, bốn trạng thái, timestamp, readiness theo destination, stale worker/lease, timecoded source/render frame strips mỗi 1–2 giây, TikTok cap chính thức hoặc `Chưa thể kiểm tra`, Instagram cap hiện hành, bộ đếm/quota YouTube riêng cùng nguồn limit/link Console, MPT task-state persistence sau restart và gate riêng nhánh AI trả phí, worker/integration lỗi độc lập và không publish/không tính phí; xác nhận đỏ.
+- [ ] 8.2 Implement tổng hợp preflight qua các domain/Client hiện có; chỉ gọi API đọc, không tạo upload/job, chặn riêng AI trả phí nếu MPT recovery chưa được xác minh, đọc TikTok creator cap nếu API có tín hiệu chính thức và nếu không thì báo chưa thể kiểm tra, đồng thời hiển thị quota AffiHub quan sát được cùng nguồn limit/link Google Cloud Console. Kiểm chứng: RSpec xanh và WebMock xác nhận không có request publish khi audit.
+- [ ] 8.3 Gọi `ui-ux` cho báo cáo Kiểm tra toàn bộ, bộ lọc theo destination và action khắc phục; không viết view spec. Kiểm chứng: request specs xanh và kiểm tra thủ công `Chưa cấu hình`, `Chặn` và connector đạt độc lập.
+
+## 9. PublisherResolver, Scheduler và quota nội bộ
+
+- [ ] 9.1 Viết Porting Note cho claim/scheduling reference Postiz cùng contract Solid Queue hiện có; ghi SHA/file/ngày và chỉ dùng Postiz tham khảo kiến trúc. Kiểm chứng: note mô tả atomic claim, không sao chép/vendoring code AGPL.
+- [ ] 9.2 Viết RSpec cho `PublisherResolver` sau khi có đủ bốn publisher, Publication per destination/per occurrence, timezone local của máy làm mặc định và được lưu, pause/missed không catch-up, atomic claim/quota reservation gồm tranh chấp slot cuối, giới hạn 5 Publication/24h có thời điểm mở lượt kế tiếp, jitter và reconcile trước retry; xác nhận đỏ.
+- [ ] 9.3 Implement resolver và Scheduler sau bốn publisher cụ thể; transition claim và quota reservation nguyên tử, lease/fencing, cờ pause cùng quota window dùng chung cho manual/scheduled. Kiểm chứng: RSpec xanh, hai claim đồng thời chỉ gửi một side effect và chỉ một request nhận slot cuối.
+- [ ] 9.4 Gọi `ui-ux` cho lịch, timezone, trạng thái pause và missed schedule; không viết view spec. Kiểm chứng: request specs xanh và kiểm tra thủ công timezone hiển thị trên từng lịch (mặc định timezone máy local), số lượt đã dùng/thời điểm có slot kế tiếp, không đăng trước giờ hoặc đăng bù tự động.
+
+## 10. Auto-reply comment Facebook/Instagram
+
+- [ ] 10.1 Viết Porting Note cho webhook/poll/reply Meta chính thức và comment interface Postiz; ghi rõ Postiz chỉ là kiến trúc tham khảo. Kiểm chứng: scope chỉ có public comments Facebook/Instagram.
+- [ ] 10.2 Viết RSpec cho fixed default/keyword rule, event dedupe, timeout `OutcomeUnknown` với ba lựa chọn thủ công, pause trước claim và append-only log gồm source/event type, rule snapshot, nội dung gửi thực tế, kết quả/lỗi/bằng chứng; xác nhận đỏ.
+- [ ] 10.3 Implement AutoResponder và rule/log; API values trong YAML/`config_for`, Client gom network calls qua private request method, không gọi LLM. Kiểm chứng: RSpec xanh và replay cùng event không tạo reply thứ hai.
+- [ ] 10.4 Gọi `ui-ux` cho cấu hình câu mặc định/keyword, log trạng thái và xử lý `OutcomeUnknown`; không viết view spec. Kiểm chứng: request specs xanh và kiểm tra thủ công không có lựa chọn DM/TikTok, log giữ snapshot reply và trạng thái chưa rõ không hiện như đã gửi.
+
+## 11. Google Drive và Sheets
+
+- [ ] 11.1 Viết Porting Note từ Google API Ruby Client và tài liệu Drive/Sheets/OAuth chính thức; ghi resumable upload, `appProperties`, `RAW`, refresh token, retry và concurrency. Kiểm chứng: hai API được mô tả thành side jobs riêng.
+- [ ] 11.2 Viết RSpec cho Google OAuth state ngẫu nhiên/hết hạn/dùng một lần/gắn phiên, PKCE/callback allowlist khi áp dụng, scope tối thiểu, credential mã hóa và token/signed upload URI không lộ log, Drive folder key theo project/video và file key theo render version/export, private inherited permissions, idempotency, timeout/reconcile không kết luận sai và ba lựa chọn xử lý `OutcomeUnknown`; xác nhận đỏ.
+- [ ] 11.3 Implement Drive OAuth/upload worker; config qua YAML/`config_for`, Client dùng private request method chung, folder theo project/video, file theo render version/export, tìm lại metadata trước create/upload retry và redact signed session URI khỏi lỗi/log. Kiểm chứng: RSpec xanh và timeout giả lập không tạo folder/file trùng.
+- [ ] 11.4 Viết RSpec cho Sheets row key theo project/render version/destination, một hàng hiện trạng mới nhất gồm publication status, `platform_post_id`, permalink, `published_at`, link Drive và lỗi liên quan; publication occurrence recurring cập nhật cùng hàng, Rails giữ lịch sử đầy đủ, upsert serialize, dữ liệu `RAW`, late connection chỉ sync project/render do người dùng chọn và Sheet-only retry; xác nhận đỏ.
+- [ ] 11.5 Implement SheetSync độc lập; mỗi occurrence cập nhật hàng hiện trạng mới nhất, người dùng kết nối Google muộn phải chọn cụ thể project/render cần backfill, lỗi Sheets không gọi publisher và Rails DB giữ authoritative state/lịch sử. Kiểm chứng: RSpec xanh khi Sheets timeout sau Drive success và không có auto-sync toàn thư viện.
+- [ ] 11.6 Gọi `ui-ux` cho kết nối Drive/Sheet, chọn folder/tab, trạng thái sync và xử lý `OutcomeUnknown`; không viết view spec. Kiểm chứng: request specs xanh và kiểm tra thủ công trạng thái chưa bật/hết token/lỗi từng dịch vụ, secret không lộ và hướng reconcile trước retry.
+
+## 12. Telegram operations
+
+- [ ] 12.1 Viết Porting Note từ Telegram Bot API và gem reference; ghi webhook/long polling, sendMessage, command parsing và cách bảo vệ token. Kiểm chứng: note xác định allowlist `chat_id` là gate bắt buộc.
+- [ ] 12.2 Viết RSpec cho cảnh báo worker down, Publication Failed/OutcomeUnknown, lỗi/giới hạn API, auto-reply và sync hết retry; kết quả auto-publish cuối; `/status`, bốn lệnh pause/resume, allowlist, chat không được phép, lỗi Bot API và việc token không xuất hiện trong log; xác nhận đỏ.
+- [ ] 12.3 Implement Telegram bot/alerts bằng gem `telegram-bot-ruby`; cấu hình không bí mật qua YAML/`Rails.application.config_for`, token qua credentials, bọc lời gọi gem trong method riêng dùng chung mà không tự viết HTTP wrapper, không log secret, cờ pause được Scheduler/AutoResponder đọc trước claim. Kiểm chứng: RSpec xanh và lệnh từ chat ngoài allowlist không gây side effect.
+
+## 13. Kiểm tra tích hợp và nghiệm thu MVP
+
+- [ ] 13.1 Viết một RSpec integration spec cho source → edit/render → preflight → manual/scheduled publication cùng side integrations; chạy riêng với `RAILS_ENV=test` và xác nhận đỏ ở contract tích hợp.
+- [ ] 13.2 Ghép các Service/job đã có để toàn bộ integration spec xanh; không thêm contract behavior mới ở bước này. Kiểm chứng: một file integration spec pass và không chạy full suite.
+- [ ] 13.3 Chạy smoke flow tuần tự trên tài khoản test cho Facebook, TikTok, Instagram và YouTube; kiểm chứng từng API xác nhận trạng thái cuối, destination, render version, ID, permalink và thời điểm.
+- [ ] 13.4 Thử restart Rails/worker/MPT giữa job, worker lease hết hạn/fencing, sender cũ bị dừng trước khi retry thủ công, upload checkpoint, Google timeout và Telegram outage; kiểm chứng task tiếp tục hoặc reconcile từ checkpoint, không double-submit, local export vẫn chạy và lịch lỡ không tự đăng muộn.
+- [ ] 13.5 Cập nhật `docs/architecture/OVERVIEW.md` và Porting Notes theo code thực tế; kiểm chứng navigation khớp tên file/model/Service/Client đã tạo và nêu rõ khác biệt với design.
+- [ ] 13.6 Xác minh riêng production gates của TikTok `PUBLIC_TO_EVERYONE`, Meta review và YouTube compliance; kiểm chứng báo cáo tách trạng thái kỹ thuật khỏi quyền public, không tuyên bố app review được đảm bảo.
+- [ ] 13.7 Trước pilot với khách hàng, ghi persona, quy trình hiện tại để so sánh và ít nhất một mục tiêu đo được cùng ngưỡng đạt do khách hàng chốt; đến khi có baseline chỉ nghiệm thu kỹ thuật, không tuyên bố đã chứng minh lợi ích kinh doanh.

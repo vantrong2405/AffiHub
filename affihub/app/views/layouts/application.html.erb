@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title><%= content_for(:title) || "Affihub" %></title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="application-name" content="Affihub">
+    <meta name="mobile-web-app-capable" content="yes">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+
+    <%= yield :head %>
+
+    <%# Enable PWA manifest for installable apps (make sure to enable in config/routes.rb too!) %>
+    <%#= tag.link rel: "manifest", href: pwa_manifest_path(format: :json) %>
+
+    <link rel="icon" href="/icon.png" type="image/png">
+    <link rel="icon" href="/icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="/icon.png">
+
+    <%# Includes all stylesheet files in app/assets/stylesheets %>
+    <%= stylesheet_link_tag :app, "data-turbo-track": "reload" %>
+    <%= stylesheet_link_tag "tailwind", "data-turbo-track": "reload" %>
+    <%= javascript_importmap_tags %>
+  </head>
+
+  <body data-theme="light" class="min-h-screen bg-base-200 text-base-content">
+    <header class="border-b border-base-300 bg-base-100">
+      <div class="navbar mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div class="navbar-start">
+          <%= link_to "AffiHub", root_path, class: "link link-hover inline-flex min-h-10 items-center px-2 text-xl font-bold text-base-content" %>
+        </div>
+        <div class="navbar-end">
+          <span class="badge badge-neutral badge-outline">Lưu cục bộ</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-12">
+      <%= tag.div flash[:alert], role: "alert", class: "alert alert-error empty:hidden mb-4" %>
+      <%= tag.div flash[:notice], role: "status", class: "alert alert-success empty:hidden mb-4" %>
+      <%= yield %>
+    </main>
+  </body>
+</html>

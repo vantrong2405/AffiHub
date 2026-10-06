@@ -1,0 +1,50 @@
+<% content_for :title, "#{@video_project.title} · AffiHub" %>
+
+<div class="mx-auto flex w-full max-w-6xl flex-col gap-7">
+  <div class="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+    <div class="min-w-0">
+      <%= link_to "Tải video khác lên", root_path, class: "link link-hover text-sm" %>
+      <p class="mt-6"><span class="badge badge-outline">Bước 2 · Xem lại</span></p>
+      <h1 class="mt-3 break-words text-2xl font-bold text-base-content sm:text-3xl"><%= @video_project.title %></h1>
+      <p class="mt-2 text-sm leading-6 text-base-content/70">Video đã được lưu trong AffiHub. Xem lại rồi tải MP4 về máy khi cần.</p>
+    </div>
+
+    <%= link_to "Tải MP4 về máy", export_render_version_path(@render_version), class: "btn btn-primary shrink-0" %>
+  </div>
+
+  <div class="grid min-w-0 grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_20rem] xl:gap-6">
+    <section class="card card-border min-w-0 bg-base-100" aria-labelledby="preview-title">
+      <div class="card-body p-4 sm:p-6">
+        <header>
+          <h2 id="preview-title" class="card-title">Xem trước video</h2>
+          <p class="mt-1 text-sm text-base-content/70">Phát video để kiểm tra nội dung và thời lượng.</p>
+        </header>
+
+        <div class="flex justify-center">
+          <%= video_tag rails_blob_path(@render_version.file, disposition: :inline), controls: true, preload: "metadata", playsinline: true, class: "aspect-[9/16] w-full max-w-[390px] rounded-box bg-neutral object-contain" %>
+        </div>
+      </div>
+    </section>
+
+    <aside class="card card-border bg-base-100" aria-labelledby="file-title">
+      <div class="card-body p-4 sm:p-6">
+        <h2 id="file-title" class="card-title">Thông tin tệp</h2>
+        <p><span class="badge badge-success">Sẵn sàng</span></p>
+        <dl class="divide-y divide-base-300">
+          <div class="py-3 first:pt-0">
+            <dt class="text-sm font-medium text-base-content/70">Tên tệp</dt>
+            <dd class="mt-1 break-all text-sm font-medium"><%= @source_asset.file.filename %></dd>
+          </div>
+          <div class="py-3">
+            <dt class="text-sm font-medium text-base-content/70">Dung lượng</dt>
+            <dd class="mt-1 text-sm"><%= number_to_human_size(@source_asset.file.byte_size) %></dd>
+          </div>
+          <div class="py-3 last:pb-0">
+            <dt class="text-sm font-medium text-base-content/70">Lưu trữ</dt>
+            <dd class="mt-1 text-sm">Đã lưu trong AffiHub; chưa đăng lên mạng xã hội.</dd>
+          </div>
+        </dl>
+      </div>
+    </aside>
+  </div>
+</div>

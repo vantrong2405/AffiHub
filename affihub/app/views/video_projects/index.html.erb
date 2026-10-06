@@ -1,0 +1,35 @@
+<% content_for :title, "Nhập video · AffiHub" %>
+
+<div class="mx-auto w-full max-w-5xl">
+  <div class="mb-8 max-w-2xl">
+    <p class="badge badge-outline">Bước 1 · Tải video lên</p>
+    <h1 class="mt-3 text-3xl font-bold text-base-content">Tải video lên</h1>
+    <p class="mt-3 max-w-2xl text-base leading-7 text-base-content/70">
+      Chọn MP4 từ thiết bị để lưu trong AffiHub, xem trước và tải về khi cần. Tệp chưa được đăng lên mạng xã hội.
+    </p>
+  </div>
+
+  <section class="card card-border bg-base-100" aria-labelledby="upload-title">
+    <div class="card-body min-w-0 gap-5 p-4 sm:p-6">
+      <div>
+        <h2 id="upload-title" class="card-title">Chọn tệp MP4</h2>
+        <p class="mt-1 text-sm leading-6 text-base-content/70">AffiHub hiện nhận tệp MP4. Sau khi tải lên, bạn có thể xem lại và tải tệp về máy.</p>
+      </div>
+
+      <%= form_with url: video_projects_path, method: :post, multipart: true, class: "space-y-5" do %>
+        <fieldset class="fieldset min-w-0 w-full">
+          <legend class="fieldset-legend">Tệp video</legend>
+          <%= file_field_tag :file,
+                accept: ".mp4,video/mp4",
+                required: true,
+                class: "file-input min-w-0 w-full" %>
+          <p class="label">Chọn một tệp .mp4 từ thiết bị của bạn.</p>
+        </fieldset>
+
+        <div class="card-actions justify-end">
+          <button type="submit" class="btn btn-primary">Tải lên và xem trước</button>
+        </div>
+      <% end %>
+    </div>
+  </section>
+</div>

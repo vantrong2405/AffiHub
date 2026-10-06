@@ -1,0 +1,7 @@
+{
+  "name": "affihub",
+  "private": true,
+  "devDependencies": {
+    "daisyui": "5.7.47"
+  }
+}
