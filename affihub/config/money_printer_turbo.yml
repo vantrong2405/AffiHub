@@ -1,0 +1,30 @@
+shared:
+  base_url: <%= ENV.fetch("MONEY_PRINTER_TURBO_BASE_URL", "http://money-printer-turbo:8080") %>
+  api_key: <%= Rails.application.credentials.dig(:money_printer_turbo, :api_key).to_s %>
+  version: 1.3.8
+  commit: fafec0fbf3142ad5ad7212c2e17996bf247c360a
+  open_timeout_seconds: 10
+  read_timeout_seconds: 60
+  endpoints:
+    scripts: /api/v1/scripts
+    terms: /api/v1/terms
+    videos: /api/v1/videos
+    tasks: /api/v1/tasks
+  generation_profile:
+    video_source: muapi
+    model_id: seedance-lite-t2v
+    resolution: 480p
+    scene_count: 5
+    scene_duration: 6
+    min_scene_duration: 3
+    max_scene_duration: 12
+  tts:
+    model_id: vieneu-v3-turbo
+    response_format: wav
+    speed: 1.0
+    open_timeout_seconds: 10
+    read_timeout_seconds: 120
+
+test:
+  base_url: http://mpt.test
+  api_key: affihub-test-key
