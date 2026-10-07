@@ -58,6 +58,17 @@ AffiHub MUST gửi yêu cầu tạo clip có phí chỉ sau xác nhận tường
 - **WHEN** input hoặc estimate thay đổi sau bước xem giá
 - **THEN** AffiHub yêu cầu xem lại và xác nhận estimate mới trước khi gọi provider
 
+### Requirement: Lưu attempt và đối soát trước khi gửi job MPT
+Trước `POST /api/v1/videos`, AffiHub MUST lưu AI generation cùng `OutboundAttempt` ở trạng thái `Submitting`. AffiHub MUST gửi một correlation ID ổn định qua header `X-Task-ID`; đây chỉ là khóa tra cứu, không phải bảo đảm idempotency từ MPT. Nếu response không có task ID hoặc timeout làm mất response, AffiHub MUST phân trang `GET /api/v1/tasks` để tìm record có `request_id` trùng correlation ID. Nếu không thể xác định kết quả, job MUST giữ `OutcomeUnknown` và không gửi lại cho tới khi provider/đối soát xác nhận request cũ chưa tạo job.
+
+#### Scenario: Response submit bị mất nhưng MPT đã nhận job
+- **WHEN** MPT tạo task nhưng AffiHub timeout trước khi lưu task ID
+- **THEN** AffiHub tìm task qua `request_id`, gắn task ID tìm được vào cùng generation/attempt và không gọi `POST /api/v1/videos` lần nữa
+
+#### Scenario: Không thể đối soát MPT task
+- **WHEN** task list không truy cập được hoặc chưa tìm thấy correlation ID sau timeout
+- **THEN** AffiHub giữ `OutcomeUnknown`, chặn lần submit thứ hai và cho phép tiếp tục đối soát hoặc xử lý thủ công theo bằng chứng
+
 ### Requirement: Phân biệt AI tạo cảnh với stock montage
 AffiHub MUST ghi rõ người dùng đang chọn text-to-video hay montage dùng stock footage.
 
@@ -99,15 +110,27 @@ AffiHub MUST xác minh MPT task/queue state có thể được tra cứu sau res
 - **THEN** preflight chặn job AI trả phí và giữ import, edit, render cùng local export hoạt động
 
 ### Requirement: Hiển thị TTS fallback
-AffiHub MUST dùng VieNeu-TTS v3 Turbo qua adapter WAV mặc định. Azure Speech chỉ được dùng làm fallback tự động khi provider đã cấu hình, có estimate giá hiện hành và người dùng đã xác nhận chi phí. AffiHub MUST báo rõ provider và chi phí trước khi người dùng duyệt audio fallback. Nếu thiếu estimate hoặc consent, không tự gọi Azure hoặc Edge; chỉ chặn phần TTS/job AI phụ thuộc và giữ các chức năng local hoạt động. Edge TTS chỉ được dùng khi người dùng chọn rõ như phương án best-effort.
+AffiHub MUST dùng VieNeu-TTS v3 Turbo qua adapter WAV mặc định. MPT MUST yêu cầu Azure fallback qua callback nội bộ được xác thực; Rails MUST đối chiếu callback với AI generation đã lưu, đúng narration text/voice, estimate Azure hiện hành và consent đã lưu trước khi gọi Azure. Rails MUST lưu outbound attempt ở `Submitting` trước request Azure, lưu WAV/provider/chi phí trước khi trả audio cho MPT, và trả lại audio đã lưu cho callback lặp có cùng generation/scene thay vì gọi Azure lần nữa. Request Azure có kết quả chưa rõ MUST chuyển attempt sang `OutcomeUnknown`, không được gửi Azure lần nữa hoặc đánh dấu task hoàn tất trước khi reconcile. AffiHub MUST báo rõ provider và chi phí trước khi người dùng duyệt audio fallback. Nếu thiếu estimate hoặc consent, callback không hợp lệ, hoặc estimate không khớp narration/voice thì không gọi Azure; chỉ chặn phần TTS/job AI phụ thuộc và giữ các chức năng local hoạt động. Edge TTS chỉ được dùng khi người dùng chọn rõ như phương án best-effort.
 
-#### Scenario: VieNeu-TTS không khả dụng và Azure đã được xác nhận
-- **WHEN** VieNeu lỗi, Azure Speech đã cấu hình, estimate hiện hành được chấp nhận và người dùng xác nhận chi phí
-- **THEN** AffiHub dùng Azure, hiển thị provider cùng chi phí trước khi người dùng duyệt audio
+#### Scenario: MPT yêu cầu fallback cho narration đã được xác nhận
+- **WHEN** VieNeu lỗi và MPT gửi callback hợp lệ cho generation/scene có narration, voice, estimate Azure hiện hành và consent khớp dữ liệu Rails đã lưu
+- **THEN** Rails lưu `OutboundAttempt` trước khi gọi Azure, lưu WAV cùng provider/chi phí rồi trả audio cho MPT để tiếp tục pipeline
 
 #### Scenario: Thiếu estimate hoặc consent cho Azure
 - **WHEN** VieNeu lỗi và chưa có estimate giá hiện hành hoặc người dùng chưa xác nhận chi phí Azure
 - **THEN** AffiHub không gọi Azure hay tự chuyển sang Edge, báo TTS/job AI bị chặn cùng provider/lỗi, còn edit/render/export local vẫn hoạt động
+
+#### Scenario: Callback fallback được gửi lại sau khi Azure hoàn tất
+- **WHEN** MPT gửi lại callback cho generation/scene đã có WAV fallback được lưu
+- **THEN** Rails trả lại WAV đã lưu và không tạo outbound attempt hoặc Azure request thứ hai
+
+#### Scenario: Azure timeout sau khi request có thể đã được gửi
+- **WHEN** Azure có thể đã xử lý request nhưng Rails không nhận được kết quả cuối
+- **THEN** Rails giữ attempt ở `OutcomeUnknown`, không gọi Azure lại, và MPT không đánh dấu pipeline hoàn tất cho tới khi fallback được reconcile
+
+#### Scenario: Callback không khớp dữ liệu đã duyệt
+- **WHEN** callback sai chữ ký, generation/scene không khớp, narration/voice đổi, estimate hết hạn hoặc consent không khớp
+- **THEN** Rails từ chối fallback trước khi gọi Azure và chỉ chặn nhánh TTS/job AI phụ thuộc
 
 #### Scenario: Người dùng tự chọn Edge TTS
 - **WHEN** người dùng chủ động chọn Edge TTS sau khi được thông báo đây là phương án best-effort
