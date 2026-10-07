@@ -288,6 +288,10 @@ RSpec.describe AiGenerations::SubmitService, type: :service do
           "estimate" => estimate.fetch(:cost_breakdown).fetch(:tts_fallback).deep_stringify_keys
         )
         expect(video_request).to have_been_requested.once
+        poll_job = ActiveJob::Base.queue_adapter.enqueued_jobs.find do |job|
+          job[:job] == AiGenerations::PollJob
+        end
+        expect(poll_job[:args]).to eq([ service.ai_generation.id ])
       end
     end
 

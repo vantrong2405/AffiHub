@@ -5,11 +5,14 @@ shared:
   commit: fafec0fbf3142ad5ad7212c2e17996bf247c360a
   open_timeout_seconds: 10
   read_timeout_seconds: 60
+  download_max_bytes: 1073741824
+  poll_interval_seconds: 15
   endpoints:
     scripts: /api/v1/scripts
     terms: /api/v1/terms
     videos: /api/v1/videos
     tasks: /api/v1/tasks
+    download: /api/v1/download
   task_list_page_size: 1000
   generation_profile:
     video_source: muapi
@@ -38,3 +41,4 @@ test:
   base_url: http://mpt.test
   api_key: affihub-test-key
   task_list_page_size: 2
+  download_max_bytes: 1024

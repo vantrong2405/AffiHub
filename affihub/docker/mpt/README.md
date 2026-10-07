@@ -10,13 +10,15 @@ Image này build MoneyPrinterTurbo từ commit v1.3.8 đã pin và áp dụng ha
 Build từ thư mục `affihub/`:
 
 ```sh
-docker build -f docker/mpt/Dockerfile -t affihub-mpt-wav .
+rtk docker build -f docker/mpt/Dockerfile -t affihub-mpt-wav .
 ```
 
 Build đã được kiểm tra thành công với command trên, MPT commit đã pin, cả hai patch và
-`requirements.txt`. Smoke local trong private Docker network xác nhận MPT khởi động với Redis,
-Redis trả `PONG` và endpoint `/ping` trả `200`/healthy. Smoke dùng key giả; chưa chạy Rails callback,
-VieNeu/Azure thật, MoviePy với WAV hoặc kiểm tra restart/reconcile.
+`requirements.txt`. Smoke trong private Docker network với key giả xác nhận Redis `PONG`, health
+check `/ping`, đọc task sentinel qua `/api/v1/tasks` sau khi restart cả MPT lẫn Redis, và giữ được
+một queue marker qua Redis restart. Sentinel được ghi trực tiếp vào Redis; không gửi video job trả
+phí. Chưa xác minh MPT tự resume một video đang chạy, callback Rails thật, VieNeu/Azure thật hoặc
+MoviePy xử lý WAV.
 
 ## Cấu hình runtime
 
@@ -30,10 +32,29 @@ VieNeu/Azure thật, MoviePy với WAV hoặc kiểm tra restart/reconcile.
   `VIENEU_TTS_VOICE`: tùy chọn khi giá trị mặc định không khớp với service VieNeu riêng.
 
 Giữ Rails, MPT, Redis và VieNeu trên private application network. Entrypoint kiểm tra Redis
-trước khi khởi động MPT. Mount volume bền tại `/MoneyPrinterTurbo/storage` để giữ audio, video
-và artifact của task qua lần restart. Health check gọi endpoint `/ping`; không publish cổng
-8080 ra host.
+trước khi khởi động MPT và yêu cầu Redis bật AOF (`appendonly yes`). Mount volume bền cho Redis
+tại `/data` và cho MPT tại `/MoneyPrinterTurbo/storage`; image tạo storage directory với owner
+`mpt` để process non-root ghi được vào volume. Health check gọi endpoint `/ping`; không publish
+cổng 8080 ra host.
 
-Redis giữ task state và queued work, nhưng không tự tiếp tục tác vụ đang chạy khi process MPT
-chết. AffiHub phải đối soát trạng thái MPT trước khi retry; chưa kiểm thử restart/reconcile trên
-Docker topology thật nên chưa coi đây là bảo đảm recovery runtime.
+Redis giữ task state và queued work qua lần restart đã smoke. Redis không tự tiếp tục tác vụ đang
+chạy khi process MPT chết. AffiHub phải đối soát trạng thái MPT trước khi retry; chưa kiểm thử
+resume/reconcile một tác vụ video đang chạy nên chưa coi đây là bảo đảm recovery runtime.
+
+## Worker Rails
+
+Production Rails dùng Solid Queue trên database `affihub_production_queue`. Docker image bật
+Solid Queue supervisor trong Puma; schema queue được quản lý riêng với database chính. Có thể
+kiểm tra cấu hình worker trước deploy bằng:
+
+```sh
+RAILS_ENV=production rtk bin/jobs check --skip-recurring
+```
+
+`--skip-recurring` validates worker and dispatcher settings without connecting to the production
+database; run `rtk bin/jobs check` against the deployment environment to validate its recurring
+schedule as well.
+
+`RAILS_ENV=production rtk bin/jobs start` có thể dùng khi chạy worker tách khỏi Puma. Không chạy
+đồng thời worker tách rời và plugin Puma trên cùng deployment nếu cấu hình process chưa được chủ
+động phân chia.

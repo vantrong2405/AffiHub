@@ -184,6 +184,7 @@ class AiGenerations::SubmitService < ApplicationService
 
   def step_existing_task_found
     @task_id = ai_generation.task_id
+    step_enqueue_poll
     step_succeed!
     success?
   end
@@ -255,8 +256,13 @@ class AiGenerations::SubmitService < ApplicationService
         details: { task_id: @task_id }
       )
     end
+    step_enqueue_poll
     step_succeed!
     success?
+  end
+
+  def step_enqueue_poll
+    AiGenerations::PollJob.perform_later(ai_generation.id)
   end
 
   def step_mark_submission_failed(error_code)

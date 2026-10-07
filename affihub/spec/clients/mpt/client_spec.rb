@@ -95,14 +95,9 @@ RSpec.describe Mpt::Client, type: :service do
     before { video_request }
     subject(:response) { client.create_video(payload: { video_source: "muapi" }, task_id: correlation_id) }
 
-    it "returns the task ID from the MPT response" do
+    it "returns the task ID and sends the stable correlation ID" do
       expect(response).to eq("task_id" => "mpt-task-123")
       expect(video_request).to have_been_requested.once
-    end
-
-    it "sends the stable correlation ID in the X-Task-ID header" do
-      response
-
       expect(
         a_request(:post, "http://mpt.test/api/v1/videos")
           .with(headers: { "x-task-id" => correlation_id })
@@ -167,6 +162,80 @@ RSpec.describe Mpt::Client, type: :service do
     it "returns the requested task page with its correlation IDs" do
       expect(tasks).to eq(task_page)
       expect(task_list_request).to have_been_requested.once
+    end
+  end
+
+  describe "#download" do
+    let(:task_id) { "mpt-task-123" }
+    let(:file_path) { "/tasks/mpt-task-123/scene-1.mp4" }
+    let(:download_url) { "http://mpt.test/api/v1/download/mpt-task-123/scene-1.mp4" }
+    let(:destination) { StringIO.new }
+    let(:download_request) do
+      stub_request(:get, download_url)
+        .with(headers: { "x-api-key" => "affihub-test-key" })
+        .to_return(status: 200, body: "scene-video-bytes")
+    end
+
+    before { download_request }
+
+    it "streams an artifact from the configured MPT host into the destination" do
+      client.download(file_path:, task_id:, destination:)
+
+      expect(destination.string).to eq("scene-video-bytes")
+      expect(download_request).to have_been_requested.once
+    end
+
+    context "when the artifact reference points to another host" do
+      let(:file_path) { "https://files.example.test/tasks/mpt-task-123/scene-1.mp4" }
+
+      it "rejects the reference without requesting the external host" do
+        expect { client.download(file_path:, task_id:, destination:) }
+          .to raise_error(described_class::Error, "invalid_file_path")
+        expect(WebMock).not_to have_requested(:get, file_path)
+      end
+    end
+
+    context "when the artifact path escapes the task directory" do
+      let(:file_path) { "http://mpt.test/api/v1/download/tasks/../secrets.yml" }
+
+      it "rejects the path before making a request" do
+        expect { client.download(file_path:, task_id:, destination:) }
+          .to raise_error(described_class::Error, "invalid_file_path")
+        expect(WebMock).not_to have_requested(:get, file_path)
+      end
+    end
+
+    context "when an encoded path separator escapes the task directory" do
+      let(:file_path) { "http://mpt.test/api/v1/download/tasks/mpt-task-123/scene%2F..%2Fsecrets.yml" }
+
+      it "rejects the encoded traversal before making a request" do
+        expect { client.download(file_path:, task_id:, destination:) }
+          .to raise_error(described_class::Error, "invalid_file_path")
+        expect(WebMock).not_to have_requested(:get, file_path)
+      end
+    end
+
+    context "when the artifact belongs to another task" do
+      let(:file_path) { "http://mpt.test/api/v1/download/tasks/other-task/scene-1.mp4" }
+
+      it "rejects the artifact before making a request" do
+        expect { client.download(file_path:, task_id:, destination:) }
+          .to raise_error(described_class::Error, "invalid_file_path")
+        expect(WebMock).not_to have_requested(:get, file_path)
+      end
+    end
+
+    context "when the artifact exceeds the configured download limit" do
+      let(:download_request) do
+        stub_request(:get, download_url)
+          .to_return(status: 200, body: "a" * 1_025)
+      end
+
+      it "rejects the oversized response without exceeding the configured limit" do
+        expect { client.download(file_path:, task_id:, destination:) }
+          .to raise_error(described_class::Error, "download_too_large")
+        expect(destination.string.bytesize).to be <= 1_024
+      end
     end
   end
 end

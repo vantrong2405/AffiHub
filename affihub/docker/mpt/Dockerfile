@@ -26,7 +26,11 @@ RUN pip install --no-cache-dir --retries 3 --timeout 60 -r requirements.txt && \
     useradd --system --create-home --home-dir /home/mpt mpt && \
     chown -R mpt:mpt /MoneyPrinterTurbo
 
+RUN mkdir -p /MoneyPrinterTurbo/storage && chown mpt:mpt /MoneyPrinterTurbo/storage
+
 COPY --chown=mpt:mpt docker/mpt/entrypoint.py /usr/local/bin/mpt-entrypoint.py
+
+VOLUME ["/MoneyPrinterTurbo/storage"]
 
 ENV PYTHONPATH=/MoneyPrinterTurbo
 USER mpt

@@ -24,14 +24,18 @@ if not REDIS_HOST:
 try:
     redis_port = int(os.environ.get("MPT_APP_REDIS_PORT", "6379"))
     redis_db = int(os.environ.get("MPT_APP_REDIS_DB", "0"))
-    redis.Redis(
+    redis_client = redis.Redis(
         host=REDIS_HOST,
         port=redis_port,
         db=redis_db,
         password=REDIS_PASSWORD or None,
         socket_connect_timeout=5,
         socket_timeout=5,
-    ).ping()
+    )
+    redis_client.ping()
+    redis_persistence = redis_client.info("persistence")
+    if int(redis_persistence.get("aof_enabled", 0)) != 1:
+        sys.exit("MPT Redis persistence requires appendonly yes")
 except Exception:
     sys.exit("MPT Redis configuration is invalid or Redis is not reachable")
 
