@@ -36,8 +36,11 @@ and removing timeline/overlay/delogo rows. `Meta::Client` loads provider setting
 `config/meta.yml`, uses one private request method, and covers OAuth token exchange, Page listing,
 Page video source probing, and Facebook Reels upload/status calls. Request specs stub the HTTP
 boundary and cover secret redaction; live Meta permission and publish smoke tests remain unverified
-because this local environment has no Meta app or Page test credentials. Connection/Page-selection
-screens and the remaining external integrations are still in progress.
+because this local environment has no Meta app or Page test credentials. `SocialConnectionsController`
+and `SocialDestinationsController` provide profile setup/detail and multi-Page selection with
+permission checks, using existing daisyUI components. Request and system specs cover OAuth secret
+handling, Page token redaction, and permission errors. The remaining external integrations are
+still in progress.
 
 ## Product requirements and references
 
@@ -53,13 +56,13 @@ screens and the remaining external integrations are still in progress.
 | Path | Purpose |
 |---|---|
 | app/controllers/application_controller.rb, main_controller.rb, api_controller.rb | Rails controller base classes |
-| app/controllers/dashboard_controller.rb, video_projects_controller.rb, source_assets_controller.rb, render_versions_controller.rb, social_connections_controller.rb, connection_callbacks_controller.rb | Dashboard redirect and local project/source/editor/render/OAuth callback HTTP actions |
+| app/controllers/dashboard_controller.rb, video_projects_controller.rb, source_assets_controller.rb, render_versions_controller.rb, social_connections_controller.rb, social_destinations_controller.rb, connection_callbacks_controller.rb | Dashboard redirect and local project/source/editor/render/social account/OAuth callback HTTP actions |
 | app/controllers/concerns/ | Shared HTML/JSON response concerns |
 | app/forms/main_form.rb, app/operations/main_operation.rb, app/serializers/ | Generated HMVC scaffold |
 | app/models/application_record.rb, video_project.rb, source_asset.rb, render_version.rb | Active Record base and initial video domain |
 | app/jobs/application_job.rb | Active Job base class |
 | app/services/video_projects/, app/services/source_assets/, app/services/render_versions/, app/services/meta/, app/services/social_connections/, app/services/connection_callbacks/ | Project workflows, local import/source inspection, render editing, frame comparison/export, Meta API calls, and OAuth callback handling |
-| app/helpers/workflow_status_helper.rb, app/views/video_projects/, app/views/source_assets/, app/views/render_versions/ | Vietnamese status labels and project/source/editor/render pages |
+| app/helpers/workflow_status_helper.rb, app/views/video_projects/, app/views/source_assets/, app/views/render_versions/, app/views/social_connections/, app/views/social_destinations/ | Vietnamese status labels and project/source/editor/render/social account pages |
 | app/views/layouts/, app/views/pwa/ | Default Rails layouts and PWA templates |
 | app/assets/, app/javascript/ | Tailwind/daisyUI and importmap scaffold |
 | config/routes.rb | Rails health check, dashboard root, and resource routes from the active change |
