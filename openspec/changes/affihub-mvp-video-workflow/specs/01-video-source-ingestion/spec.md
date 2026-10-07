@@ -82,15 +82,23 @@ AffiHub MUST chỉ nhận scheme HTTPS và host nằm trong allowlist nguồn đ
 - **THEN** AffiHub từ chối request hoặc chỉ kết nối tới địa chỉ public đã xác minh, không phân giải lại sang địa chỉ chưa kiểm tra
 
 ### Requirement: Tìm video bằng endpoint discovery chính thức
-AffiHub MUST chỉ dùng endpoint chính thức để tìm metadata video và gắn nhãn đúng loại kết quả; với YouTube dùng `search.list` cho truy vấn từ khóa và `videos.list(chart=mostPopular)` chỉ cho bảng phổ biến theo region/category. Tìm metadata và tải media là hai bước riêng: chỉ sau khi người dùng chọn kết quả, AffiHub mới enqueue `yt-dlp` với URL video đã chọn.
+AffiHub MUST chỉ dùng API chính thức để tìm metadata video và gắn nhãn đúng loại kết quả. Với YouTube, dùng `search.list` cho truy vấn từ khóa và `videos.list(chart=mostPopular)` chỉ cho bảng phổ biến theo region/category. Instagram có hashtag discovery hạn chế cho Professional Account; TikTok Research API yêu cầu tổ chức/nghiên cứu đủ điều kiện và được duyệt. AffiHub MUST NOT mặc định coi hai API này là quyền discovery cho sản phẩm; chỉ bật khi access tier, account, permission và mục đích sử dụng đã được xác minh. AffiHub MUST NOT crawl feed hoặc dùng extractor `yt-dlp` để discovery. API metadata non-authorized MUST được refresh hoặc xóa trong tối đa 30 ngày. Tìm metadata và tải media là hai bước riêng: chỉ sau khi người dùng chọn kết quả mới được tạo yêu cầu download; lựa chọn không thay quyền sử dụng media hay xác nhận downloader phù hợp policy nền tảng.
 
 #### Scenario: Tìm và tải video YouTube đã chọn
 - **WHEN** người dùng yêu cầu tìm video YouTube
 - **THEN** keyword search dùng `search.list`; danh sách phổ biến dùng `videos.list(chart=mostPopular)` và được gắn nhãn region/category, không hiển thị như keyword result hoặc trending tổng quát; metadata có attribution; khi người dùng chọn một kết quả, AffiHub tạo `SourceAsset` kèm URL/provenance và enqueue `yt-dlp` để tải media
 
-#### Scenario: Nền tảng không có discovery API
-- **WHEN** TikTok hoặc Instagram không cung cấp endpoint discovery chính thức cho luồng này
-- **THEN** AffiHub không tự crawl feed và chỉ cho người dùng nhập URL cụ thể
+#### Scenario: TikTok Research API chưa được cấp quyền
+- **WHEN** AffiHub không thuộc tổ chức/nghiên cứu đủ điều kiện hoặc chưa được TikTok duyệt Research API
+- **THEN** AffiHub không dùng TikTok API/crawler để discovery và chỉ nhận URL cụ thể do người dùng nhập
+
+#### Scenario: Instagram hashtag discovery chưa được bật
+- **WHEN** Instagram Professional Account, Page link hoặc API access phù hợp chưa được xác minh
+- **THEN** AffiHub không gọi hashtag discovery API và không crawl Instagram feed; người dùng chỉ nhập URL cụ thể
+
+#### Scenario: API discovery data quá hạn
+- **WHEN** metadata YouTube không được refresh trước 30 ngày kể từ lúc nhận
+- **THEN** AffiHub xóa dữ liệu API-derived đã hết hạn và không hiển thị nó như dữ liệu mới
 
 ### Requirement: Giới hạn số lần bắt đầu tải
 AffiHub MUST áp dụng tối đa 10 lần bắt đầu tải trong cửa sổ trượt 60 phút cho mỗi cài đặt local, tính chung URL, discovery và lần retry có gọi downloader.
