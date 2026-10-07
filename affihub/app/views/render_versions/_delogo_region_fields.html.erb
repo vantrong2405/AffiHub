@@ -1,0 +1,12 @@
+<fieldset class="rounded-box border border-base-300 p-4" data-editor-item>
+  <div class="mb-3 flex items-center justify-between gap-2">
+    <legend class="font-semibold">Vùng <%= region[:x].present? ? region[:x] : "gỡ logo" %></legend>
+    <button type="button" class="btn btn-ghost btn-xs text-error" data-action="render-version-form#remove">Xóa vùng</button>
+  </div>
+  <div class="grid gap-3 sm:grid-cols-2">
+    <label class="form-control"><span class="label-text mb-1">X (pixel)</span><%= number_field_tag "render_version[delogo_regions][][x]", region[:x], min: 0, step: 1, class: "input input-bordered w-full" %></label>
+    <label class="form-control"><span class="label-text mb-1">Y (pixel)</span><%= number_field_tag "render_version[delogo_regions][][y]", region[:y], min: 0, step: 1, class: "input input-bordered w-full" %></label>
+    <label class="form-control"><span class="label-text mb-1">Rộng (pixel)</span><%= number_field_tag "render_version[delogo_regions][][width]", region[:width], min: 1, step: 1, class: "input input-bordered w-full" %></label>
+    <label class="form-control"><span class="label-text mb-1">Cao (pixel)</span><%= number_field_tag "render_version[delogo_regions][][height]", region[:height], min: 1, step: 1, class: "input input-bordered w-full" %></label>
+  </div>
+</fieldset>

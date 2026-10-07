@@ -1,0 +1,48 @@
+<fieldset class="rounded-box border border-base-300 p-4" data-editor-item>
+  <div class="mb-3 flex items-center justify-between gap-2">
+    <legend class="font-semibold">Lớp phủ</legend>
+    <button type="button" class="btn btn-ghost btn-xs text-error" data-action="render-version-form#remove">Xóa lớp</button>
+  </div>
+  <div class="grid gap-3 sm:grid-cols-2">
+    <label class="form-control sm:col-span-2">
+      <span class="label-text mb-1">Loại lớp</span>
+      <%= select_tag "render_version[overlays][][type]", options_for_select([["Không dùng", ""], ["Chữ", "text"], ["Phụ đề", "subtitle"], ["Logo", "logo"]], overlay[:type]), class: "select select-bordered w-full" %>
+    </label>
+    <label class="form-control sm:col-span-2">
+      <span class="label-text mb-1">Nội dung chữ</span>
+      <%= text_field_tag "render_version[overlays][][text]", overlay[:text], maxlength: 300, class: "input input-bordered w-full" %>
+    </label>
+    <label class="form-control">
+      <span class="label-text mb-1">Bắt đầu (giây)</span>
+      <%= number_field_tag "render_version[overlays][][output_start_seconds]", overlay[:output_start_seconds] || 0, min: 0, step: 0.1, class: "input input-bordered w-full" %>
+    </label>
+    <label class="form-control">
+      <span class="label-text mb-1">Kết thúc (giây)</span>
+      <%= number_field_tag "render_version[overlays][][output_end_seconds]", overlay[:output_end_seconds], min: 0.1, step: 0.1, class: "input input-bordered w-full" %>
+    </label>
+    <label class="form-control">
+      <span class="label-text mb-1">X (0–1)</span>
+      <%= number_field_tag "render_version[overlays][][x]", overlay[:x] || 0.1, min: 0, max: 1, step: 0.01, class: "input input-bordered w-full" %>
+    </label>
+    <label class="form-control">
+      <span class="label-text mb-1">Y (0–1)</span>
+      <%= number_field_tag "render_version[overlays][][y]", overlay[:y] || 0.8, min: 0, max: 1, step: 0.01, class: "input input-bordered w-full" %>
+    </label>
+    <label class="form-control">
+      <span class="label-text mb-1">Rộng (0–1)</span>
+      <%= number_field_tag "render_version[overlays][][width]", overlay[:width] || 0.8, min: 0.01, max: 1, step: 0.01, class: "input input-bordered w-full" %>
+    </label>
+    <label class="form-control">
+      <span class="label-text mb-1">Cao (0–1)</span>
+      <%= number_field_tag "render_version[overlays][][height]", overlay[:height] || 0.1, min: 0.01, max: 1, step: 0.01, class: "input input-bordered w-full" %>
+    </label>
+    <label class="form-control">
+      <span class="label-text mb-1">Độ mờ (0–1)</span>
+      <%= number_field_tag "render_version[overlays][][opacity]", overlay[:opacity] || 1, min: 0, max: 1, step: 0.1, class: "input input-bordered w-full" %>
+    </label>
+    <label class="form-control sm:col-span-2">
+      <span class="label-text mb-1">Ảnh logo trong project</span>
+      <%= select_tag "render_version[overlays][][project_media_asset_id]", options_for_select(@project_media_assets.map { |asset| [asset.file.filename.to_s, asset.id] }, overlay[:project_media_asset_id]), include_blank: "Chọn ảnh", class: "select select-bordered w-full" %>
+    </label>
+  </div>
+</fieldset>

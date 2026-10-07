@@ -25,11 +25,14 @@ existing development database contains legacy POC tables and was left unchanged;
 migrations intentionally do not convert that legacy schema.
 
 The active product contract remains
-../../openspec/changes/affihub-mvp-video-workflow/. The project and local-source screens are now
-implemented through `VideoProjectsController` and `SourceAssetsController`, with resource-scoped
-Services and ERB templates. Local MP4/MOV uploads enqueue `SourceAssets::InspectJob`; the source
-page displays the saved processing state, verified media metadata, and an inline preview once the
-inspection succeeds. Editor, render, and external integration screens remain in progress.
+../../openspec/changes/affihub-mvp-video-workflow/. Project and local-source screens are implemented
+through `VideoProjectsController` and `SourceAssetsController`, with resource-scoped Services and
+ERB templates. Local MP4/MOV uploads enqueue `SourceAssets::InspectJob`; the source page displays
+the saved processing state, verified media metadata, and an inline preview once inspection
+succeeds. `RenderVersionsController` and its Services provide the source-scoped editor, queued
+render creation, render history/detail, timecode frame comparison, and local MP4 download. The
+editor uses installed daisyUI components for its form and status UI, with Stimulus only for adding
+and removing timeline/overlay/delogo rows. External integration screens remain in progress.
 
 ## Product requirements and references
 
@@ -45,18 +48,18 @@ inspection succeeds. Editor, render, and external integration screens remain in 
 | Path | Purpose |
 |---|---|
 | app/controllers/application_controller.rb, main_controller.rb, api_controller.rb | Rails controller base classes |
-| app/controllers/dashboard_controller.rb, video_projects_controller.rb, source_assets_controller.rb | Dashboard redirect and local project/source HTTP actions |
+| app/controllers/dashboard_controller.rb, video_projects_controller.rb, source_assets_controller.rb, render_versions_controller.rb | Dashboard redirect and local project/source/editor/render HTTP actions |
 | app/controllers/concerns/ | Shared HTML/JSON response concerns |
 | app/forms/main_form.rb, app/operations/main_operation.rb, app/serializers/ | Generated HMVC scaffold |
 | app/models/application_record.rb, video_project.rb, source_asset.rb, render_version.rb | Active Record base and initial video domain |
 | app/jobs/application_job.rb | Active Job base class |
-| app/services/video_projects/, app/services/source_assets/ | Project workflows, local import, and source inspection |
-| app/helpers/workflow_status_helper.rb, app/views/video_projects/, app/views/source_assets/ | Vietnamese status labels and project/source pages |
+| app/services/video_projects/, app/services/source_assets/, app/services/render_versions/ | Project workflows, local import/source inspection, render editing, frame comparison, and export |
+| app/helpers/workflow_status_helper.rb, app/views/video_projects/, app/views/source_assets/, app/views/render_versions/ | Vietnamese status labels and project/source/editor/render pages |
 | app/views/layouts/, app/views/pwa/ | Default Rails layouts and PWA templates |
 | app/assets/, app/javascript/ | Tailwind/daisyUI and importmap scaffold |
 | config/routes.rb | Rails health check, dashboard root, and resource routes from the active change |
 | config/application.rb, config/database.yml, config/rails_hmvc.yml | Rails, PostgreSQL, Solid Queue, and HMVC configuration |
-| spec/boot_spec.rb, spec/models/, spec/factories/, spec/rails_helper.rb, spec/spec_helper.rb, spec/support/ | RSpec domain coverage, factories, and test-support setup |
+| spec/boot_spec.rb, spec/models/, spec/requests/, spec/services/, spec/system/, spec/factories/, spec/rails_helper.rb, spec/spec_helper.rb, spec/support/ | RSpec domain, request, service, and stable editor-interaction coverage |
 | Gemfile, Gemfile.lock, package.json, package-lock.json | Rails, test, and Tailwind dependencies |
 
 The active design maps routes to controller/actions and ERB templates in

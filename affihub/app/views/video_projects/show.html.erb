@@ -33,7 +33,7 @@
   <section class="space-y-4" aria-labelledby="source-assets-heading">
     <div class="flex items-center justify-between gap-3">
       <div>
-        <h2 id="source-assets-heading" class="text-xl font-bold">Source video</h2>
+        <h2 id="source-assets-heading" class="text-xl font-bold">Nguồn video</h2>
         <p class="text-sm text-base-content/60"><%= @source_assets.length %> nguồn</p>
       </div>
       <% if @source_assets.any? %>
@@ -55,6 +55,9 @@
               </div>
               <div class="card-actions justify-end">
                 <%= link_to "Chi tiết", video_project_source_asset_path(@video_project, source_asset), class: "btn btn-outline btn-sm" %>
+                <% if source_asset.ready? %>
+                  <%= link_to "Biên tập", new_video_project_render_version_path(@video_project, source_asset_id: source_asset.id), class: "btn btn-primary btn-sm" %>
+                <% end %>
               </div>
             </div>
           </article>
@@ -81,7 +84,10 @@
                 <h3 class="font-semibold">Version <%= render_version.version_number %></h3>
                 <p class="text-sm text-base-content/60"><%= l(render_version.created_at, format: :short) %></p>
               </div>
-              <%= workflow_status_badge(render_version.status, resource: "render_version") %>
+              <div class="flex items-center gap-2">
+                <%= workflow_status_badge(render_version.status, resource: "render_version") %>
+                <%= link_to "Xem", video_project_render_version_path(@video_project, render_version), class: "btn btn-outline btn-sm" %>
+              </div>
             </div>
           </article>
         <% end %>
