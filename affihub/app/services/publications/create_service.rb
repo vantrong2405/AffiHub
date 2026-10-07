@@ -1,13 +1,29 @@
 class Publications::CreateService < ApplicationService
+  # The immutable render version selected for draft creation.
+  # @return [RenderVersion]
+  attr_reader :render_version
+
+  # The report used to select eligible destinations.
+  # @return [PreflightReport]
+  attr_reader :preflight_report
+
+  # Created drafts for the selected destinations.
+  # @return [Array<Publication>]
   attr_reader :publications
 
-  # Initializes draft creation for the destinations covered by a preflight report.
+  # The project that owns the selected render.
+  # @return [VideoProject]
+  attr_reader :video_project
+
+  # Initializes draft creation for the destinations covered by a project's preflight report.
   #
+  # @param video_project_id [Integer] the project that owns the render
   # @param render_version_id [Integer] the immutable render version to publish
   # @param preflight_report_id [Integer] the report used to verify destination readiness
   # @param destination_captions [Hash] caption text keyed by social destination ID
   # @return [Publications::CreateService] the configured service
-  def initialize(render_version_id:, preflight_report_id:, destination_captions:)
+  def initialize(video_project_id:, render_version_id:, preflight_report_id:, destination_captions:)
+    @video_project_id = video_project_id
     @render_version_id = render_version_id
     @preflight_report_id = preflight_report_id
     @destination_captions = destination_captions.to_h.stringify_keys
@@ -19,6 +35,7 @@ class Publications::CreateService < ApplicationService
   #
   # @return [Boolean] whether at least one draft was created
   def call
+    return false unless step_load_video_project
     return false unless step_load_render_version
     return false unless step_load_preflight_report
     return false unless step_load_destinations
@@ -32,15 +49,20 @@ class Publications::CreateService < ApplicationService
 
   private
 
+  def step_load_video_project
+    @video_project = VideoProject.find(@video_project_id)
+    true
+  end
+
   def step_load_render_version
-    @render_version = RenderVersion.find_by(id: @render_version_id)
+    @render_version = video_project.render_versions.find_by(id: @render_version_id)
     return true if @render_version
 
     step_fail!("Không tìm thấy render version cần đăng.")
   end
 
   def step_load_preflight_report
-    @preflight_report = PreflightReport.find_by(id: @preflight_report_id)
+    @preflight_report = render_version.preflight_reports.find_by(id: @preflight_report_id)
     return step_fail!("Không tìm thấy báo cáo preflight.") unless @preflight_report
     return true if @preflight_report.render_version_id == @render_version.id
 

@@ -22,6 +22,7 @@ RSpec.describe Publications::ConfirmService, type: :service do
     end
     let(:service) do
       described_class.new(
+        video_project_id: publication.render_version.video_project_id,
         publication_id: publication.id,
         preflight_report_id: preflight_report.id
       )
@@ -82,6 +83,26 @@ RSpec.describe Publications::ConfirmService, type: :service do
 
         expect(service).not_to be_success
         expect(publication.reload.status).to eq("draft")
+      end
+    end
+
+    context "when a newer report blocks the destination" do
+      let!(:latest_preflight_report) do
+        create(
+          :preflight_report,
+          render_version:,
+          checked_destination_ids: [ social_destination.id ],
+          destination_results: { social_destination.id.to_s => { "status" => "blocked" } },
+          checked_at: 2.minutes.from_now
+        )
+      end
+
+      it "keeps the draft when confirmation uses an older ready report" do
+        service.call
+
+        expect(service).not_to be_success
+        expect(publication.reload.status).to eq("draft")
+        expect(WorkflowRun.where(workflowable: publication)).to be_empty
       end
     end
   end

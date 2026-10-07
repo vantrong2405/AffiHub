@@ -10,6 +10,7 @@ class VideoProject < ApplicationRecord
   has_many :ai_generations, inverse_of: :video_project, dependent: :restrict_with_error
   has_many :project_media_assets, inverse_of: :video_project, dependent: :restrict_with_error
   has_many :render_versions, inverse_of: :video_project, dependent: :restrict_with_error
+  has_many :publications, through: :render_versions
 
   scope :ordered_by_name, proc { order(:name, :id) }
 

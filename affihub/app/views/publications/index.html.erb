@@ -1,0 +1,47 @@
+<% content_for :title, "Bài đăng | #{@video_project.name}" %>
+
+<section class="mx-auto max-w-7xl space-y-6">
+  <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+    <div class="space-y-2">
+      <%= link_to "← #{@video_project.name}", video_project_path(@video_project), class: "link link-hover text-sm" %>
+      <div>
+        <h1 class="text-3xl font-bold">Bài đăng</h1>
+        <p class="mt-1 text-sm text-base-content/60">Mỗi Page có trạng thái và caption riêng.</p>
+      </div>
+    </div>
+    <%= link_to "Tạo bản đăng", new_video_project_publication_path(@video_project), class: "btn btn-primary w-full sm:w-auto" %>
+  </div>
+
+  <% if @publications.any? %>
+    <div class="grid gap-4 lg:grid-cols-2">
+      <% @publications.each do |publication| %>
+        <article class="card border border-base-300 bg-base-100 shadow-sm">
+          <div class="card-body gap-4">
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div class="min-w-0 space-y-1">
+                <h2 class="card-title"><%= publication.social_destination.name %></h2>
+                <p class="text-sm text-base-content/60">
+                  Version <%= publication.render_version.version_number %>
+                  · <%= l(publication.created_at, format: :short) %>
+                </p>
+              </div>
+              <%= workflow_status_badge(publication.status, resource: "publication") %>
+            </div>
+            <p class="line-clamp-3 whitespace-pre-line text-sm text-base-content/80"><%= publication.caption.presence || "Chưa có caption." %></p>
+            <div class="card-actions justify-end">
+              <%= link_to "Mở review", video_project_publication_path(@video_project, publication), class: "btn btn-outline btn-sm" %>
+            </div>
+          </div>
+        </article>
+      <% end %>
+    </div>
+  <% else %>
+    <div class="card border border-dashed border-base-300 bg-base-100">
+      <div class="card-body items-start">
+        <h2 class="card-title">Chưa có bài đăng</h2>
+        <p class="text-base-content/70">Chọn một báo cáo preflight đã đạt để tạo bản nháp theo từng Page.</p>
+        <%= link_to "Tạo bản đăng", new_video_project_publication_path(@video_project), class: "btn btn-primary" %>
+      </div>
+    </div>
+  <% end %>
+</section>

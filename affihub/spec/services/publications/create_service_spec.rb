@@ -28,6 +28,7 @@ RSpec.describe Publications::CreateService, type: :service do
     end
     let(:service) do
       described_class.new(
+        video_project_id: render_version.video_project_id,
         render_version_id: render_version.id,
         preflight_report_id: preflight_report.id,
         destination_captions:

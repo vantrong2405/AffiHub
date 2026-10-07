@@ -14,7 +14,11 @@ RSpec.describe Publications::UpdateService, type: :service do
     end
 
     it "updates the caption while keeping the draft render and destination" do
-      service = described_class.new(publication_id: publication.id, caption: "Caption đã sửa")
+      service = described_class.new(
+        video_project_id: render_version.video_project_id,
+        publication_id: publication.id,
+        caption: "Caption đã sửa"
+      )
 
       service.call
 
@@ -38,7 +42,11 @@ RSpec.describe Publications::UpdateService, type: :service do
       end
 
       it "returns failure and keeps the Publication unchanged" do
-        service = described_class.new(publication_id: publication.id, caption: "Caption đã sửa")
+        service = described_class.new(
+          video_project_id: render_version.video_project_id,
+          publication_id: publication.id,
+          caption: "Caption đã sửa"
+        )
 
         service.call
 

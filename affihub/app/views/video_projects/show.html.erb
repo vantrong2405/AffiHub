@@ -34,6 +34,16 @@
     <article class="card border border-base-300 bg-base-100">
       <div class="card-body justify-between gap-4 sm:flex-row sm:items-center">
         <div class="space-y-1">
+          <h2 class="card-title">Bài đăng</h2>
+          <p class="text-sm text-base-content/70">Xem caption, kiểm tra bản render và xác nhận từng Page riêng.</p>
+        </div>
+        <%= link_to "Mở bài đăng", video_project_publications_path(@video_project), class: "btn btn-outline w-full sm:w-auto" %>
+      </div>
+    </article>
+
+    <article class="card border border-base-300 bg-base-100">
+      <div class="card-body justify-between gap-4 sm:flex-row sm:items-center">
+        <div class="space-y-1">
           <h2 class="card-title">Đã có video?</h2>
           <p class="text-sm text-base-content/70">Nhập file MP4 hoặc MOV để kiểm tra metadata trong nền.</p>
         </div>

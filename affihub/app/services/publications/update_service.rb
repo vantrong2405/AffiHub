@@ -1,12 +1,18 @@
 class Publications::UpdateService < ApplicationService
+  # The project that owns the updated Publication.
+  # @return [VideoProject]
+  attr_reader :video_project
+
   attr_reader :publication
 
-  # Initializes a caption update for one draft Publication.
+  # Initializes a caption update for one draft Publication in a project.
   #
+  # @param video_project_id [Integer] the project that owns the Publication
   # @param publication_id [Integer] the draft to update
   # @param caption [String] the destination-specific caption
   # @return [Publications::UpdateService] the configured service
-  def initialize(publication_id:, caption:)
+  def initialize(video_project_id:, publication_id:, caption:)
+    @video_project_id = video_project_id
     @publication_id = publication_id
     @caption = caption
     super()
@@ -26,8 +32,8 @@ class Publications::UpdateService < ApplicationService
 
   def step_update_caption
     Publication.transaction do
-      @publication = Publication.lock.find_by(id: @publication_id)
-      return step_fail!("Không tìm thấy Publication.") unless publication
+      @video_project = VideoProject.find(@video_project_id)
+      @publication = video_project.publications.lock.find(@publication_id)
       return step_fail!("Chỉ được sửa caption khi Publication còn là bản nháp.") unless publication.draft?
       return true if publication.update(caption: @caption)
 

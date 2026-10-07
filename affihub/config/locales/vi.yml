@@ -66,3 +66,29 @@ vi:
         reauth_required: Cần kết nối lại
         revoked: Đã thu hồi
         unavailable: Không khả dụng
+      publication:
+        draft: Bản nháp
+        approved: Đã xác nhận
+        scheduled: Đã lên lịch
+        uploading: Đang tải video
+        processing: Đang xử lý
+        published: Đã đăng
+        failed: Đăng lỗi
+        outcome_unknown: Chưa rõ kết quả
+        manual_outcome_confirmed: Người vận hành xác nhận đã đăng
+        manual_outcome_not_occurred: Người vận hành xác nhận chưa đăng
+      workflow_run:
+        queued: Đang chờ xử lý
+        running: Đang chạy
+        reconciliation_required: Cần đối soát
+        outcome_unknown: Chưa rõ kết quả
+        completed: Hoàn tất
+        failed: Thất bại
+      outbound_attempt:
+        prepared: Đã chuẩn bị
+        submitting: Đang gửi yêu cầu
+        confirmed: Đã xác nhận
+        failed: Thất bại
+        outcome_unknown: Chưa rõ kết quả
+        manual_outcome_confirmed: Người vận hành xác nhận đã đăng
+        manual_outcome_not_occurred: Người vận hành xác nhận chưa đăng

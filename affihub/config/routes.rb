@@ -12,7 +12,12 @@ Rails.application.routes.draw do
     resources :ai_generations, only: %i[new create show edit update]
     resources :render_versions, only: %i[index new create show]
     resources :preflight_reports, only: %i[create show]
-    resources :publications, only: %i[index show new create edit update]
+    resources :publications, only: %i[index show new create update] do
+      member do
+        post :confirm
+        post :resolve_outcome
+      end
+    end
     resources :schedules, only: %i[index show new create edit update destroy]
     resources :drive_exports, only: %i[index show create]
     resources :sheet_syncs, only: %i[index show create]

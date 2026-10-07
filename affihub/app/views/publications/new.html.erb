@@ -1,0 +1,94 @@
+<% content_for :title, "Tạo bản đăng | #{@video_project.name}" %>
+
+<section class="mx-auto max-w-5xl space-y-6">
+  <div class="space-y-2">
+    <%= link_to "← Bài đăng", video_project_publications_path(@video_project), class: "link link-hover text-sm" %>
+    <div>
+      <h1 class="text-3xl font-bold">Tạo bản đăng</h1>
+      <p class="mt-1 text-sm text-base-content/60">Mỗi Page đã đạt preflight sẽ có một bản nháp và caption riêng.</p>
+    </div>
+  </div>
+
+  <%= form_with url: new_video_project_publication_path(@video_project), method: :get, class: "card border border-base-300 bg-base-100" do %>
+    <div class="card-body gap-4">
+      <label class="form-control w-full">
+        <span class="label-text mb-1">Báo cáo preflight</span>
+        <select name="preflight_report_id" class="select select-bordered w-full" required>
+          <option value="">Chọn báo cáo</option>
+          <% @preflight_reports.each do |preflight_report| %>
+            <option value="<%= preflight_report.id %>" <%= "selected" if preflight_report.id == @preflight_report&.id %>>
+              Version <%= preflight_report.render_version.version_number %> · <%= l(preflight_report.checked_at, format: :short) %>
+            </option>
+          <% end %>
+        </select>
+      </label>
+      <div class="card-actions justify-end">
+        <%= submit_tag "Xem destinations", class: "btn btn-outline w-full sm:w-auto" %>
+      </div>
+    </div>
+  <% end %>
+
+  <% if @preflight_reports.empty? %>
+    <div role="alert" class="alert alert-info">
+      <span>Project chưa có báo cáo preflight cho bản render sẵn sàng.</span>
+    </div>
+  <% elsif @preflight_report.present? %>
+    <div class="card border border-base-300 bg-base-100">
+      <div class="card-body gap-4">
+        <div>
+          <h2 class="card-title">Version <%= @render_version.version_number %></h2>
+          <p class="text-sm text-base-content/60">Kiểm tra lúc <%= l(@preflight_report.checked_at, format: :long) %></p>
+        </div>
+
+        <% if @blocked_social_destinations.any? %>
+          <div role="alert" class="alert alert-warning">
+            <span>Destination chưa đạt preflight sẽ không được thêm vào yêu cầu đăng.</span>
+          </div>
+          <ul class="list-inside list-disc text-sm text-base-content/70">
+            <% @blocked_social_destinations.each do |social_destination| %>
+              <li><%= social_destination.name %> · Chưa đạt</li>
+            <% end %>
+          </ul>
+        <% end %>
+
+        <% if @ready_social_destinations.any? %>
+          <%= form_with url: video_project_publications_path(@video_project), scope: :publication, class: "space-y-4" do %>
+            <%= hidden_field_tag "publication[render_version_id]", @render_version.id %>
+            <%= hidden_field_tag "publication[preflight_report_id]", @preflight_report.id %>
+            <div class="grid gap-4 md:grid-cols-2">
+              <% @ready_social_destinations.each do |social_destination| %>
+                <article class="card border border-base-300 bg-base-200">
+                  <div class="card-body gap-3">
+                    <label class="flex items-center gap-3">
+                      <%= check_box_tag "publication[destination_ids][]", social_destination.id, true, class: "checkbox checkbox-primary" %>
+                      <span class="min-w-0">
+                        <span class="block font-semibold"><%= social_destination.name %></span>
+                        <span class="block text-sm text-base-content/60"><%= social_destination.social_connection.name %></span>
+                      </span>
+                      <span class="badge badge-success ml-auto">Sẵn sàng</span>
+                    </label>
+                    <label class="form-control w-full">
+                      <span class="label-text mb-1">Caption cho <%= social_destination.name %></span>
+                      <%= text_area_tag "publication[destination_captions][#{social_destination.id}]",
+                                        @publication_form.destination_captions.fetch(social_destination.id.to_s, ""),
+                                        rows: 4,
+                                        class: "textarea textarea-bordered w-full" %>
+                    </label>
+                  </div>
+                </article>
+              <% end %>
+            </div>
+            <div class="flex flex-col-reverse justify-end gap-3 sm:flex-row">
+              <%= link_to "Hủy", video_project_publications_path(@video_project), class: "btn btn-ghost w-full sm:w-auto" %>
+              <%= submit_tag "Tạo bản nháp", class: "btn btn-primary w-full sm:w-auto" %>
+            </div>
+          <% end %>
+        <% else %>
+          <div role="alert" class="alert alert-warning">
+            <span>Không có destination nào đạt preflight trong báo cáo này.</span>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+</section>

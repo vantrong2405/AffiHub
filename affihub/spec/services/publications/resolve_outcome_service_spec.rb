@@ -2,14 +2,24 @@ require "rails_helper"
 
 RSpec.describe Publications::ResolveOutcomeService, type: :service do
   describe "#call" do
-    let(:publication) { create(:publication, status: "outcome_unknown") }
+    before { ActiveJob::Base.queue_adapter.enqueued_jobs.clear }
+
+    let(:publication) do
+      create(
+        :publication,
+        status: "outcome_unknown",
+        platform_post_id: "video-1",
+        provider_reference: { "provider" => "facebook", "video_id" => "video-1" }
+      )
+    end
     let(:workflow_run) do
       create(
         :workflow_run,
         workflowable: publication,
         operation: "publication_publish",
         stage: "publish",
-        status: "outcome_unknown"
+        status: "outcome_unknown",
+        checkpoint: { "video_id" => "video-1", "upload_complete" => true, "finish_acknowledged" => true }
       )
     end
     let!(:outbound_attempt) do
@@ -23,6 +33,7 @@ RSpec.describe Publications::ResolveOutcomeService, type: :service do
     end
     let(:service) do
       described_class.new(
+        video_project_id: publication.render_version.video_project_id,
         publication_id: publication.id,
         decision: "unknown",
         evidence: "Trang Page chưa cập nhật",
@@ -45,6 +56,7 @@ RSpec.describe Publications::ResolveOutcomeService, type: :service do
     context "when the operator confirms that the post occurred" do
       let(:service) do
         described_class.new(
+          video_project_id: publication.render_version.video_project_id,
           publication_id: publication.id,
           decision: "occurred",
           evidence: "Đã kiểm tra bài trên Page",
@@ -59,6 +71,9 @@ RSpec.describe Publications::ResolveOutcomeService, type: :service do
         expect(service).to be_success
         expect(publication.reload.status).to eq("manual_outcome_confirmed")
         expect(publication.published_at).to be_nil
+        expect(publication.provider_reference).to include(
+          "manual_reference" => "https://facebook.com/reel/1"
+        )
         expect(workflow_run.reload.workflow_audit_events.sole.details).to eq(
           "decision" => "occurred",
           "evidence" => "Đã kiểm tra bài trên Page",
@@ -71,6 +86,7 @@ RSpec.describe Publications::ResolveOutcomeService, type: :service do
     context "when the operator confirms that the post did not occur" do
       let(:service) do
         described_class.new(
+          video_project_id: publication.render_version.video_project_id,
           publication_id: publication.id,
           decision: "not_occurred",
           evidence: "Đã kiểm tra và không thấy bài trên Page",
@@ -80,11 +96,14 @@ RSpec.describe Publications::ResolveOutcomeService, type: :service do
       end
 
       it "records the decision, audit event, and safe retry state" do
-        service.call
+        expect { service.call }.to have_enqueued_job(Publications::PublishJob).with(workflow_run.id)
 
         expect(service).to be_success
         expect(publication.reload.status).to eq("manual_outcome_not_occurred")
+        expect(publication.platform_post_id).to be_nil
+        expect(publication.provider_reference).to eq({})
         expect(workflow_run.reload.status).to eq("queued")
+        expect(workflow_run.checkpoint).to eq({})
         expect(workflow_run.workflow_audit_events.sole.details).to eq(
           "decision" => "not_occurred",
           "evidence" => "Đã kiểm tra và không thấy bài trên Page",
@@ -106,6 +125,7 @@ RSpec.describe Publications::ResolveOutcomeService, type: :service do
       end
       let(:service) do
         described_class.new(
+          video_project_id: publication.render_version.video_project_id,
           publication_id: publication.id,
           decision: "not_occurred",
           evidence: "Không tìm thấy bài trên Page",
