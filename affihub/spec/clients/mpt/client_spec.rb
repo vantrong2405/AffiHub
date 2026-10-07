@@ -1,0 +1,127 @@
+# frozen_string_literal: true
+
+require "rails_helper"
+
+RSpec.describe Mpt::Client, type: :service do
+  let(:client) { described_class.new }
+
+  describe "#generate_script" do
+    let(:script_inputs) do
+      {
+        video_subject: "Summer skincare",
+        video_language: "vi",
+        paragraph_number: 1,
+        video_script_prompt: "Write a friendly 30-second script.",
+        custom_system_prompt: ""
+      }
+    end
+    let(:script_request) do
+      stub_request(:post, "http://mpt.test/api/v1/scripts")
+        .with(
+          headers: { "x-api-key" => "affihub-test-key" },
+          body: {
+            "video_subject" => "Summer skincare",
+            "video_language" => "vi",
+            "paragraph_number" => 1,
+            "video_script_prompt" => "Write a friendly 30-second script.",
+            "custom_system_prompt" => ""
+          }
+        )
+        .to_return(status: 200, body: { status: 200, data: { video_script: "A summer story." } }.to_json)
+    end
+    subject(:script) { client.generate_script(**script_inputs) }
+
+    before { script_request }
+
+    it "returns the script from the authenticated MPT response" do
+      expect(script).to eq("video_script" => "A summer story.")
+      expect(script_request).to have_been_requested.once
+    end
+
+    context "when MPT responds with an HTTP error" do
+      let(:script_request) do
+        stub_request(:post, "http://mpt.test/api/v1/scripts")
+          .to_return(status: 500, body: "affihub-test-key provider-secret")
+      end
+
+      it "returns a sanitized provider error" do
+        expect { script }.to raise_error(described_class::Error, "http_500")
+      end
+    end
+  end
+
+  describe "#generate_terms" do
+    let(:terms_inputs) do
+      {
+        video_subject: "Summer skincare",
+        video_script: "A summer story.",
+        amount: 2,
+        match_materials_to_script: true
+      }
+    end
+    let(:terms_request) do
+      stub_request(:post, "http://mpt.test/api/v1/terms")
+        .with(
+          body: {
+            "video_subject" => "Summer skincare",
+            "video_script" => "A summer story.",
+            "amount" => 2,
+            "match_materials_to_script" => true
+          }
+        )
+        .to_return(
+          status: 200,
+          body: { status: 200, data: { video_terms: [ "sunny bathroom", "skincare bottle" ] } }.to_json
+        )
+    end
+
+    before { terms_request }
+    subject(:terms) { client.generate_terms(**terms_inputs) }
+
+    it "returns the generated scene terms from MPT" do
+      expect(terms).to eq("video_terms" => [ "sunny bathroom", "skincare bottle" ])
+      expect(terms_request).to have_been_requested.once
+    end
+  end
+
+  describe "#create_video" do
+    let(:video_request) do
+      stub_request(:post, "http://mpt.test/api/v1/videos")
+        .with(body: { "video_source" => "muapi" })
+        .to_return(status: 200, body: { status: 200, data: { task_id: "mpt-task-123" } }.to_json)
+    end
+
+    before { video_request }
+    subject(:response) { client.create_video(payload: { video_source: "muapi" }) }
+
+    it "returns the task ID from the MPT response" do
+      expect(response).to eq("task_id" => "mpt-task-123")
+      expect(video_request).to have_been_requested.once
+    end
+  end
+
+  describe "#task" do
+    let(:task_request) do
+      stub_request(:get, "http://mpt.test/api/v1/tasks/mpt-task-123")
+        .to_return(status: 200, body: { status: 200, data: task_result }.to_json)
+    end
+    let(:task_result) do
+      {
+        task_id: "mpt-task-123",
+        state: 1,
+        videos: [ "clip-1.mp4" ],
+        combined_videos: [ "combined.mp4" ],
+        audio_file: "audio.wav",
+        subtitle_path: "subtitle.srt"
+      }
+    end
+
+    before { task_request }
+    subject(:task) { client.task(task_id: "mpt-task-123") }
+
+    it "returns task state and every generated output reference" do
+      expect(task).to eq(task_result.stringify_keys)
+      expect(task_request).to have_been_requested.once
+    end
+  end
+end
