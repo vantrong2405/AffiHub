@@ -25,16 +25,16 @@ rules:
     - "Mỗi task code tính năng phải tách thành 2 bước con: (1) viết RSpec spec mô tả behavior mong muốn, chạy failing; (2) viết code tối thiểu để spec pass, rồi refactor"
     - >-
       RSpec của AffiHub: require rails_helper, khai báo type, mirror source path cho class/file spec
-      và dùng FactoryBot để build/create record. Một file spec hoặc describe có thể chứa nhiều example,
-      nhưng mỗi it chỉ đại diện một case: một bộ precondition, một action và một behavior/outcome kỳ
-      vọng. Mỗi input, branch, scenario hoặc outcome độc lập phải có it riêng, kể cả khi dùng chung
-      setup/action; không gộp các case độc lập vào cùng một it. Một case có thể có nhiều expectation
-      nếu chúng cùng xác nhận kết quả và side effect trực tiếp của chính case đó; không tách case đó
-      thành nhiều it chỉ để kiểm tra từng assertion/field. Mỗi case phải có it tường minh; không sinh
-      examples bằng loop/case table và không dùng shared_examples để che các case riêng. Chia sẻ setup
-      bằng let/before trong context gần nhất, nhưng giữ mỗi case, action và kết quả kỳ vọng hiện rõ
-      trong it riêng. Example tập trung, dễ đọc, không có giới hạn số dòng cứng; description nêu behavior
-      bằng động từ chính xác như returns/raises/redirects/enqueues, không bắt buộc mở đầu bằng returns.
+      và dùng FactoryBot để build/create record. Mỗi it là một case hoàn chỉnh: một bộ precondition,
+      một action và một behavior/outcome kỳ vọng. Mỗi input, branch, scenario hoặc outcome độc lập
+      phải có it riêng, kể cả khi dùng chung setup/action; tuyệt đối không gộp nhiều case vào một it.
+      Chỉ giữ trong it các expectation cần để xác nhận case đó và kết quả trực tiếp của nó; nếu một
+      example đang kiểm tra nhiều behavior độc lập thì tách thành các it riêng. Không tách một case
+      thành nhiều it chỉ để kiểm tra từng field. Mỗi case phải có it tường minh; không sinh examples
+      bằng loop/case table và không dùng shared_examples để che các case riêng. Chia sẻ setup bằng
+      let/before trong context gần nhất, nhưng giữ từng case, action và outcome rõ ngay trong it riêng.
+      Example tập trung, dễ đọc, không có giới hạn số dòng cứng; description nêu behavior bằng động từ
+      chính xác như returns/raises/redirects/enqueues, không bắt buộc mở đầu bằng returns.
       Dùng described_class, tên biến domain đơn giản và nhất quán, eq cho kết quả xác định; không mock
       private/internal implementation; không viết view spec hoặc assertion riêng cho visual style. Không
       dùng Ruby lambda syntax (-> hoặc lambda).
