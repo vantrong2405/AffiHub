@@ -29,9 +29,9 @@
 - [x] 3.6 Viết RSpec cho render version bất biến, profile MP4 H.264/AAC 1080×1920 30 fps và local export không tạo Publication; xác nhận đỏ.
 - [x] 3.7 Implement render version/export; render lại tạo version mới và lỗi worker giữ nguyên source/version cũ. Kiểm chứng: RSpec xanh và kiểm tra hai file version khác nhau sau lần render lại.
 - [x] 3.8 Viết RSpec cho frame comparison lấy mẫu theo timecode, frame nguồn/render và timestamp; xác nhận lỗi khi không thể tạo frame hoặc timecode ngoài duration trước khi làm UI.
-- [ ] 3.9.1 Viết Service/request specs riêng cho chọn source, tạo render version, xem render/frame comparison, timecode hợp lệ/ngoài duration và tải file; viết system specs cho các điều khiển có behavior ổn định. Mỗi `it` là một case riêng; xác nhận đỏ trước implementation UI.
-- [ ] 3.9.2 Gọi `ui-ux` và triển khai editor, preview nguồn/render, timeline, frame comparison và tải MP4 theo layout trong `design.md`; không viết view specs hoặc RSpec chỉ để assert markup/style.
-- [ ] 3.9.3 Chạy specs liên quan và browser review luồng editor → render → tải MP4 trên desktop/mobile, gồm preview ở 1×/2×, timecode và overlay; chỉ đánh dấu hoàn tất khi các trạng thái và thao tác hiển thị đúng.
+- [x] 3.9.1 Viết Service/request specs riêng cho chọn source, tạo render version, xem render/frame comparison, timecode hợp lệ/ngoài duration và tải file; viết system specs cho các điều khiển có behavior ổn định. Mỗi `it` là một case riêng; xác nhận đỏ trước implementation UI.
+- [x] 3.9.2 Gọi `ui-ux` và triển khai editor, preview nguồn/render, timeline, frame comparison và tải MP4 theo layout trong `design.md`; không viết view specs hoặc RSpec chỉ để assert markup/style.
+- [x] 3.9.3 Chạy specs liên quan và browser review luồng editor → render → tải MP4 trên desktop/mobile, gồm preview ở 1×/2×, timecode và overlay; chỉ đánh dấu hoàn tất khi các trạng thái và thao tác hiển thị đúng.
 
 ## 4. Tạo video AI, cost gate và TTS
 
