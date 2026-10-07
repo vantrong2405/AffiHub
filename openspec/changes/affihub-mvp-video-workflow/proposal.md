@@ -18,7 +18,7 @@
 
 ### New Capabilities
 
-- `01-video-source-ingestion`: Import file local, tải URL nền theo route phù hợp với nền tảng (`yt-dlp` best-effort ngoài YouTube; YouTube chỉ dùng route được chấp thuận), discovery qua API chính thức khi có, provenance, `ffprobe`, giới hạn tải và fallback thủ công.
+- `01-video-source-ingestion`: Import file local, tải URL nền bằng `yt-dlp` best-effort cho các nguồn được cấu hình, kể cả YouTube; dùng API chính thức để tìm metadata khi có, rồi chỉ tải media sau khi người dùng chọn kết quả. Giữ provenance, `ffprobe`, giới hạn tải và fallback import thủ công.
 - `02-ai-video-generation`: Pipeline MoneyPrinterTurbo cho script, scene prompts, báo giá, xác nhận chi phí, tạo clip/TTS/subtitle và đối soát job chưa rõ kết quả.
 - `03-video-editing-rendering`: Editor timeline dùng chung cho mọi nguồn, preview/so sánh, thao tác FFmpeg, local export và `RenderVersion` bất biến.
 - `04-media-preflight`: Một lượt audit không phá huỷ cho source, render, đích đăng, connector, worker và integration đang bật; trả trạng thái, lý do và bước khắc phục.

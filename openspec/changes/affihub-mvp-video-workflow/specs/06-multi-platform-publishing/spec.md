@@ -53,6 +53,44 @@ AffiHub MUST chuyển request publish timeout sang `OutcomeUnknown`, đối soá
 - **WHEN** API không thể xác định kết quả và người dùng ghi nhận bằng chứng kiểm tra bên ngoài
 - **THEN** AffiHub lưu `ManualOutcomeConfirmed` riêng, không tự chuyển trạng thái thành `Published`
 
+### Requirement: Lưu draft riêng và xác nhận trước khi publish
+AffiHub MUST lưu một Publication `draft` cho mỗi destination đạt preflight mà chưa gọi provider; chỉ sau khi người dùng duyệt đúng render/caption/destination và xác nhận rõ ràng mới bắt đầu external publish attempt.
+
+#### Scenario: Lưu draft cho nhiều destination
+- **WHEN** người dùng chọn nhiều destination đạt preflight và lưu nội dung đã duyệt
+- **THEN** AffiHub lưu một Publication `draft` riêng cho từng destination, cùng render version/caption tương ứng và chưa tạo external side effect
+
+#### Scenario: Sửa caption draft
+- **WHEN** người dùng sửa caption khi Publication còn `draft`
+- **THEN** AffiHub lưu caption mới và giữ nguyên render version/destination
+
+#### Scenario: Xác nhận publish
+- **WHEN** người dùng xem đúng render preview, caption và destination của một Publication `draft` rồi xác nhận đăng
+- **THEN** AffiHub bắt đầu workflow publish cho đúng Publication đó và khóa sửa caption/render version/destination sau khi external attempt bắt đầu
+
+#### Scenario: Có destination bị chặn
+- **WHEN** một destination được chọn có preflight `Chặn`
+- **THEN** AffiHub không tạo external publish attempt cho destination đó nhưng vẫn cho lưu/xác nhận Publication của destination độc lập đã đạt
+
+#### Scenario: Readiness thay đổi trước khi xác nhận
+- **WHEN** người dùng xác nhận một draft nhưng destination không còn đạt điều kiện publish hiện tại
+- **THEN** AffiHub không bắt đầu external attempt, hiển thị điều kiện đã đổi và yêu cầu preflight lại
+
+#### Scenario: Sửa sau khi gửi hoặc khi kết quả chưa rõ
+- **WHEN** Publication đã bắt đầu external attempt hoặc ở `OutcomeUnknown`
+- **THEN** AffiHub không cho sửa caption/render version/destination của Publication đó và hướng người dùng theo dõi hoặc đối soát kết quả
+
+### Requirement: Hiển thị OutcomeUnknown như kết quả chưa được giải quyết
+Giao diện Publication MUST phân biệt `OutcomeUnknown` với thành công/thất bại, không gửi lại cùng Publication khi chưa đối soát và không coi xác nhận thủ công là `Published`.
+
+#### Scenario: Mở Publication có kết quả chưa rõ
+- **WHEN** người dùng xem Publication ở `OutcomeUnknown`
+- **THEN** AffiHub nêu trạng thái chưa rõ, hướng đối soát và không cung cấp thao tác gửi lại Publication đó
+
+#### Scenario: Ghi nhận bằng chứng kiểm tra bên ngoài
+- **WHEN** người dùng xác minh kết quả bên ngoài và gửi bằng chứng theo luồng cập nhật
+- **THEN** AffiHub ghi `ManualOutcomeConfirmed` riêng; `Published` chỉ được đặt khi có xác nhận cuối từ provider
+
 ### Requirement: Dùng protocol media transfer riêng từng platform
 AffiHub MUST upload đúng Render Version bằng workflow chính thức của từng platform, lưu checkpoint sau mỗi bước remote và polling/reconciliation tới trạng thái cuối.
 

@@ -6,9 +6,11 @@ context: |
   identifier kỹ thuật, tên repo reference, API field name.
   Code (Ruby, RSpec, view, config) luôn viết bằng tiếng Anh — chỉ artifact
   spec/docs mới dùng tiếng Việt.
-  Mỗi feature phải có RSpec spec viết TRƯỚC khi code implementation
-  (TDD, red-green-refactor) — tasks.md phải liệt kê bước viết spec trước
-  bước viết code cho từng task triển khai tính năng.
+  Mỗi thay đổi làm đổi behavior phải có spec phù hợp với layer, viết TRƯỚC khi code
+  implementation (TDD, red-green-refactor) — tasks.md phải liệt kê bước viết spec trước bước viết
+  code. Không viết RSpec view spec hoặc spec chỉ để kiểm tra template/style. Với UI, dùng system spec
+  cho interaction behavior ổn định và browser evidence cho thay đổi presentation-only. Request spec
+  kiểm tra HTTP/persistence, không khóa rendered markup, CSS class hay DOM structure.
 
 rules:
   proposal:
@@ -21,14 +23,17 @@ rules:
   tasks:
     - Viết bằng tiếng Việt, giữ thuật ngữ kỹ thuật bằng tiếng Anh
     - "Mỗi task code tính năng phải tách thành 2 bước con: (1) viết RSpec spec mô tả behavior mong muốn, chạy failing; (2) viết code tối thiểu để spec pass, rồi refactor"
-    - "Task nào liên quan UI/view (wireframe, layout, component, style) phải dùng skill `ui-ux` (evondevkit) để quyết định bố cục/component/token màu — không tự bịa CSS/layout riêng ngoài skill đó"
+    - "RSpec của AffiHub: require rails_helper, khai báo type, path spec mirror source, FactoryBot cho record, một behavior mỗi example dưới 15 dòng, description bắt đầu bằng returns, eq cho expected output xác định, không mock nội bộ; không viết view spec hoặc assertion riêng cho visual style"
+    - "AffiHub dùng Faker, DatabaseCleaner, Shoulda-Matchers và SimpleCov theo Gemfile/CLAUDE.md; dùng FactoryBot cho record, DatabaseCleaner cho cleanup, Shoulda-Matchers cho contract Rails phù hợp, SimpleCov line/branch report không tự đặt minimum threshold"
+    - "Task tạo màn hình mới hoặc thay đổi đáng kể user flow/layout phải dùng skill `ui-ux` (evondevkit) để quyết định bố cục/component/token màu; partial và sửa nhỏ kế thừa thiết kế đã duyệt, không cần lặp lại toàn bộ bài wireframe"
     - "Task tích hợp API bên thứ ba phải đọc source thật của repo tham khảo và tài liệu API chính thức trước khi code; URL/endpoint/version/ID/timeout/config đưa vào YAML và load bằng `Rails.application.config_for`; mọi network call trong mỗi Client dùng chung một private HTTP request method; giá trị cấu hình truy cập qua `CONFIG` hoặc named constants, không hard-code rải rác"
 
 operations:
   apply:
     guidance:
       - "Với mỗi task triển khai tính năng: viết spec RSpec thất bại trước, sau đó mới viết code hiện thực, không viết code trước spec"
-      - "Trước khi implement bất kỳ view/partial/component nào, gọi skill `ui-ux` (evondevkit) để lấy wireframe/layout/token màu — không tự thiết kế UI tuỳ ý ngoài skill đó"
+      - "Trước khi tạo màn hình mới hoặc thay đổi đáng kể user flow/layout, gọi skill `ui-ux` (evondevkit) để lấy wireframe/layout/token màu; partial và sửa nhỏ kế thừa thiết kế đã duyệt"
+      - "Không viết RSpec view spec hoặc spec chỉ để assertion visual style; presentation-only dùng browser evidence, còn interaction behavior ổn định có thể kiểm tra bằng Capybara system spec"
       - "Với API bên thứ ba, đọc source thật của repo tham khảo + tài liệu API chính thức; dùng YAML/config_for cho endpoint và giá trị cấu hình; một private HTTP request method chung cho mọi request trong Client; không hard-code literal rải rác"
       - Tóm tắt kết quả test bằng tiếng Việt, ngắn gọn
   archive:

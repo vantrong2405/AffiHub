@@ -104,3 +104,14 @@ Audit MUST hiển thị bộ đếm call `search.list`/`videos.insert` do AffiHu
 #### Scenario: YouTube quota hết
 - **WHEN** call tiếp theo thuộc bucket đã hết quota theo limit hiện hành
 - **THEN** AffiHub chặn riêng operation YouTube đó, ghi lỗi quota và giữ import/edit/export cùng connector khác hoạt động
+
+### Requirement: Gắn báo cáo preflight với render và destination đã kiểm tra
+Mỗi `PreflightReport` dùng để publish MUST tham chiếu đúng một `RenderVersion` và ghi lại tập destination đã kiểm tra; report chỉ cho phép tiếp tục với đúng version và destination đó.
+
+#### Scenario: Tiếp tục từ báo cáo còn hiệu lực
+- **WHEN** người dùng mở bước tạo Publication từ một báo cáo preflight
+- **THEN** AffiHub giữ nguyên `RenderVersion` và các destination trong phạm vi báo cáo
+
+#### Scenario: Thay render hoặc destination
+- **WHEN** người dùng chọn render version khác hoặc thêm destination chưa có trong báo cáo
+- **THEN** AffiHub yêu cầu tạo preflight mới cho phạm vi đã đổi trước khi cho tạo Publication

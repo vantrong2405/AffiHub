@@ -34,9 +34,11 @@ MPT và VieNeu-TTS là service/runtime riêng, không cài Python dependency và
 
 ### 3. Dùng pipeline media chung và render version bất biến
 
-Mọi đầu vào tạo source có provenance rồi qua kiểm tra media trước khi mở editor. YouTube media chỉ qua route được YouTube chấp thuận; file do chủ dự án xuất từ Studio/Takeout có provenance riêng, còn URL chỉ giữ để attribution. Discovery dùng `search.list` cho keyword và `videos.list(chart=mostPopular)` cho chart theo region/category, hiển thị đúng nhãn và không gọi chart là keyword search/trending tổng quát; metadata có attribution và không tự đi vào downloader. URL download chỉ chấp nhận HTTPS và host/route allowlist; resolver, mọi redirect hop và IP được kiểm tra lại để chặn loopback, private, link-local, reserved và metadata endpoints. Downloader chỉ bật protocol cần thiết, có giới hạn tải và worker egress bị giới hạn; nguồn không tải được có fallback import local.
+Mọi đầu vào tạo source có provenance rồi qua kiểm tra media trước khi mở editor. Import MP4/MOV local được xác thực chữ ký container cùng MIME khai báo (cho phép `application/octet-stream` khi chữ ký xác nhận định dạng) và bị giới hạn mặc định 1 GiB qua `video_workflow.yml` (`limits.source_file_max_bytes`). `SourceAssets::InspectJob` lấy file từ Active Storage, gọi `ffprobe` bằng argv tách biệt với timeout cấu hình, rồi lưu metadata media có cấu trúc vào `SourceAsset.media_metadata`; lỗi inspection giữ attachment/provenance nhưng để source ở `failed`. Job này là nguồn metadata duy nhất cho source video, nên analyzer video mặc định của Active Storage bị tắt để tránh chạy một probe thứ hai không có giới hạn thời gian. Tên file và path do client gửi không được ghép vào shell command. URL từ nguồn/host được cấu hình, kể cả YouTube, được thử tải bằng `yt-dlp` trong worker sau khi người dùng thấy cảnh báo quyền sử dụng và Điều khoản dịch vụ; file do chủ dự án xuất từ Studio/Takeout vẫn được import trực tiếp và giữ provenance riêng, không đi qua downloader. Discovery chỉ dùng endpoint chính thức để tìm metadata: `search.list` cho keyword và `videos.list(chart=mostPopular)` cho chart theo region/category, hiển thị đúng nhãn và không gọi chart là keyword search/trending tổng quát. Khi người dùng chọn kết quả, URL video kèm attribution mới được chuyển cho `yt-dlp`; không dùng downloader để tìm kiếm hoặc scrape feed. URL download chỉ chấp nhận HTTPS và host allowlist; resolver, mọi redirect hop và IP được kiểm tra lại để chặn loopback, private, link-local, reserved và metadata endpoints. Downloader chỉ bật protocol cần thiết, có giới hạn tải và worker egress bị giới hạn; lỗi tải có fallback import local.
 
-Editor giữ nguyên file source. Cấu hình chỉnh sửa được áp vào FFmpeg worker; render tạo version mới, bất biến. `Publication` và Drive export tham chiếu đúng version, nên render lại không thể đổi ngược nội dung đã dùng. MVP local import chỉ dừng ở local export; nó không tạo external connection giả, platform ID hay permalink.
+Editor giữ nguyên file source. Cấu hình chỉnh sửa được áp vào FFmpeg worker; render tạo version mới, bất biến, với `version_number` tăng đơn điệu và duy nhất trong mỗi source. `Publication` và Drive export tham chiếu đúng version, nên render lại không thể đổi ngược nội dung đã dùng. MVP local import chỉ dừng ở local export; nó không tạo external connection giả, platform ID hay permalink.
+
+`RenderVersion.edit_config` dùng JSON schema phiên bản 1 với đúng các key `schema_version`, `segments`, `canvas`, `filters`, `overlays`, `delogo_regions`; mỗi section có cấu trúc, giá trị và miền tọa độ được quy định trong spec delta. Mảng segments/overlays/delogo có giới hạn cấu hình; text overlay dùng `drawtext` đọc nội dung qua file tạm và worker image có font Noto Sans. Segment theo thứ tự output hỗ trợ time range, speed 1×/2× và audio keep/mute; canvas fit/crop có nền blur/màu/ảnh/video; filters brightness/contrast; text/subtitle/logo overlay dùng output time range và tọa độ normalized; delogo dùng pixel source trước crop/scale. Segment/overlay bị ràng buộc với duration và kích thước nguồn/canvas. Video nền tham chiếu `SourceAsset` ready cùng project, được trim hoặc lặp để khớp duration output. Ảnh nền/logo tham chiếu `ProjectMediaAsset` cùng project; model này chỉ nhận PNG/JPEG/WebP, tối đa mặc định 20 MiB qua `limits.project_media_asset_max_bytes`. Bỏ vùng `delogo` tạo RenderVersion mới, không sửa source hoặc version cũ. FFmpeg worker gọi argv tách biệt, tối đa 2 thread qua `media.ffmpeg_threads` và timeout mặc định 1800 giây qua `media.ffmpeg_timeout_seconds`; lỗi/timeout đánh dấu version hiện tại thất bại, ghi diagnostic không lộ path nội bộ, và giữ file source/version cũ.
 
 ### 4. Triển khai connector cụ thể trước khi rút ra interface chung
 
@@ -58,11 +60,117 @@ Telegram là kênh quan sát và emergency control. Bot command validate `chat_i
 
 ### 7. Controller gọi Service theo action; service sở hữu xử lý nghiệp vụ
 
-Controller chỉ nhận HTTP input và tạo response; controller gọi Service có tên theo hành động trong `app/services/`. Service gọi Form/Model và sở hữu persistence, business logic cùng I/O; không đặt `demo` trong namespace hoặc tên file code. HTML UI dùng ERB/Hotwire theo convention trong `affihub/CLAUDE.md`. Trước khi implement view, task phải chạy skill `ui-ux`. Mọi feature task tách RSpec behavior spec chạy đỏ trước code, sau đó code tối thiểu, chạy xanh và refactor. Mỗi subsystem được triển khai sau Porting Note đọc source tham khảo đã pin và tài liệu API chính thức; Postiz chỉ dùng đối chiếu ranh giới kiến trúc, không làm nguồn contract hoặc runtime dependency.
+Controller chỉ nhận HTTP input, gọi Service và chuyển kết quả sang HTTP response; không query/update Model hoặc xử lý business rule. Service có tên file/class rõ resource và action trong `app/services/`, ví dụ `VideoProjects::ImportService`. `#call` chỉ điều phối các private `step_*` theo thứ tự, không trả `self`; kết quả controller/view cần đọc được expose qua `attr_reader` sau khi gọi `call`. Query, điều kiện, persistence, mapping và lỗi nằm trong các step riêng. Spec của mỗi Service mirror source path. Không đặt `demo` trong namespace hoặc tên file code. HTML UI dùng ERB/Hotwire theo convention trong `affihub/CLAUDE.md`. Trước khi implement view, task phải chạy skill `ui-ux`. Mọi feature task tách RSpec behavior spec chạy đỏ trước code, sau đó code tối thiểu, chạy xanh và refactor. Mỗi subsystem được triển khai sau Porting Note đọc source tham khảo đã pin và tài liệu API chính thức; Postiz chỉ dùng đối chiếu ranh giới kiến trúc, không làm nguồn contract hoặc runtime dependency.
 
 ### 8. Dùng daisyUI làm thư viện component cho giao diện
 
 Giao diện Rails dùng ERB với Tailwind CSS 4 và daisyUI 5.7.47. Cài daisyUI dưới dạng npm dev dependency trong `affihub/package.json`, khóa phiên bản trong `package-lock.json`, rồi nạp plugin bằng `@plugin "daisyui"` tại `app/assets/tailwind/application.css` theo hướng dẫn chính thức của `tailwindcss-rails`. Dùng component `btn`, `card`, `file-input`, `alert`, `badge` và các component tương ứng trong view; Tailwind utility chỉ bổ sung bố cục, khoảng cách và responsive. Không tự dựng lại phần hiển thị mà daisyUI đã có, không thêm JavaScript cho hiệu ứng chỉ để thay component CSS hoặc control HTML gốc. Nghiệp vụ upload, lưu file, preview và export nằm ở Rails Service/model.
+
+### 9. Dùng resourceful routes và view theo controller/action
+
+AffiHub là Rails web app render HTML. `config/rails_hmvc.yml` hiện đang chọn `type: api`; trước khi generate controller/form cho màn hình sản phẩm, phải chuyển cấu hình sang `type: web`. Cấu hình HMVC API gồm năm action (`index`, `show`, `create`, `update`, `destroy`), còn cấu hình web gồm bảy action RESTful chuẩn (`index`, `show`, `new`, `create`, `edit`, `update`, `destroy`). Đây là hai action set cho hai loại ứng dụng khác nhau, không phải giới hạn chung rằng một Rails controller chỉ được có năm method. Mỗi resource chỉ khai báo các action cần dùng bằng `only:`. Xem [Rails Routing](https://guides.rubyonrails.org/v8.1/routing.html).
+
+Controller trang HTML kế thừa `MainController`; `ApiController` chỉ dùng cho JSON endpoint. Mỗi controller phụ trách một resource và chỉ có action RESTful chuẩn. Không thêm method `import`, `render`, `publish`, `connect` hoặc `reconcile` vào controller. Thể hiện command bằng `create`/`update` của resource tương ứng; ví dụ tạo `SourceAsset`, `RenderVersion`, `PreflightReport` hoặc `Publication`. Route lồng tối đa hai resource levels để URL và route helper giữ dễ đọc. `root`, Rails health check `/up`, và OAuth callback theo URL bắt buộc của provider là các ngoại lệ giao thức/hệ thống.
+
+```ruby
+root "dashboard#index"
+
+resources :video_projects, only: %i[index show new create edit update destroy] do
+  resources :source_discoveries, only: %i[new create show]
+  resources :source_assets, only: %i[index show new create destroy]
+  resources :project_media_assets, only: %i[create destroy]
+  resources :ai_generation_estimates, only: %i[create show]
+  resources :ai_generations, only: %i[new create show edit update]
+  resources :render_versions, only: %i[index new create show]
+  resources :preflight_reports, only: %i[create show]
+  resources :publications, only: %i[index show new create edit update]
+  resources :schedules, only: %i[index show new create edit update destroy]
+  resources :drive_exports, only: %i[index show create]
+  resources :sheet_syncs, only: %i[index show create]
+end
+
+resources :social_connections, only: %i[index show new create destroy] do
+  resources :social_destinations, only: %i[index show create update destroy]
+end
+
+resources :google_connections, only: %i[index show new create edit update destroy]
+resources :auto_reply_rules, only: %i[index show new create edit update destroy]
+resources :auto_reply_logs, only: %i[index show]
+
+get "/auth/:provider/callback",
+    to: "connection_callbacks#show",
+    as: :connection_callback
+```
+
+Tên controller/file khớp với route resource theo Rails naming: `VideoProjectsController` tại `app/controllers/video_projects_controller.rb`, `SourceAssetsController` tại `app/controllers/source_assets_controller.rb`, và tương tự cho từng resource. Action ghi dữ liệu gọi Service cùng resource/action, chẳng hạn `SourceAssets::CreateService`, `RenderVersions::CreateService`, `PreflightReports::CreateService` và `Publications::CreateService`. Read action lấy dữ liệu qua Service; controller chỉ gán kết quả cho view và trả HTTP response.
+
+Rails tự tìm view theo controller/action; ví dụ `VideoProjectsController#index` render `app/views/video_projects/index.html.erb`. Các trang HTML MVP dùng những template sau; `_form.html.erb` là partial được dùng lại cho trang `new`/`edit`:
+
+| Controller | Template HTML |
+|---|---|
+| `DashboardController` | `app/views/dashboard/index.html.erb` |
+| `VideoProjectsController` | `app/views/video_projects/index.html.erb`, `app/views/video_projects/show.html.erb`, `app/views/video_projects/new.html.erb`, `app/views/video_projects/edit.html.erb`, `app/views/video_projects/_form.html.erb` |
+| `SourceDiscoveriesController` | `app/views/source_discoveries/new.html.erb`, `app/views/source_discoveries/show.html.erb` |
+| `SourceAssetsController` | `app/views/source_assets/index.html.erb`, `app/views/source_assets/show.html.erb`, `app/views/source_assets/new.html.erb`, `app/views/source_assets/_form.html.erb` |
+| `AiGenerationEstimatesController` | `app/views/ai_generation_estimates/show.html.erb` |
+| `AiGenerationsController` | `app/views/ai_generations/new.html.erb`, `app/views/ai_generations/show.html.erb`, `app/views/ai_generations/edit.html.erb`, `app/views/ai_generations/_form.html.erb` |
+| `RenderVersionsController` | `app/views/render_versions/index.html.erb`, `app/views/render_versions/new.html.erb`, `app/views/render_versions/show.html.erb` |
+| `PreflightReportsController` | `app/views/preflight_reports/show.html.erb` |
+| `PublicationsController` | `app/views/publications/index.html.erb`, `app/views/publications/show.html.erb`, `app/views/publications/new.html.erb`, `app/views/publications/edit.html.erb`, `app/views/publications/_form.html.erb` |
+| `SchedulesController` | `app/views/schedules/index.html.erb`, `app/views/schedules/show.html.erb`, `app/views/schedules/new.html.erb`, `app/views/schedules/edit.html.erb`, `app/views/schedules/_form.html.erb` |
+| `SocialConnectionsController` | `app/views/social_connections/index.html.erb`, `app/views/social_connections/show.html.erb`, `app/views/social_connections/new.html.erb` |
+| `SocialDestinationsController` | `app/views/social_destinations/index.html.erb`, `app/views/social_destinations/show.html.erb` |
+| `GoogleConnectionsController` | `app/views/google_connections/index.html.erb`, `app/views/google_connections/show.html.erb`, `app/views/google_connections/new.html.erb`, `app/views/google_connections/edit.html.erb` |
+| `AutoReplyRulesController` | `app/views/auto_reply_rules/index.html.erb`, `app/views/auto_reply_rules/show.html.erb`, `app/views/auto_reply_rules/new.html.erb`, `app/views/auto_reply_rules/edit.html.erb`, `app/views/auto_reply_rules/_form.html.erb` |
+| `AutoReplyLogsController` | `app/views/auto_reply_logs/index.html.erb`, `app/views/auto_reply_logs/show.html.erb` |
+| `DriveExportsController` | `app/views/drive_exports/index.html.erb`, `app/views/drive_exports/show.html.erb` |
+| `SheetSyncsController` | `app/views/sheet_syncs/index.html.erb`, `app/views/sheet_syncs/show.html.erb` |
+
+`create`, `update` và `destroy` thường redirect sau khi thành công; khi validation thất bại, `create` render `new` và `update` render `edit` với lỗi. Không tạo template cho action chỉ redirect. View chỉ trình bày dữ liệu controller/service cung cấp, không query Model hoặc giữ business logic; route helpers được dùng thay URL viết cứng. Shared layout nằm ở `app/views/layouts/application.html.erb`, partial dùng chung ở `app/views/shared/`, còn component giao diện dùng daisyUI theo quyết định 8. Xem [Rails Layouts and Rendering](https://guides.rubyonrails.org/v8.1/layouts_and_rendering.html).
+
+### 10. Ánh xạ wireframe MVP vào resource routes
+
+Không tạo `EditorController` hoặc action tùy chỉnh. Luồng editor là form tạo một `RenderVersion` mới: `RenderVersions#new` nhận nguồn và cấu hình, `#create` lưu cấu hình rồi enqueue render, `#show` trình bày preview và so sánh source/render. `VideoProjects#show` là điểm vào project, liệt kê nguồn/version và dẫn tới resource tương ứng.
+
+| Màn hình | Resource/action | Template | Nội dung và thao tác chính |
+|---|---|---|---|
+| Danh sách/tạo project | `VideoProjects#index`, `new`, `create` | `video_projects/index.html.erb`, `new.html.erb`, `_form.html.erb` | Liệt kê theo tên/trạng thái; `new` yêu cầu tên project, tạo project và giữ lỗi validation trên form. |
+| Project workspace | `VideoProjects#show` | `video_projects/show.html.erb` | Hiển thị tiến độ, source/version hiện có; dẫn tới tạo `SourceAsset` hoặc `SourceDiscovery`. |
+| Import file hoặc URL | `SourceAssets#new`, `create`, `show` | `source_assets/new.html.erb`, `_form.html.erb`, `show.html.erb` | Hai lựa chọn trong cùng biểu mẫu; `create` enqueue kiểm tra nền; `show` hiển thị provenance, metadata và trạng thái xử lý. |
+| Tìm video | `SourceDiscoveries#new`, `create`, `show` | `source_discoveries/new.html.erb`, `show.html.erb` | Dùng endpoint chính thức để tìm metadata, hiển thị nguồn/kết quả và attribution. Khi người dùng chọn kết quả, gửi URL cùng metadata discovery tới `SourceAssets#create`; worker dùng `yt-dlp` best-effort để tải media, kể cả YouTube. Nếu tải lỗi, hiển thị lý do và hướng dẫn import file. Không dùng `yt-dlp` để tìm kiếm hoặc scrape feed. |
+| Editor/render | `RenderVersions#index`, `new`, `create`, `show` | `render_versions/index.html.erb`, `new.html.erb`, `show.html.erb` | `new` chọn source `ready` trong đúng project và cấu hình timeline/lớp hình; `create` tạo version bất biến; `show` phát preview và hiển thị dải khung source/render có timecode. |
+| Preflight | `PreflightReports#create`, `show` | `preflight_reports/show.html.erb` | Form trên trang render gửi đúng `render_version_id` và tập destination tới `create`; `show` trình bày readiness riêng theo destination và action tiếp tục. |
+| Duyệt và publish | `Publications#index`, `new`, `create`, `show`, `edit`, `update` | Các template tương ứng trong `publications/` và `_form.html.erb` | `new` nhận report/version, cho nhập caption từng destination; nút “Lưu bản nháp” tạo một Publication `draft` cho mỗi đích, chưa gọi provider. `show` là bước duyệt cuối với preview/caption/destination; “Xác nhận đăng” gửi `update` và mới bắt đầu provider workflow. `edit/update` chỉ sửa caption khi Publication còn `draft`. |
+
+Preflight report gắn với chính xác một `RenderVersion` và tập destination đã kiểm tra. Liên kết tiếp tục sang `Publications#new` giữ `preflight_report_id` cùng `render_version_id`; destination không có trong report hoặc report thuộc version khác phải chạy preflight mới. Caption được nhập sau preflight, nên không đổi media check. `Publications#create` lưu draft sau khi xác nhận report đúng phạm vi; khi người dùng xác nhận đăng qua `#update`, service kiểm tra lại readiness hiện tại trước khi enqueue. Nếu quyền, worker hoặc điều kiện destination không còn đạt, không gửi request và hướng người dùng chạy preflight lại.
+
+“Duyệt tay” là người dùng xem đúng preview/caption/destination rồi xác nhận từng Publication; lưu draft và sửa caption chưa tạo side effect. Xác nhận trên `Publications#show` gửi update qua `Publications#update`, rồi mới enqueue workflow provider. Khi external attempt bắt đầu, khóa caption, render version và destination của Publication đó. Chỉ phản hồi cuối của provider mới đặt `Published`. Nếu API không thể xác định kết quả, `Publications#show` hiển thị `OutcomeUnknown`, lý do và trạng thái đối soát; không đưa nút gửi lại cho cùng Publication. Khi người dùng xác minh bên ngoài và cung cấp bằng chứng qua `Publications#update`, ghi `ManualOutcomeConfirmed` riêng, không chuyển thành `Published`.
+
+Các màn hình dùng cùng shell tiếng Việt và component daisyUI (`card`, `badge`, `alert`, `button`, `input`, `textarea`, `file-input`, `tabs`, `steps`, `skeleton`, `progress`). Loading dùng skeleton hoặc trạng thái job thực tế; empty state có hành động tiếp theo trong resource đã khai báo; lỗi giữ dữ liệu biểu mẫu và chỉ retry thao tác an toàn. Trên mobile, điều hướng thu vào `drawer`, stepper cuộn ngang, danh sách thành card, caption/destination xếp dọc và CTA chính rộng toàn màn hình. Cấu hình nền tảng/giới hạn đọc từ YAML qua `Rails.application.config_for` chỉ hiển thị dạng thông tin, không có control sửa trong các màn hình MVP.
+
+### 11. Cấu hình status và migration khởi tạo sạch
+
+Các status và giá trị mặc định của `VideoProject`, `SourceAsset`, `RenderVersion` được khai báo tại `affihub/config/video_workflow.yml`. Model nạp enum map bằng `Rails.application.config_for(:video_workflow)`; không lặp danh sách status trong code model. Chỉ thêm transition khi behavior đó được yêu cầu trong spec. Migration lưu status dưới dạng chuỗi không-null và dùng default ở model lấy từ YAML.
+
+Schema domain của change này được tạo như một ứng dụng mới bằng Rails migration DSL. Không dùng SQL raw, nhánh `table_exists?` hoặc chuyển đổi schema POC cũ trong migration khởi tạo. Dữ liệu local POC cũ được giữ nguyên; migration tương thích chỉ được làm trong task riêng có spec và kế hoạch được duyệt.
+
+### 12. Bản ghi reliability dùng chung cho worker dài
+
+`WorkflowRun` là bản ghi bền vững cho một operation dài trên resource đích; lưu `operation_id`, stage, status, worker giữ lease, `lease_expires_at`, heartbeat, fencing token tăng đơn điệu và checkpoint JSONB. Status/default lấy từ `config/video_workflow.yml` qua `Rails.application.config_for(:video_workflow)`. `WorkflowRuns::ClaimService`, `HeartbeatService`, `CheckpointService` và `SweepService` điều phối từng thao tác.
+
+Lease mặc định 60 giây được đọc từ `video_workflow.yml`; claim/heartbeat cập nhật lease dưới row lock và fencing token. Khi lease hết hạn, sweeper đưa run không có outbound attempt chưa phân giải về hàng đợi, còn run có attempt đang gửi/chưa rõ kết quả sang `reconciliation_required`.
+
+`OutboundAttempt` thuộc một `WorkflowRun`, lưu attempt ID ổn định, stage, status, thời điểm bắt đầu gửi, thời điểm sender dừng, hạn timeout request và provider reference đã lọc an toàn. Một workflow không được tạo attempt mới khi attempt trước còn `Submitting` hoặc `OutcomeUnknown`; chỉ mở retry sau khi reconcile xác định chưa có side effect, sender cũ đã dừng và cửa sổ request tối đa đã hết. `OutboundAttempts::StartService` ghi attempt bền vững trước khi client gửi; `ResolveService` ghi quyết định/evidence và chỉ cho phép retry khi đủ điều kiện. `WorkflowAuditEvent` là lịch sử chỉ thêm, ghi claim, stage, reconcile và quyết định thủ công; không lưu token, authorization header, signed upload/session URI hay provider payload chưa redact. `Security::SensitiveDataRedactor` lọc secret khỏi structured error/log trước khi lưu hoặc phát cảnh báo.
+
+Claim và transition dùng Active Record transaction/row lock cùng fencing token; không ghép trạng thái bằng đọc-rồi-ghi và không dùng SQL raw. Model/migration reliability được viết sau spec đỏ tương ứng.
+
+### 13. Meta OAuth/Page và client Reels
+
+Endpoint, Graph API version, OAuth scope, callback URL allowlist, timeout và status/default của `SocialConnection`/`SocialDestination` nằm trong `affihub/config/meta.yml` và được nạp bằng `Rails.application.config_for(:meta)`. Meta App ID đọc từ `META_APP_ID`; App Secret đọc từ Rails encrypted credentials. Meta Client gom mọi HTTP request vào một private method, không log request URI/body hoặc response thô.
+
+OAuth `state` là giá trị ngẫu nhiên 32 byte; session lưu SHA-256 digest, provider, callback URI, hạn 10 phút và PKCE verifier nếu provider đã được xác minh hỗ trợ. Callback URL phải trùng allowlist cấu hình; state được tiêu thụ trước khi đổi code, nên callback replay/đổi session/hết hạn không thể tạo connection. Token user/Page dùng Active Record Encryption. Profile chỉ liệt kê Page qua `/me/accounts`; AffiHub chỉ lưu Page người dùng chọn và có task `CREATE_CONTENT`. Meta PKCE hiện tắt vì tài liệu được đối chiếu chưa xác nhận contract hỗ trợ; chỉ bật sau khi có nguồn chính thức.
+
+`Meta::Client` dùng version Graph API từ YAML cho OAuth token exchange, profile, Page listing, upload-session start, binary upload, finish/publish và status lookup. Acknowledgement của start/upload/finish không đủ để đặt `Published`; service publication sau này chỉ lưu trạng thái cuối, provider ID, permalink và thời điểm sau khi poll xác nhận. Smoke test cần Page/app-role Meta thật; test WebMock không được mô tả là xác minh API live.
 
 ## Risks / Trade-offs
 

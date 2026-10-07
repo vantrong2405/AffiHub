@@ -17,31 +17,50 @@ Cho phép người dùng đưa video từ file hoặc nguồn trực tuyến và
 - **WHEN** worker bắt đầu kiểm tra media của `SourceAsset`
 - **THEN** source chuyển từ `pending` sang `processing`, rồi thành `ready` nếu kiểm tra thành công hoặc `failed` nếu không đọc được
 
+### Requirement: Đặt tên VideoProject
+AffiHub MUST yêu cầu tên không rỗng khi tạo `VideoProject` và hiển thị tên đó trong danh sách cùng trang chi tiết project.
+
+#### Scenario: Tạo project có tên
+- **WHEN** người dùng tạo project với tên hợp lệ
+- **THEN** AffiHub lưu tên project cùng trạng thái `draft` và hiển thị tên trong danh sách/trang chi tiết
+
+#### Scenario: Tên project bị bỏ trống
+- **WHEN** người dùng gửi form tạo project không có tên
+- **THEN** AffiHub không tạo project và trả lỗi validation cùng dữ liệu form để người dùng sửa
+
 ### Requirement: Import file video local
-AffiHub MUST cho phép chọn file MP4 hoặc MOV từ máy và xử lý import nền mà không cần connector mạng xã hội.
+AffiHub MUST cho phép chọn file MP4 hoặc MOV từ máy và xử lý import nền mà không cần connector mạng xã hội. File được kiểm tra MIME khai báo và chữ ký container trước khi tạo source; tên file và MIME do trình duyệt gửi không được xem là bằng chứng định dạng độc lập. MIME hỗ trợ là `video/mp4` và `video/quicktime`; `application/octet-stream` chỉ được chấp nhận khi chữ ký xác nhận MP4/MOV. Giới hạn mặc định là 1 GiB và đọc từ `Rails.application.config_for(:video_workflow)` tại `limits.source_file_max_bytes`.
 
 #### Scenario: Import file hợp lệ
 - **WHEN** người dùng chọn file video hợp lệ
 - **THEN** AffiHub lưu source trong project, giữ giao diện dùng được và xếp hàng kiểm tra media
 
+#### Scenario: File khai báo MIME không tương thích với nội dung
+- **WHEN** file có MIME không hỗ trợ hoặc chữ ký byte không phải container MP4/MOV
+- **THEN** AffiHub từ chối trước khi tạo/đính kèm `SourceAsset` hoặc xếp job, đồng thời trả lỗi có thể sửa được
+
+#### Scenario: File vượt giới hạn cấu hình
+- **WHEN** kích thước file lớn hơn `limits.source_file_max_bytes`
+- **THEN** AffiHub từ chối trước khi tạo/đính kèm `SourceAsset` hoặc xếp job và hiển thị giới hạn hiện hành
+
 #### Scenario: File không đọc được
 - **WHEN** công cụ kiểm tra không đọc được file đã chọn
 - **THEN** project và source được giữ với trạng thái lỗi, nguyên nhân cùng hướng dẫn chọn file khác
 
-### Requirement: Tải source URL theo route được phép
-AffiHub MUST xử lý URL nguồn trong worker nền theo HTTPS route được cấu hình cho nền tảng, không chặn request giao diện và không dùng `yt-dlp` cho YouTube.
+### Requirement: Tải source URL bằng yt-dlp
+AffiHub MUST xử lý URL nguồn trong worker nền bằng `yt-dlp` best-effort cho các nền tảng/host được cấu hình, bao gồm YouTube; công việc tải MUST NOT chặn request giao diện. Trước khi enqueue, giao diện MUST cảnh báo về quyền sử dụng và Điều khoản dịch vụ của nguồn.
 
-#### Scenario: Tải URL ngoài YouTube
-- **WHEN** người dùng gửi URL từ nguồn được hỗ trợ ngoài YouTube sau khi thấy cảnh báo quyền sử dụng và Điều khoản dịch vụ
-- **THEN** AffiHub dùng `yt-dlp` best-effort trong job có timeout và chỉ tự retry theo giới hạn đã cấu hình
+#### Scenario: Tải URL từ nguồn được cấu hình
+- **WHEN** người dùng gửi URL HTTPS từ một nguồn được cấu hình, bao gồm YouTube, sau khi thấy cảnh báo quyền sử dụng và Điều khoản dịch vụ
+- **THEN** AffiHub enqueue `yt-dlp` trong job có timeout và chỉ retry theo giới hạn đã cấu hình
 
-#### Scenario: Nguồn YouTube
-- **WHEN** source có provenance YouTube được đưa vào AffiHub từ URL hoặc file local
-- **THEN** AffiHub chỉ dùng route media được YouTube chấp thuận, không chuyển kết quả discovery sang downloader và hướng dẫn owner export/import file nếu chưa có route tự động được chấp thuận
+#### Scenario: Tải URL YouTube
+- **WHEN** người dùng gửi URL video YouTube hợp lệ theo allowlist
+- **THEN** AffiHub thử tải bằng `yt-dlp` trong worker; nếu extractor, nguồn hoặc nền tảng từ chối tải, AffiHub hiển thị nguyên nhân và hướng dẫn import file đã xuất/tải thủ công
 
 #### Scenario: Import file owner-exported từ YouTube
 - **WHEN** người dùng chọn file đã lấy qua YouTube Studio/Takeout và xác nhận provenance YouTube
-- **THEN** AffiHub lưu provenance cùng file local; URL tham chiếu chỉ được dùng cho attribution, không tự tải nội dung bằng `yt-dlp`
+- **THEN** AffiHub lưu provenance cùng file local và không gọi downloader cho file đã được import
 
 #### Scenario: Tải URL thất bại
 - **WHEN** worker gặp lỗi, timeout hoặc giới hạn từ nền tảng nguồn
@@ -62,12 +81,12 @@ AffiHub MUST chỉ nhận scheme HTTPS và host nằm trong allowlist nguồn đ
 - **WHEN** một hostname trả về ít nhất một địa chỉ bị cấm hoặc DNS thay đổi trước khi kết nối
 - **THEN** AffiHub từ chối request hoặc chỉ kết nối tới địa chỉ public đã xác minh, không phân giải lại sang địa chỉ chưa kiểm tra
 
-### Requirement: Discovery chỉ dùng endpoint chính thức
-AffiHub MUST gắn nhãn kết quả đúng loại endpoint discovery chính thức; với YouTube dùng `search.list` cho truy vấn từ khóa và `videos.list(chart=mostPopular)` chỉ cho bảng phổ biến theo region/category.
+### Requirement: Tìm video bằng endpoint discovery chính thức
+AffiHub MUST chỉ dùng endpoint chính thức để tìm metadata video và gắn nhãn đúng loại kết quả; với YouTube dùng `search.list` cho truy vấn từ khóa và `videos.list(chart=mostPopular)` chỉ cho bảng phổ biến theo region/category. Tìm metadata và tải media là hai bước riêng: chỉ sau khi người dùng chọn kết quả, AffiHub mới enqueue `yt-dlp` với URL video đã chọn.
 
-#### Scenario: YouTube discovery
+#### Scenario: Tìm và tải video YouTube đã chọn
 - **WHEN** người dùng yêu cầu tìm video YouTube
-- **THEN** keyword search dùng `search.list`; danh sách phổ biến dùng `videos.list(chart=mostPopular)` và được gắn nhãn region/category, không hiển thị như keyword result hoặc trending tổng quát; metadata có attribution và chọn kết quả chỉ tạo yêu cầu lấy media qua route được chấp thuận
+- **THEN** keyword search dùng `search.list`; danh sách phổ biến dùng `videos.list(chart=mostPopular)` và được gắn nhãn region/category, không hiển thị như keyword result hoặc trending tổng quát; metadata có attribution; khi người dùng chọn một kết quả, AffiHub tạo `SourceAsset` kèm URL/provenance và enqueue `yt-dlp` để tải media
 
 #### Scenario: Nền tảng không có discovery API
 - **WHEN** TikTok hoặc Instagram không cung cấp endpoint discovery chính thức cho luồng này
@@ -85,12 +104,20 @@ AffiHub MUST áp dụng tối đa 10 lần bắt đầu tải trong cửa sổ t
 - **THEN** việc cấp lượt được nguyên tử để tối đa 10 lần thực sự bắt đầu downloader được tính trong cửa sổ
 
 ### Requirement: Kiểm tra và lưu provenance của source
-AffiHub MUST kiểm tra file media trước khi dùng, hiển thị metadata đọc được và giữ nguồn gốc nền tảng của từng source.
+AffiHub MUST kiểm tra file media trước khi dùng, lưu metadata đã kiểm tra trong `SourceAsset.media_metadata`, hiển thị metadata và giữ provenance nguồn. `SourceAssets::InspectJob` MUST là nơi duy nhất gọi `ffprobe` cho source video; analyzer video mặc định của Active Storage MUST được tắt để không tạo lần probe thứ hai không có timeout. Worker MUST gọi `ffprobe` với argv tách biệt, không ghép path hoặc tên file vào shell command, và có timeout lấy từ cấu hình `video_workflow`. Metadata gồm `duration_seconds`, `file_size_bytes`, `video_codec`, `width`, `height`, `frame_rate` dạng rational string, `has_audio` và `audio_codec` (null khi không có audio). Chỉ source `ready` mới được đưa vào editor.
 
 #### Scenario: Kiểm tra source thành công
 - **WHEN** worker kiểm tra được source
-- **THEN** giao diện hiển thị thời lượng, kích thước, codec, frame rate và audio track cùng provenance nguồn
+- **THEN** worker lưu đủ metadata đã nêu, chuyển source thành `ready`, và giao diện hiển thị thời lượng, kích thước, codec, frame rate, audio track cùng provenance nguồn
 
 #### Scenario: Source không an toàn hoặc vượt giới hạn
 - **WHEN** file sai định dạng thực tế hoặc vượt giới hạn cấu hình
 - **THEN** AffiHub từ chối đưa file vào bước edit, giữ lại thông tin lỗi và hướng dẫn xử lý mà không làm mất project
+
+#### Scenario: Worker không đọc được media
+- **WHEN** `ffprobe` timeout, thoát lỗi hoặc không tìm thấy video stream sau khi source đã được chấp nhận
+- **THEN** AffiHub giữ project, attachment và provenance, chuyển source thành `failed`, lưu thông báo lỗi đã loại bỏ path nội bộ, và không cho tạo render version từ source đó
+
+#### Scenario: Import file do chủ sở hữu xuất từ YouTube
+- **WHEN** người dùng xác nhận file lấy từ YouTube Studio hoặc Google Takeout
+- **THEN** AffiHub lưu provenance platform/method cùng file và chỉ xếp job kiểm tra media, không xếp hoặc gọi downloader

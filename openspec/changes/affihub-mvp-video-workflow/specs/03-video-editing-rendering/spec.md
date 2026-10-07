@@ -35,6 +35,38 @@ Editor MUST hỗ trợ trim/chia đoạn, crop hoặc fit dọc 9:16, nền khun
 - **WHEN** người dùng render các filter, nền, tốc độ và lớp logo đang xem trước
 - **THEN** file MP4 phản ánh cùng vị trí, kích thước, độ trong suốt, nền và timing như preview
 
+### Requirement: Dùng edit_config có schema phiên bản
+Mỗi `RenderVersion.edit_config` MUST là JSON object với đúng các key `schema_version`, `segments`, `canvas`, `filters`, `overlays` và `delogo_regions`; `schema_version` MUST là số nguyên `1`, `segments` MUST có ít nhất một phần tử, các phần còn lại MUST hiện diện dù có thể rỗng. Mỗi segment có đúng `start_seconds`, `end_seconds`, `speed` (`1.0` hoặc `2.0`), `audio_mode` (`keep` hoặc `mute`) và `audio_volume` trong khoảng 0–2. Segment phải nằm trong duration của source và có `end_seconds > start_seconds`. `canvas` có đúng `mode` (`fit` hoặc `crop`) và `background`; background có đúng `type` (`blur`, `color`, `image` hoặc `video`) cùng `color` dạng `#RRGGBB` nếu là màu, `project_media_asset_id` nếu là ảnh, hoặc `source_asset_id` nếu là video. Ảnh tham chiếu `ProjectMediaAsset` cùng project; video tham chiếu `SourceAsset` `ready` cùng project. Video nền được trim nếu dài hơn output và lặp từ đầu nếu ngắn hơn. `filters` có đúng `brightness` trong khoảng -1–1 và `contrast` trong khoảng 0–2. Mỗi overlay có `type` (`text`, `subtitle` hoặc `logo`), `output_start_seconds`, `output_end_seconds`, `x`, `y`, `width`, `height` và `opacity`; tọa độ/kích thước/opacity là số normalized 0–1, nằm trọn canvas. Text/subtitle có thêm đúng key `text`; logo có thêm đúng key `project_media_asset_id`. Thời gian overlay phải nằm trong duration output. Text/subtitle được vẽ bằng filter `drawtext` trên worker FFmpeg, đọc text từ file tạm thay vì nội suy nội dung người dùng vào filtergraph; worker image MUST có font Noto Sans cấu hình tại `media.ffmpeg_font_file` để hỗ trợ tiếng Việt. Logo và ảnh nền chỉ được tham chiếu `ProjectMediaAsset` cùng project. Mỗi `delogo_regions` phần tử có đúng `x`, `y`, `width`, `height` là tọa độ pixel nguyên trên source trước crop/scale và phải nằm trọn trong kích thước source. Không nhận key lạ, trường thiếu hoặc kiểu dữ liệu sai.
+
+`video_workflow.yml` giới hạn `limits.render_segment_max_count` (mặc định 50), `limits.render_overlay_max_count` (20), `limits.render_text_max_characters` (1000) và `limits.delogo_region_max_count` (20). Giới hạn áp dụng trước khi lưu hoặc enqueue render; text rỗng, text vượt giới hạn và mảng vượt giới hạn bị từ chối.
+
+#### Scenario: Tạo clip 1–2 giây và đổi tốc độ đầu ra
+- **WHEN** người dùng cấu hình một hay nhiều segment dài 1 hoặc 2 giây, tốc độ 1× hoặc 2× và chọn giữ/tắt audio nguồn
+- **THEN** AffiHub lưu đúng thứ tự, điểm cắt, tốc độ và lựa chọn audio để worker render theo cùng timeline
+
+#### Scenario: Tham chiếu asset thuộc project khác
+- **WHEN** edit config chọn ảnh nền, logo hoặc video nền không thuộc project hiện tại hay chưa `ready`
+- **THEN** AffiHub từ chối tạo `RenderVersion` và không enqueue worker
+
+#### Scenario: Gỡ rồi hoàn tác vùng logo tĩnh
+- **WHEN** người dùng tạo version có vùng `delogo`, rồi tạo version tiếp theo sau khi bỏ vùng đó khỏi edit config
+- **THEN** version cũ và source không đổi; version mới giữ nguyên source pixels tại vùng đó
+
+#### Scenario: Cấu hình nằm ngoài giới hạn
+- **WHEN** segment vượt duration, speed không thuộc 1×/2×, filter/audio/overlay vượt miền giá trị hoặc vùng `delogo` vượt source frame
+- **THEN** AffiHub trả lỗi validation, giữ dữ liệu form có thể sửa và không enqueue worker
+
+### Requirement: Quản lý ảnh nền và logo theo project
+AffiHub MUST lưu ảnh nền tĩnh và logo trong `ProjectMediaAsset` thuộc một `VideoProject`; chỉ chấp nhận PNG, JPEG hoặc WebP có MIME/signature tương thích và kích thước không quá giới hạn cấu hình mặc định 20 MiB. `RenderVersion` chỉ được tham chiếu asset cùng project.
+
+#### Scenario: Tải ảnh nền hoặc logo hợp lệ
+- **WHEN** người dùng thêm PNG, JPEG hoặc WebP hợp lệ có kích thước trong giới hạn
+- **THEN** AffiHub lưu file trong project và cho phép chọn làm nền hoặc logo overlay
+
+#### Scenario: Tải ảnh không an toàn hoặc quá lớn
+- **WHEN** file không qua kiểm tra MIME/signature hoặc vượt giới hạn cấu hình
+- **THEN** AffiHub từ chối gắn file vào project và không đưa file vào render
+
 ### Requirement: Hỗ trợ clip ngắn và retime đầu ra
 Editor MUST tạo được đoạn 1 giây và 2 giây với điểm cắt đúng, đồng thời phân biệt tốc độ preview với tốc độ clip đầu ra.
 
@@ -57,7 +89,7 @@ AffiHub MUST cung cấp khung hình đối chiếu có timecode từ source và 
 - **THEN** AffiHub hiển thị cặp khung hình cạnh nhau với timecode tương ứng
 
 ### Requirement: Tạo render version bất biến
-`RenderVersion` MUST lưu trạng thái `pending`, `processing`, `ready` hoặc `failed` và mặc định là `pending`. Mỗi lần render thành công MUST tạo một version mới, còn source và mọi version đã được Publication hoặc Drive export tham chiếu MUST giữ nguyên.
+`RenderVersion` MUST lưu trạng thái `pending`, `processing`, `ready` hoặc `failed` và mặc định là `pending`. `version_number` bắt đầu từ 1 và tăng đơn điệu, không trùng lặp trong phạm vi một `SourceAsset`. Mỗi lần render MUST tạo một version mới, còn source và mọi version đã được Publication hoặc Drive export tham chiếu MUST giữ nguyên.
 
 #### Scenario: Render lại sau chỉnh sửa
 - **WHEN** người dùng thay filter hoặc thông số rồi render lại
@@ -66,6 +98,8 @@ AffiHub MUST cung cấp khung hình đối chiếu có timecode từ source và 
 #### Scenario: FFmpeg hoặc worker lỗi
 - **WHEN** render thất bại hoặc worker dừng
 - **THEN** version đang render chuyển sang `failed`; AffiHub giữ project, source và các render version có sẵn, đồng thời hiển thị lỗi chẩn đoán
+
+Render MUST chạy trong worker riêng, dùng argv tách biệt và giới hạn timeout/thread đọc từ `video_workflow.yml` (`media.ffmpeg_command`, mặc định `ffmpeg`; `media.ffmpeg_timeout_seconds`, mặc định 1800 giây; `media.ffmpeg_threads`, mặc định 2; `media.ffmpeg_font_file`, mặc định `/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf`). `RenderVersion.metadata` lưu số đo thực tế từ file MP4: `duration_seconds`, `file_size_bytes`, `video_codec`, `width`, `height`, rational-string `frame_rate`, `has_audio` và `audio_codec` nullable. `RenderVersion.render_error` lưu chẩn đoán tiếng Việt an toàn (`Không tìm thấy FFmpeg trên worker.`, `Render vượt quá giới hạn thời gian cho phép.` hoặc `Không thể render video với cấu hình hiện tại.`) và không chứa path/stderr nội bộ; trường này được xóa khi render thành công. Nếu mọi segment đều `mute`, output không có audio stream. Hết timeout hoặc worker thiếu FFmpeg phải chuyển version đang render sang `failed`, lưu chẩn đoán tương ứng và giữ file nguồn/version cũ.
 
 ### Requirement: Xuất MP4 local và phân biệt trạng thái publish
 AffiHub MUST cho phép tải MP4 local mà không cần social credential và MUST phân biệt local export với publication đã đăng.
@@ -109,3 +143,14 @@ Giao diện MUST gọi đúng hành động người dùng, nêu định dạng 
 #### Scenario: Xem trước và tải file
 - **WHEN** người dùng mở video đã nhập
 - **THEN** AffiHub hiển thị trạng thái sẵn sàng, thông tin file và hành động tải MP4 về máy
+
+### Requirement: Tạo RenderVersion từ source sẵn sàng trong project
+AffiHub MUST gắn cấu hình và mọi `RenderVersion` mới với một `SourceAsset` `ready` thuộc cùng `VideoProject`.
+
+#### Scenario: Chọn source để biên tập
+- **WHEN** người dùng mở form tạo render trong một project
+- **THEN** AffiHub chỉ cho chọn source `ready` của project đó, hiển thị preview nguồn và gắn source được chọn vào cấu hình render
+
+#### Scenario: Source chưa sẵn sàng hoặc thuộc project khác
+- **WHEN** source đang `pending`, `processing`, `failed` hoặc không thuộc project hiện tại
+- **THEN** AffiHub không cho tạo render từ source đó và hiển thị trạng thái/lý do ngay trong form
