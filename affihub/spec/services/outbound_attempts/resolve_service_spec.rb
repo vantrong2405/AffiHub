@@ -128,6 +128,25 @@ RSpec.describe OutboundAttempts::ResolveService, type: :service do
       end
     end
 
+    context "when the operator does not provide evidence" do
+      let(:service) do
+        described_class.new(
+          outbound_attempt_id: attempt.id,
+          decision: :unknown,
+          evidence: "",
+          actor_reference: "operator-1"
+        )
+      end
+
+      it "returns failure and keeps the attempt unresolved" do
+        service.call
+
+        expect(service).not_to be_success
+        expect(attempt.reload.status).to eq("outcome_unknown")
+        expect(attempt.workflow_run.workflow_audit_events).to be_empty
+      end
+    end
+
     context "when the operator marks the request as not occurred without confirming the retry risk" do
       let(:service) do
         described_class.new(
