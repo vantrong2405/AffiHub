@@ -54,11 +54,16 @@ RSpec.describe AiGenerations::CreateScenePromptsService, type: :service do
       end
     end
 
-    it "returns the generated scene prompts without submitting a paid video job" do
-      expect(call_result).to be(true)
+    it "returns the generated scene prompts from MPT" do
+      call_result
 
       expect(service.scene_prompts).to eq([ "sunny bathroom", "skincare bottle" ])
       expect(terms_request).to have_been_requested.once
+    end
+
+    it "returns without submitting a paid video job" do
+      call_result
+
       expect(video_request).not_to have_been_requested
     end
   end

@@ -48,11 +48,21 @@ RSpec.describe AiGenerations::TtsFallbackService, type: :service do
       azure_request
     end
 
-    it "returns VieNeu WAV audio from one provider request" do
+    it "returns VieNeu WAV audio as the selected provider" do
       expect(call_result).to be(true)
 
       expect(service.provider).to eq("vieneu")
+    end
+
+    it "returns the WAV audio from VieNeu" do
+      call_result
+
       expect(service.audio_data).to eq(vieneu_audio)
+    end
+
+    it "sends one request to VieNeu" do
+      call_result
+
       expect(vieneu_request).to have_been_requested.once
     end
 
@@ -86,11 +96,21 @@ RSpec.describe AiGenerations::TtsFallbackService, type: :service do
       let(:vieneu_audio) { "provider-error" }
       let(:azure_consented) { true }
 
-      it "returns Azure WAV audio after one fallback request" do
-        expect(call_result).to be(true)
+      it "returns Azure WAV audio as the selected provider" do
+        call_result
 
         expect(service.provider).to eq("azure_speech")
+      end
+
+      it "returns the WAV audio from Azure Speech" do
+        call_result
+
         expect(service.audio_data).to eq(azure_audio)
+      end
+
+      it "sends one request to Azure Speech after VieNeu fails" do
+        call_result
+
         expect(azure_request).to have_been_requested.once
       end
     end
