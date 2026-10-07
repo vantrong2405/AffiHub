@@ -9,6 +9,8 @@ class RenderVersion < ApplicationRecord
   belongs_to :video_project, inverse_of: :render_versions
   belongs_to :source_asset, inverse_of: :render_versions
   has_one_attached :file
+  has_many :preflight_reports, inverse_of: :render_version, dependent: :restrict_with_exception
+  has_many :publications, inverse_of: :render_version, dependent: :restrict_with_exception
 
   scope :recent_first, proc { order(created_at: :desc, id: :desc) }
 

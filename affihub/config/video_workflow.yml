@@ -45,6 +45,19 @@ shared:
         processing: processing
         ready: ready
         failed: failed
+    publication:
+      default: draft
+      values:
+        draft: draft
+        approved: approved
+        scheduled: scheduled
+        uploading: uploading
+        processing: processing
+        published: published
+        failed: failed
+        outcome_unknown: outcome_unknown
+        manual_outcome_confirmed: manual_outcome_confirmed
+        manual_outcome_not_occurred: manual_outcome_not_occurred
     workflow_run:
       default: queued
       values:

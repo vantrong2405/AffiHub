@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_07_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_07_150000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -102,11 +102,43 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_07_120000) do
     t.index ["workflow_run_id"], name: "index_outbound_attempts_on_workflow_run_id"
   end
 
+  create_table "preflight_reports", force: :cascade do |t|
+    t.bigint "render_version_id", null: false
+    t.jsonb "checked_destination_ids", default: [], null: false
+    t.jsonb "destination_results", default: {}, null: false
+    t.datetime "checked_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["render_version_id", "checked_at"], name: "index_preflight_reports_on_render_version_id_and_checked_at"
+    t.index ["render_version_id"], name: "index_preflight_reports_on_render_version_id"
+  end
+
   create_table "project_media_assets", force: :cascade do |t|
     t.bigint "video_project_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["video_project_id"], name: "index_project_media_assets_on_video_project_id"
+  end
+
+  create_table "publications", force: :cascade do |t|
+    t.bigint "render_version_id", null: false
+    t.bigint "social_destination_id", null: false
+    t.string "status", null: false
+    t.text "caption", default: "", null: false
+    t.datetime "scheduled_at"
+    t.string "schedule_occurrence_key"
+    t.string "platform_post_id"
+    t.text "permalink"
+    t.datetime "published_at"
+    t.jsonb "provider_reference", default: {}, null: false
+    t.string "safe_error_code"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["render_version_id", "social_destination_id"], name: "idx_on_render_version_id_social_destination_id_249e75c052"
+    t.index ["render_version_id"], name: "index_publications_on_render_version_id"
+    t.index ["schedule_occurrence_key"], name: "index_publications_on_schedule_occurrence_key"
+    t.index ["social_destination_id", "status"], name: "index_publications_on_social_destination_id_and_status"
+    t.index ["social_destination_id"], name: "index_publications_on_social_destination_id"
   end
 
   create_table "render_versions", force: :cascade do |t|
@@ -217,7 +249,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_07_120000) do
   add_foreign_key "ai_generations", "source_assets"
   add_foreign_key "ai_generations", "video_projects"
   add_foreign_key "outbound_attempts", "workflow_runs"
+  add_foreign_key "preflight_reports", "render_versions"
   add_foreign_key "project_media_assets", "video_projects"
+  add_foreign_key "publications", "render_versions"
+  add_foreign_key "publications", "social_destinations"
   add_foreign_key "render_versions", "source_assets"
   add_foreign_key "render_versions", "video_projects"
   add_foreign_key "social_destinations", "social_connections"

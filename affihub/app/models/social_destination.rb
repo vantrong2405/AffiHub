@@ -9,6 +9,7 @@ class SocialDestination < ApplicationRecord
   encrypts :access_token
 
   belongs_to :social_connection, inverse_of: :social_destinations
+  has_many :publications, inverse_of: :social_destination, dependent: :restrict_with_exception
 
   validates :provider, :external_id, :name, :access_token, presence: true
   validates :provider, inclusion: { in: PROVIDERS }
