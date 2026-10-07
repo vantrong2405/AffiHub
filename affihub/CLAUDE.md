@@ -54,21 +54,16 @@ Do not write feature implementation code before its spec exists. This applies bo
 
 Follow AffiHub's RSpec conventions, using the installed stack:
 
-- Mirror the source path under `spec/`, require `rails_helper`, and set the top-level `type:` on
-  `RSpec.describe`. The helper also infers type from the path; explicit metadata documents intent.
-- Use FactoryBot for persisted application records (`create`, `build`, `build_stubbed`); do not
-  instantiate Active Record models directly or use Rails fixtures. Keep each example to one behavior
-  and under 15 lines; move reusable setup into `let`/`before`. Do not use `before(:all)` or
+- For Rails-backed specs, require `rails_helper` and set the correct top-level `type:` on
+  `RSpec.describe`. The helper also infers types from paths, but explicit metadata documents intent.
+  Keep the boot check in `spec/boot_spec.rb` isolated: it loads `config/environment` directly so the
+  example can verify boot without `rails_helper` loading the application first.
+- Mirror source paths for class- or file-focused specs. Group request and system specs by the resource
+  or user workflow they exercise, rather than forcing them to mirror one implementation file.
+- Use FactoryBot (`create`, `build`, `build_stubbed`) for Active Record records. Avoid constructing
+  records directly or using YAML fixtures for database state. File fixtures under
+  `spec/fixtures/files` are appropriate for upload examples. Do not use `before(:all)` or
   `after(:all)`, and do not leave pending examples in shipped specs.
-- Use `describe '#method'`/`describe '.method'` and `context 'when ...'` for scenarios. Every example
-  description starts with `returns ...`, including failures and persisted-state outcomes.
-- When output is deterministic, compare the complete expected value with `eq`; do not use `include`,
-  `match`, or substring checks as a shortcut for an exact comparison. Use collection matchers only
-  when membership/order-insensitive behavior is the contract.
-- Do not use RSpec mocks/stubs for internal application helpers, models, services, routes, or forms.
-  Exercise the real code with FactoryBot records. Stub external HTTP with WebMock; never make a real
-  third-party request from a spec. Do not use plain `double` or `instance_double` for internal app
-  behavior.
 - Test public behavior through the service/controller entry point; do not test private methods or
   internal query construction. Cover each behavior branch in the code changed, and remove dead setup
   after refactors.
@@ -80,20 +75,33 @@ interactions that have behavior beyond visual styling.
 
 ### RSpec assertion/double style
 
-- Keep complete expected values local to the example; do not add helper methods just to hide expected
-  values. Use the local RuboCop quote style and sibling specs as formatting references. Prefer
-  deterministic scenario data and FactoryBot sequences for values that must be unique; use Faker for
-  varied input when it adds value, not where fixed data makes the behavior clearer.
-- Use Shoulda-Matchers for standard Rails association and validation contracts where they improve
-  clarity. Keep examples within the named `returns ...` description convention.
-- Each `it` is one named test case with one behavior. Write a separate explicit `it` for each input,
-  boundary, or outcome; do not combine cases, generate examples from loops/tables, or use
-  `shared_examples` to hide the individual cases.
-- Use readable `context` blocks and separate examples for different cases.
-- Put shared setup in the nearest `context` using `let` and `before`; keep variable names simple and
-  use the same name for the same domain object across related specs (`video_project`, `source_asset`,
-  `render_version`). Prefer clear scoped setup over copying setup into several examples or adding
-  DRY helpers that make a case harder to follow.
+- Give each `it` one independently meaningful behavior. Write a separate, explicitly named `it` for
+  each input boundary or outcome; do not put several independent cases into one example. Multiple
+  expectations are fine when together they prove that example's one behavior. Avoid loops, case tables,
+  or `shared_examples` when they hide which individual case is being tested.
+- Keep each example focused and readable; there is no fixed line limit. Keep its setup, action, and
+  expectations easy to follow, and extract setup only when that improves clarity.
+- Use `describe '#method'`/`describe '.method'` for methods and readable `context 'when ...'` blocks
+  for scenarios. Write each example description as one clear statement of the expected behavior.
+  Start with `returns`, `raises`, `redirects`, `enqueues`, or another accurate verb as appropriate;
+  do not force every description to start with `returns`.
+- Keep expected values close to the example that asserts them. Compare an exact deterministic result
+  with `eq`; use containment or collection matchers when the contract is partial membership, and make
+  ordering explicit when order matters. Do not use a partial matcher as a shortcut for an exact result.
+- Prefer real application collaborators and FactoryBot records when testing integrated behavior.
+  Stubbing an application service at a request/controller boundary is acceptable when the example is
+  specifically testing how that boundary handles the service result; cover the service behavior in its
+  own spec. Never replace persisted domain records with doubles. Stub third-party HTTP with WebMock and
+  do not make real network requests from specs.
+- Use `described_class` for the class under test. Keep names simple and consistent for the same domain
+  object across related specs (`video_project`, `source_asset`, `render_version`). Use deterministic
+  values; use FactoryBot sequences when uniqueness matters and Faker only when varied input helps the
+  behavior being tested. Use the local RuboCop quote style and sibling specs as formatting references.
+- Use Shoulda-Matchers for standard Rails association and validation contracts when they make the
+  example clearer.
+- Put shared setup in the nearest `context` using `let`/`before`. Prefer a named model scope for a
+  repeated query condition and the nearest shared layer for genuinely shared behavior; do not extract
+  one-use helpers or duplicate setup abstractions that make the individual case harder to understand.
 
 ### RSpec support gems
 
@@ -129,8 +137,10 @@ No `bcrypt`/`has_secure_password` added yet — add explicitly when auth is impl
   Docker build installs the locked npm packages before `assets:precompile` and removes
   `node_modules` from the runtime image afterward.
 - Use daisyUI components such as `btn`, `card`, `badge`, `alert`, `input`, and `file-input` for
-  repeated controls. Tailwind utilities may arrange components and responsive layouts; do not
-  recreate a daisyUI component with custom CSS.
+  repeated controls. Check the installed daisyUI component/classes before building a control. Customize
+  an existing component with supported daisyUI options, Tailwind utilities, or daisyUI CSS variables;
+  do not redefine an equivalent component or its base styles in project CSS. Add custom styling only
+  for behavior or presentation that the library does not provide.
 - Keep customer-facing copy and status labels in Vietnamese. Review presentation in a browser at
   desktop and mobile sizes; do not add view specs that assert markup or styling.
 
