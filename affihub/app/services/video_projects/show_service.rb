@@ -8,6 +8,9 @@ class VideoProjects::ShowService < ApplicationService
   # @return [Array<RenderVersion>] the project's render versions
   attr_reader :render_versions
 
+  # @return [Array<AiGeneration>] the project's recent AI generations
+  attr_reader :ai_generations
+
   # Initializes a project workspace query.
   #
   # @param video_project_id [Integer] the project to display
@@ -24,6 +27,7 @@ class VideoProjects::ShowService < ApplicationService
     step_load_video_project
     step_load_source_assets
     step_load_render_versions
+    step_load_ai_generations
     step_succeed!
     success?
   end
@@ -40,5 +44,9 @@ class VideoProjects::ShowService < ApplicationService
 
   def step_load_render_versions
     @render_versions = video_project.render_versions.with_attached_file.recent_first.to_a
+  end
+
+  def step_load_ai_generations
+    @ai_generations = video_project.ai_generations.recent_first.to_a
   end
 end

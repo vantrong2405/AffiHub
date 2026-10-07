@@ -39,6 +39,7 @@ class VideoProjectsController < MainController
     @video_project = service.video_project
     @source_assets = service.source_assets
     @render_versions = service.render_versions
+    @ai_generations = service.ai_generations
   end
 
   # Loads the selected project for its edit form.

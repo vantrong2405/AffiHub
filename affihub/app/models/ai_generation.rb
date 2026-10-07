@@ -16,6 +16,8 @@ class AiGeneration < ApplicationRecord
   has_one_attached :subtitle
   has_one_attached :preview_video
 
+  scope :recent_first, proc { order(created_at: :desc, id: :desc) }
+
   validates :correlation_id, presence: true, uniqueness: true
   validates :task_id, uniqueness: true, allow_nil: true
 

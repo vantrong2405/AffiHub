@@ -46,6 +46,16 @@ vi:
         processing: Đang render
         ready: Đã render
         failed: Render lỗi
+      ai_generation:
+        draft: Bản nháp
+        script_ready: Đã tạo kịch bản
+        prompts_ready: Đã tạo gợi ý cảnh
+        submitting: Đang gửi yêu cầu
+        processing: Đang tạo video
+        reconciliation_required: Cần đối soát
+        outcome_unknown: Chưa rõ kết quả
+        completed: Đã tạo xong
+        failed: Tạo video lỗi
       social_connection:
         connected: Đã kết nối
         reauth_required: Cần kết nối lại
