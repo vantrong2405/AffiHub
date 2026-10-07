@@ -23,7 +23,10 @@ RSpec.describe Publications::MetaGraphPublisher, type: :service do
     let(:status_request) do
       stub_request(:get, "#{graph_api_url}/video-1").to_return(
         body: {
-          status: { video_status: "PUBLISHED" },
+          status: {
+            video_status: "ready",
+            publishing_phase: { status: "complete" }
+          },
           permalink_url: "https://facebook.com/reel/1"
         }.to_json
       )
@@ -53,7 +56,12 @@ RSpec.describe Publications::MetaGraphPublisher, type: :service do
     context "when Meta has not confirmed the final Reel status" do
       let(:status_request) do
         stub_request(:get, "#{graph_api_url}/video-1").to_return(
-          body: { status: { video_status: "PROCESSING" } }.to_json
+          body: {
+            status: {
+              video_status: "ready",
+              publishing_phase: { status: "in_progress" }
+            }
+          }.to_json
         )
       end
 
