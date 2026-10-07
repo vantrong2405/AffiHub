@@ -89,21 +89,11 @@ RSpec.describe AiGenerationEstimates::CreateService, type: :service do
 
       before { second_request }
 
-      it "requests an estimate for the first scene" do
+      it "estimates each scene and sums the returned costs" do
         call_result
 
         expect(first_request).to have_been_requested.once
-      end
-
-      it "requests an estimate for the second scene" do
-        call_result
-
         expect(second_request).to have_been_requested.once
-      end
-
-      it "returns the total amount for both scene estimates" do
-        call_result
-
         expect(service.cost_breakdown.fetch(:muapi).fetch(:amount)).to eq("0.5")
       end
     end
@@ -118,21 +108,11 @@ RSpec.describe AiGenerationEstimates::CreateService, type: :service do
         }
       end
 
-      it "returns no MuAPI amount when the quote is missing" do
+      it "marks the estimate incomplete when the MuAPI quote is missing" do
         call_result
 
         expect(service.cost_breakdown.fetch(:muapi).fetch(:amount)).to be_nil
-      end
-
-      it "marks required costs as unknown when the quote is missing" do
-        call_result
-
         expect(service.required_costs_known).to be(false)
-      end
-
-      it "returns no total when the quote is missing" do
-        call_result
-
         expect(service.total_amount).to be_nil
       end
     end
@@ -146,15 +126,10 @@ RSpec.describe AiGenerationEstimates::CreateService, type: :service do
         }
       end
 
-      it "returns the total when every provider quote is known" do
+      it "returns the total and marks required costs as known" do
         call_result
 
         expect(service.total_amount).to eq(BigDecimal("0.30"))
-      end
-
-      it "marks required costs as known when every provider quote is known" do
-        call_result
-
         expect(service.required_costs_known).to be(true)
       end
     end
@@ -195,15 +170,10 @@ RSpec.describe AiGenerationEstimates::CreateService, type: :service do
         }
       end
 
-      it "marks required costs as unknown when provider currencies differ" do
+      it "marks costs unknown and omits a total when currencies differ" do
         call_result
 
         expect(service.required_costs_known).to be(false)
-      end
-
-      it "returns no total when provider currencies differ" do
-        call_result
-
         expect(service.total_amount).to be_nil
       end
     end
