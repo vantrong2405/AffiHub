@@ -64,6 +64,8 @@ MPT đã có Edge TTS và Azure TTS path trong `app/services/voice.py` cùng con
 
 `AiGenerations::TtsFallbackService` hiện kiểm tra estimate/consent trong Rails, nhưng MPT task pipeline chưa gọi service này: container MPT hiện gửi trực tiếp tới VieNeu, và khi TTS lỗi task sẽ fail. Chưa có callback nội bộ được xác thực để MPT xin fallback từ Rails, cũng chưa có persistence/idempotency cho lần gọi Azure. Không coi Azure fallback là đã tích hợp cho đến khi request MPT mang đúng estimate gắn với script/voice, consent được xác minh ở Rails và lần gọi fallback được reconcile an toàn.
 
+Contract callback nội bộ sẽ dùng `POST /internal/mpt/tts_fallback`. MPT gửi JSON `{ "correlation_id", "scene_index", "narration", "voice" }`, timestamp epoch seconds trong `X-MPT-Timestamp`, và `X-MPT-Signature` là HMAC-SHA256 của chuỗi `timestamp + "." + raw_body` bằng secret dùng chung từ environment. Correlation ID chính là `request_id` MPT lưu từ header `X-Task-ID`; scene index `0` đại diện toàn bộ `video_script`, vì pinned `task.py` chỉ gọi TTS một lần cho script này. Rails chỉ chấp nhận timestamp trong cửa sổ cấu hình, tra `AiGenerationScene` đã lưu, so khớp narration/voice/quote/consent rồi mới gửi Azure. Thành công trả raw WAV với `Content-Type: audio/wav`; lỗi trả non-2xx để MPT dừng TTS stage, không dùng Edge và không đánh dấu task hoàn tất. Đây là contract tích hợp mới cần patch riêng lên source MPT đã pin; chưa được xem là chạy ổn cho tới khi test callback, timeout/replay và Docker topology đều pass.
+
 ## License, giá và mức tin cậy
 
 | Thành phần | License/giá đã xác minh | Giới hạn bằng chứng |
