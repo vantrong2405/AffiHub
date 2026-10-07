@@ -77,7 +77,7 @@ root "dashboard#index"
 
 resources :video_projects, only: %i[index show new create edit update destroy] do
   resources :source_discoveries, only: %i[new create show]
-  resources :source_assets, only: %i[index show new create destroy]
+  resources :source_assets, only: %i[index show new create]
   resources :project_media_assets, only: %i[create destroy]
   resources :ai_generation_estimates, only: %i[create show]
   resources :ai_generations, only: %i[new create show edit update]
@@ -132,9 +132,15 @@ Rails tự tìm view theo controller/action; ví dụ `VideoProjectsController#i
 
 Không tạo `EditorController` hoặc action tùy chỉnh. Luồng editor là form tạo một `RenderVersion` mới: `RenderVersions#new` nhận nguồn và cấu hình, `#create` lưu cấu hình rồi enqueue render, `#show` trình bày preview và so sánh source/render. `VideoProjects#show` là điểm vào project, liệt kê nguồn/version và dẫn tới resource tương ứng.
 
+Editor dùng bố cục ba vùng trên desktop: thanh đầu trang có breadcrumb, trạng thái source/version và hành động render; preview video dọc 9:16 chiếm vùng chính bên trái; inspector bên phải chứa các điều khiển cho đoạn cắt/tốc độ/audio, canvas/nền, filter, overlay và vùng delogo. Timeline nằm thành một dải riêng bên dưới preview và inspector, cho phép nhận biết thứ tự đoạn, khoảng thời gian và lớp overlay. Các nhóm điều khiển dùng `card`, `input`, `select`, `textarea`, `file-input`, `tabs` và `button` của daisyUI; nhãn luôn nêu rõ đơn vị timecode hoặc tọa độ. Editor chỉ mở source `ready` thuộc project hiện tại. Render là hành động rõ ràng; trạng thái job và lỗi hiển thị cạnh version, còn source và render trước đó vẫn có đường quay lại.
+
+Trang render hoàn tất đặt video source và video render cạnh nhau trên desktop, kèm metadata, trạng thái và nút tải MP4. Bên dưới, frame comparison nhóm từng timecode với ảnh source và render cùng timestamp; người dùng có thể nhập timecode để lấy cặp frame khác. Không mô phỏng kết quả FFmpeg bằng CSS trong editor: preview trước render được ghi nhãn là source/ước lượng, còn video render và frame lấy từ file render là kết quả chuẩn để duyệt.
+
+Trên màn hình hẹp, các vùng xếp theo thứ tự preview → trạng thái/hành động → timeline → inspector; timeline cuộn ngang bên trong vùng riêng và không làm tràn trang. Trang render xếp video source/render thành hai card dọc, giữ timecode và thao tác tải dễ tìm. Tất cả nút có tên truy cập được, input có label, trạng thái job có nội dung chữ và CTA không che nội dung khi cuộn.
+
 | Màn hình | Resource/action | Template | Nội dung và thao tác chính |
 |---|---|---|---|
-| Danh sách/tạo project | `VideoProjects#index`, `new`, `create` | `video_projects/index.html.erb`, `new.html.erb`, `_form.html.erb` | Liệt kê theo tên/trạng thái; `new` yêu cầu tên project, tạo project và giữ lỗi validation trên form. |
+| Danh sách/tạo project | `VideoProjects#index`, `new`, `create`, `edit`, `update`, `destroy` | `video_projects/index.html.erb`, `new.html.erb`, `edit.html.erb`, `_form.html.erb` | Liệt kê theo tên/trạng thái; tạo hoặc đổi tên project; chỉ xóa project chưa có source/render và giữ lỗi validation trên form. |
 | Project workspace | `VideoProjects#show` | `video_projects/show.html.erb` | Hiển thị tiến độ, source/version hiện có; dẫn tới tạo `SourceAsset` hoặc `SourceDiscovery`. |
 | Import file hoặc URL | `SourceAssets#new`, `create`, `show` | `source_assets/new.html.erb`, `_form.html.erb`, `show.html.erb` | Hai lựa chọn trong cùng biểu mẫu; `create` enqueue kiểm tra nền; `show` hiển thị provenance, metadata và trạng thái xử lý. |
 | Tìm video | `SourceDiscoveries#new`, `create`, `show` | `source_discoveries/new.html.erb`, `show.html.erb` | Dùng endpoint chính thức để tìm metadata, hiển thị nguồn/kết quả và attribution. Khi người dùng chọn kết quả, gửi URL cùng metadata discovery tới `SourceAssets#create`; worker dùng `yt-dlp` best-effort để tải media, kể cả YouTube. Nếu tải lỗi, hiển thị lý do và hướng dẫn import file. Không dùng `yt-dlp` để tìm kiếm hoặc scrape feed. |
