@@ -29,6 +29,9 @@ shared:
         - pages_show_list
         - pages_read_engagement
         - pages_manage_posts
+      page_create_content_tasks:
+        - CREATE_CONTENT
+        - PROFILE_PLUS_CREATE_CONTENT
       pkce_enabled: false
       open_timeout_seconds: 10
       read_timeout_seconds: 30

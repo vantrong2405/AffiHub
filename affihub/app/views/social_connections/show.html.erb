@@ -1,0 +1,53 @@
+<% content_for :title, "#{@social_connection.name} | Kết nối Facebook" %>
+
+<section class="space-y-6">
+  <div class="space-y-2">
+    <%= link_to "← Danh sách tài khoản", social_connections_path, class: "link link-hover text-sm" %>
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <div>
+        <h1 class="text-3xl font-bold"><%= @social_connection.name %></h1>
+        <p class="mt-1 text-sm text-base-content/60">Facebook · ID <%= @social_connection.external_user_id %></p>
+      </div>
+      <%= link_to "Chọn Page", social_connection_social_destinations_path(@social_connection), class: "btn btn-primary w-full sm:w-auto" %>
+    </div>
+  </div>
+
+  <div class="card border border-base-300 bg-base-100 shadow-sm">
+    <div class="card-body gap-4">
+      <div class="flex items-center justify-between gap-3">
+        <h2 class="card-title">Profile Facebook</h2>
+        <%= workflow_status_badge(@social_connection.status, resource: "social_connection") %>
+      </div>
+      <p class="text-sm text-base-content/60">Token được mã hóa khi lưu và không hiển thị trên trang này.</p>
+    </div>
+  </div>
+
+  <div class="space-y-3">
+    <h2 class="text-xl font-semibold">Page đã chọn</h2>
+    <% if @social_destinations.any? %>
+      <div class="grid gap-4 md:grid-cols-2">
+        <% @social_destinations.each do |social_destination| %>
+          <article class="card border border-base-300 bg-base-100 shadow-sm">
+            <div class="card-body gap-3">
+              <div class="flex items-start justify-between gap-3">
+                <div>
+                  <h3 class="card-title text-base"><%= social_destination.name %></h3>
+                  <p class="text-sm text-base-content/60">Page ID <%= social_destination.external_id %></p>
+                </div>
+                <%= workflow_status_badge(social_destination.status, resource: "social_destination") %>
+              </div>
+            </div>
+          </article>
+        <% end %>
+      </div>
+    <% else %>
+      <div class="card border border-dashed border-base-300 bg-base-100">
+        <div class="card-body items-start">
+          <h3 class="card-title">Chưa chọn Page</h3>
+          <p class="text-base-content/70">Chọn Page được cấp quyền tạo nội dung để dùng làm đích đăng.</p>
+          <%= link_to "Chọn Page", social_connection_social_destinations_path(@social_connection), class: "btn btn-primary" %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</section>

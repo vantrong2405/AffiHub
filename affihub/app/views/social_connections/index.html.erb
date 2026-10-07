@@ -1,0 +1,40 @@
+<% content_for :title, "Kết nối tài khoản" %>
+
+<section class="space-y-6">
+  <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+    <div>
+      <h1 class="text-3xl font-bold">Kết nối tài khoản</h1>
+      <p class="mt-1 text-sm text-base-content/60">Quản lý profile và Page có thể dùng để đăng video.</p>
+    </div>
+    <%= link_to "Kết nối Facebook", new_social_connection_path(provider: "facebook"), class: "btn btn-primary w-full sm:w-auto" %>
+  </div>
+
+  <% if @social_connections.any? %>
+    <div class="grid gap-4 md:grid-cols-2">
+      <% @social_connections.each do |social_connection| %>
+        <article class="card border border-base-300 bg-base-100 shadow-sm">
+          <div class="card-body gap-4">
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0 space-y-1">
+                <h2 class="card-title break-words text-base"><%= social_connection.name %></h2>
+                <p class="text-sm text-base-content/60">Facebook · ID <%= social_connection.external_user_id %></p>
+              </div>
+              <%= workflow_status_badge(social_connection.status, resource: "social_connection") %>
+            </div>
+            <div class="card-actions justify-end">
+              <%= link_to "Xem profile", social_connection_path(social_connection), class: "btn btn-outline btn-sm" %>
+            </div>
+          </div>
+        </article>
+      <% end %>
+    </div>
+  <% else %>
+    <div class="card border border-dashed border-base-300 bg-base-100">
+      <div class="card-body items-start">
+        <h2 class="card-title">Chưa có tài khoản kết nối</h2>
+        <p class="text-base-content/70">Kết nối Facebook để xem các Page bạn có quyền sử dụng.</p>
+        <%= link_to "Kết nối Facebook", new_social_connection_path(provider: "facebook"), class: "btn btn-primary" %>
+      </div>
+    </div>
+  <% end %>
+</section>

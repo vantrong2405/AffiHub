@@ -4,7 +4,7 @@ RSpec.describe "SocialConnections::CreateService", type: :service do
   describe "#call" do
     it "returns a random session-bound state and an allowlisted authorization URL" do
       session = {}
-      service = "SocialConnections::CreateService".constantize.new(provider: "facebook", session:)
+      service = SocialConnections::CreateService.new(provider: "facebook", session:)
 
       service.call
 
@@ -15,8 +15,8 @@ RSpec.describe "SocialConnections::CreateService", type: :service do
 
     it "returns a distinct state for every authorization attempt" do
       session = {}
-      first = "SocialConnections::CreateService".constantize.new(provider: "facebook", session:)
-      second = "SocialConnections::CreateService".constantize.new(provider: "facebook", session:)
+      first = SocialConnections::CreateService.new(provider: "facebook", session:)
+      second = SocialConnections::CreateService.new(provider: "facebook", session:)
       first.call
       second.call
 

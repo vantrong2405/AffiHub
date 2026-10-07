@@ -46,3 +46,13 @@ vi:
         processing: Đang render
         ready: Đã render
         failed: Render lỗi
+      social_connection:
+        connected: Đã kết nối
+        reauth_required: Cần kết nối lại
+        revoked: Đã thu hồi
+        failed: Kết nối lỗi
+      social_destination:
+        connected: Sẵn sàng đăng
+        reauth_required: Cần kết nối lại
+        revoked: Đã thu hồi
+        unavailable: Không khả dụng

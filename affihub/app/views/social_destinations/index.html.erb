@@ -1,0 +1,56 @@
+<% content_for :title, "Chọn Page | #{@social_connection.name}" %>
+
+<section class="mx-auto max-w-5xl space-y-6">
+  <div class="space-y-2">
+    <%= link_to "← #{@social_connection.name}", social_connection_path(@social_connection), class: "link link-hover text-sm" %>
+    <div>
+      <h1 class="text-3xl font-bold">Chọn Page đăng video</h1>
+      <p class="mt-1 text-sm text-base-content/60">Profile Facebook này có thể quản lý nhiều Page. Chọn một hoặc nhiều Page được cấp quyền tạo nội dung.</p>
+    </div>
+  </div>
+
+  <% if @available_pages.any? %>
+    <%= form_with url: social_connection_social_destinations_path(@social_connection), scope: :social_destination, class: "space-y-4" do %>
+      <div class="grid gap-4 md:grid-cols-2">
+        <% @available_pages.each_with_index do |available_page, page_index| %>
+          <% checkbox_id = "social_page_#{page_index}" %>
+          <article class="card border border-base-300 bg-base-100 shadow-sm">
+            <div class="card-body gap-4">
+              <div class="flex items-start gap-3">
+                <%= check_box_tag "social_destination[external_ids][]", available_page.fetch("id"), false, id: checkbox_id, disabled: !available_page.fetch("can_create_content"), class: "checkbox checkbox-primary mt-1" %>
+                <label for="<%= checkbox_id %>" class="min-w-0 flex-1 cursor-pointer space-y-1">
+                  <span class="block font-semibold"><%= available_page.fetch("name") %></span>
+                  <span class="block text-sm text-base-content/60">Page ID <%= available_page.fetch("id") %></span>
+                </label>
+                <% if available_page.fetch("can_create_content") %>
+                  <span class="badge badge-success">Được quyền tạo nội dung</span>
+                <% else %>
+                  <span class="badge badge-warning">Thiếu quyền</span>
+                <% end %>
+              </div>
+
+              <% unless available_page.fetch("can_create_content") %>
+                <div role="alert" class="alert alert-warning">
+                  <span>Page chưa cấp quyền tạo nội dung.</span>
+                </div>
+              <% end %>
+            </div>
+          </article>
+        <% end %>
+      </div>
+
+      <div class="flex flex-col-reverse justify-end gap-3 sm:flex-row">
+        <%= link_to "Quay lại profile", social_connection_path(@social_connection), class: "btn btn-ghost w-full sm:w-auto" %>
+        <%= submit_tag "Thêm Page đã chọn", class: "btn btn-primary w-full sm:w-auto" %>
+      </div>
+    <% end %>
+  <% else %>
+    <div class="card border border-dashed border-base-300 bg-base-100">
+      <div class="card-body items-start">
+        <h2 class="card-title">Chưa có Page khả dụng</h2>
+        <p class="text-base-content/70">Hãy kiểm tra profile Facebook và quyền truy cập Page.</p>
+        <%= link_to "Quay lại profile", social_connection_path(@social_connection), class: "btn btn-outline" %>
+      </div>
+    </div>
+  <% end %>
+</section>
