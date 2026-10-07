@@ -1,6 +1,8 @@
+# frozen_string_literal: true
+
 require "rails_helper"
 
-RSpec.describe "WorkflowAuditEvent", type: :model do
+RSpec.describe WorkflowAuditEvent, type: :model do
   describe "immutability" do
     it "returns read-only when an existing event is changed" do
       event = create(:workflow_audit_event)

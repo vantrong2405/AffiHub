@@ -1,6 +1,8 @@
+# frozen_string_literal: true
+
 require "rails_helper"
 
-RSpec.describe "WorkflowRuns::ClaimService", type: :service do
+RSpec.describe WorkflowRuns::ClaimService, type: :service do
   describe "#call" do
     it "returns a lease to only one of two simultaneous workers", database_cleaner: :truncation do
       workflow_run = create(:workflow_run)
@@ -14,7 +16,7 @@ RSpec.describe "WorkflowRuns::ClaimService", type: :service do
           ActiveRecord::Base.connection_pool.with_connection do
             ready << true
             start.pop
-            service = "WorkflowRuns::ClaimService".constantize.new(workflow_run_id: workflow_run.id, worker_id:)
+            service = described_class.new(workflow_run_id: workflow_run.id, worker_id:)
             service.call
             results << service.success?
           end
@@ -29,10 +31,10 @@ RSpec.describe "WorkflowRuns::ClaimService", type: :service do
 
     it "returns a higher fencing token when an expired lease is claimed again" do
       workflow_run = create(:workflow_run)
-      first = "WorkflowRuns::ClaimService".constantize.new(workflow_run_id: workflow_run.id, worker_id: "worker-a")
+      first = described_class.new(workflow_run_id: workflow_run.id, worker_id: "worker-a")
       first.call
       workflow_run.update!(lease_expires_at: 1.second.ago)
-      second = "WorkflowRuns::ClaimService".constantize.new(workflow_run_id: workflow_run.id, worker_id: "worker-b")
+      second = described_class.new(workflow_run_id: workflow_run.id, worker_id: "worker-b")
 
       second.call
 

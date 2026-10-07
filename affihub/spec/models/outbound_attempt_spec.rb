@@ -1,6 +1,8 @@
+# frozen_string_literal: true
+
 require "rails_helper"
 
-RSpec.describe "OutboundAttempt", type: :model do
+RSpec.describe OutboundAttempt, type: :model do
   describe "status" do
     it "returns prepared as the configured default" do
       expect(build(:outbound_attempt).status).to eq("prepared")

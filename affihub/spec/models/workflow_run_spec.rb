@@ -1,6 +1,8 @@
+# frozen_string_literal: true
+
 require "rails_helper"
 
-RSpec.describe "WorkflowRun", type: :model do
+RSpec.describe WorkflowRun, type: :model do
   describe "status" do
     it "returns queued as the configured default" do
       expect(build(:workflow_run).status).to eq("queued")
@@ -38,12 +40,17 @@ RSpec.describe "WorkflowRun", type: :model do
   end
 
   describe "associations" do
-    it "returns attempts and audit events for the same operation" do
+    it "returns the outbound attempts for the workflow run" do
       workflow_run = create(:workflow_run)
       attempt = create(:outbound_attempt, workflow_run:)
-      event = create(:workflow_audit_event, workflow_run:)
 
       expect(workflow_run.outbound_attempts.to_a).to eq([ attempt ])
+    end
+
+    it "returns the audit events for the workflow run" do
+      workflow_run = create(:workflow_run)
+      event = create(:workflow_audit_event, workflow_run:)
+
       expect(workflow_run.workflow_audit_events.to_a).to eq([ event ])
     end
   end
