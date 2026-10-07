@@ -17,8 +17,14 @@ Build đã được kiểm tra thành công với command trên, MPT commit đã
 `requirements.txt`. Smoke trong private Docker network với key giả xác nhận Redis `PONG`, health
 check `/ping`, đọc task sentinel qua `/api/v1/tasks` sau khi restart cả MPT lẫn Redis, và giữ được
 một queue marker qua Redis restart. Sentinel được ghi trực tiếp vào Redis; không gửi video job trả
-phí. Chưa xác minh MPT tự resume một video đang chạy, callback Rails thật, VieNeu/Azure thật hoặc
-MoviePy xử lý WAV.
+phí.
+
+Smoke bổ sung ngày 2026-10-07 lưu một `AiGeneration` ở trạng thái `processing` trong Rails trước khi
+restart MPT. Một tiến trình Rails mới đọc generation đã lưu, reconcile task sentinel đã hoàn tất,
+tải và attach đủ bốn output, tạo một `SourceAsset`, enqueue đúng một inspection job; poll lặp lại
+không tạo output hoặc job trùng. Smoke dùng file sentinel và rollback dữ liệu Rails sau khi kiểm tra;
+không gọi provider trả phí. Chưa xác minh MPT tự tiếp tục video đang chạy, callback Azure thật,
+VieNeu/Azure thật hoặc MoviePy xử lý WAV.
 
 ## Cấu hình runtime
 
@@ -37,9 +43,10 @@ tại `/data` và cho MPT tại `/MoneyPrinterTurbo/storage`; image tạo storag
 `mpt` để process non-root ghi được vào volume. Health check gọi endpoint `/ping`; không publish
 cổng 8080 ra host.
 
-Redis giữ task state và queued work qua lần restart đã smoke. Redis không tự tiếp tục tác vụ đang
-chạy khi process MPT chết. AffiHub phải đối soát trạng thái MPT trước khi retry; chưa kiểm thử
-resume/reconcile một tác vụ video đang chạy nên chưa coi đây là bảo đảm recovery runtime.
+Redis giữ task state và queued work qua lần restart đã smoke. Recovery smoke xác minh Rails có thể
+reconcile generation đã lưu với task MPT đã hoàn tất sau restart. Redis/MPT không tự tiếp tục một
+provider task đang chạy khi process MPT chết; chưa xác minh recovery của task còn chạy hoặc video
+được provider tạo thật, nên không coi đây là bảo đảm khôi phục một video đang chạy.
 
 ## Worker Rails
 
