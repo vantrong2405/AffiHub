@@ -4,7 +4,7 @@ require "rails_helper"
 
 RSpec.describe OutboundAttempts::StartService, type: :service do
   describe "#call" do
-    it "returns success for the current workflow worker" do
+    it "creates and associates a submitting attempt for the current workflow worker" do
       workflow_run = create(:workflow_run, status: "running", worker_id: "worker-1", fencing_token: 3, lease_expires_at: 1.minute.from_now)
       service = described_class.new(
         workflow_run_id: workflow_run.id,
@@ -17,35 +17,7 @@ RSpec.describe OutboundAttempts::StartService, type: :service do
       service.call
 
       expect(service).to be_success
-    end
-
-    it "creates a submitting attempt for the workflow step" do
-      workflow_run = create(:workflow_run, status: "running", worker_id: "worker-1", fencing_token: 3, lease_expires_at: 1.minute.from_now)
-      service = described_class.new(
-        workflow_run_id: workflow_run.id,
-        worker_id: "worker-1",
-        fencing_token: 3,
-        stage: "publish",
-        request_timeout_at: 1.minute.from_now
-      )
-
-      service.call
-
       expect(service.outbound_attempt.status).to eq("submitting")
-    end
-
-    it "associates the new attempt with the workflow step" do
-      workflow_run = create(:workflow_run, status: "running", worker_id: "worker-1", fencing_token: 3, lease_expires_at: 1.minute.from_now)
-      service = described_class.new(
-        workflow_run_id: workflow_run.id,
-        worker_id: "worker-1",
-        fencing_token: 3,
-        stage: "publish",
-        request_timeout_at: 1.minute.from_now
-      )
-
-      service.call
-
       expect(workflow_run.outbound_attempts.sole.attempt_id).to eq(service.outbound_attempt.attempt_id)
     end
 

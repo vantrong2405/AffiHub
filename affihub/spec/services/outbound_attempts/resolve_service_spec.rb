@@ -24,15 +24,10 @@ RSpec.describe OutboundAttempts::ResolveService, type: :service do
         )
       end
 
-      it "returns failure" do
+      it "returns failure and keeps the attempt outcome unknown" do
         service.call
 
         expect(service).not_to be_success
-      end
-
-      it "keeps the attempt outcome unknown" do
-        service.call
-
         expect(attempt.reload.status).to eq("outcome_unknown")
       end
     end
@@ -47,15 +42,10 @@ RSpec.describe OutboundAttempts::ResolveService, type: :service do
         )
       end
 
-      it "returns failure" do
+      it "returns failure and keeps the attempt outcome unknown" do
         service.call
 
         expect(service).not_to be_success
-      end
-
-      it "keeps the attempt outcome unknown" do
-        service.call
-
         expect(attempt.reload.status).to eq("outcome_unknown")
       end
     end
@@ -70,27 +60,12 @@ RSpec.describe OutboundAttempts::ResolveService, type: :service do
         )
       end
 
-      it "returns success" do
+      it "marks the attempt as not occurred and requeues the workflow" do
         service.call
 
         expect(service).to be_success
-      end
-
-      it "marks the attempt as manually not occurred" do
-        service.call
-
         expect(attempt.reload.status).to eq("manual_outcome_not_occurred")
-      end
-
-      it "queues the workflow for retry" do
-        service.call
-
         expect(attempt.workflow_run.reload.status).to eq("queued")
-      end
-
-      it "records the operator decision in the audit event" do
-        service.call
-
         expect(attempt.workflow_run.workflow_audit_events.sole.details).to eq(
           "decision" => "not_occurred",
           "evidence" => "Không tìm thấy bài đăng",
@@ -109,21 +84,11 @@ RSpec.describe OutboundAttempts::ResolveService, type: :service do
         )
       end
 
-      it "marks the attempt as manually confirmed" do
+      it "marks the attempt as occurred and completes the workflow" do
         service.call
 
         expect(attempt.reload.status).to eq("manual_outcome_confirmed")
-      end
-
-      it "completes the workflow" do
-        service.call
-
         expect(attempt.workflow_run.reload.status).to eq("completed")
-      end
-
-      it "records the operator decision in the audit event" do
-        service.call
-
         expect(attempt.workflow_run.workflow_audit_events.sole.details).to eq(
           "decision" => "occurred",
           "evidence" => "Post đã xuất hiện",
@@ -142,21 +107,11 @@ RSpec.describe OutboundAttempts::ResolveService, type: :service do
         )
       end
 
-      it "returns success" do
+      it "keeps the attempt unresolved and records the operator decision" do
         service.call
 
         expect(service).to be_success
-      end
-
-      it "keeps the attempt outcome unknown" do
-        service.call
-
         expect(attempt.reload.status).to eq("outcome_unknown")
-      end
-
-      it "records the operator decision in the audit event" do
-        service.call
-
         expect(attempt.workflow_run.workflow_audit_events.sole.details).to eq(
           "decision" => "unknown",
           "evidence" => "Trang đích chưa cập nhật",
