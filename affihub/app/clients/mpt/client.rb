@@ -56,9 +56,28 @@ class Mpt::Client
   # Submits one approved video generation request to MoneyPrinterTurbo.
   #
   # @param payload [Hash] the validated MPT video request
+  # @param task_id [String] the stable correlation ID for submission recovery
   # @return [Hash] the provider response containing the task ID
-  def create_video(payload:)
-    request(method: :post, endpoint: CONFIGURATION.dig(:endpoints, :videos), payload:)
+  def create_video(payload:, task_id:)
+    raise Error, "missing_task_id" if task_id.blank?
+
+    request(
+      method: :post,
+      endpoint: CONFIGURATION.dig(:endpoints, :videos),
+      payload:,
+      headers: { "X-Task-ID" => task_id }
+    )
+  end
+
+  # Reads one page of tasks for recovering a submission by its request ID.
+  #
+  # @param page [Integer] the one-based page number
+  # @param page_size [Integer] the maximum number of tasks to return
+  # @return [Hash] the task page and pagination metadata
+  def tasks(page:, page_size:)
+    query = URI.encode_www_form(page:, page_size:)
+    endpoint = "#{CONFIGURATION.dig(:endpoints, :tasks)}?#{query}"
+    request(method: :get, endpoint:)
   end
 
   # Reads a task status by the provider task ID.
@@ -73,7 +92,7 @@ class Mpt::Client
 
   private
 
-  def request(method:, endpoint:, payload: nil)
+  def request(method:, endpoint:, payload: nil, headers: {})
     api_key = CONFIGURATION.fetch(:api_key).to_s
     raise Error, "missing_api_key" if api_key.blank?
 
@@ -83,6 +102,7 @@ class Mpt::Client
     http_request = request_class.new(uri.request_uri)
     http_request["x-api-key"] = api_key
     http_request["Accept"] = "application/json"
+    headers.each { |name, value| http_request[name] = value }
     if payload
       http_request["Content-Type"] = "application/json"
       http_request.body = JSON.generate(payload)

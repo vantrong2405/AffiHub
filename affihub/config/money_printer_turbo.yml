@@ -10,21 +10,31 @@ shared:
     terms: /api/v1/terms
     videos: /api/v1/videos
     tasks: /api/v1/tasks
+  task_list_page_size: 1000
   generation_profile:
     video_source: muapi
     model_id: seedance-lite-t2v
     resolution: 480p
+    video_aspect: "9:16"
     scene_count: 5
     scene_duration: 6
     min_scene_duration: 3
     max_scene_duration: 12
+    video_count: 1
   tts:
+    provider: chatterbox
     model_id: vieneu-v3-turbo
+    voice_name: Mai Anh
     response_format: wav
     speed: 1.0
     open_timeout_seconds: 10
     read_timeout_seconds: 120
+  task_states:
+    failed: -1
+    complete: 1
+    processing: 4
 
 test:
   base_url: http://mpt.test
   api_key: affihub-test-key
+  task_list_page_size: 2

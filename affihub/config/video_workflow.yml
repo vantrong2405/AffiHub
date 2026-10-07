@@ -54,6 +54,28 @@ shared:
         outcome_unknown: outcome_unknown
         completed: completed
         failed: failed
+    ai_generation:
+      default: draft
+      values:
+        draft: draft
+        script_ready: script_ready
+        prompts_ready: prompts_ready
+        submitting: submitting
+        processing: processing
+        reconciliation_required: reconciliation_required
+        outcome_unknown: outcome_unknown
+        completed: completed
+        failed: failed
+    ai_generation_scene:
+      default: draft
+      values:
+        draft: draft
+        submitting: submitting
+        processing: processing
+        reconciliation_required: reconciliation_required
+        outcome_unknown: outcome_unknown
+        completed: completed
+        failed: failed
     outbound_attempt:
       default: prepared
       values:

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_07_090100) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_07_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -40,6 +40,44 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_07_090100) do
     t.bigint "blob_id", null: false
     t.string "variation_digest", null: false
     t.index ["blob_id", "variation_digest"], name: "index_active_storage_variant_records_uniqueness", unique: true
+  end
+
+  create_table "ai_generation_scenes", force: :cascade do |t|
+    t.bigint "ai_generation_id", null: false
+    t.integer "scene_index", null: false
+    t.string "status", null: false
+    t.text "prompt_snapshot"
+    t.text "narration_snapshot", null: false
+    t.string "voice_name", null: false
+    t.jsonb "estimate_snapshot", default: {}, null: false
+    t.jsonb "consent_snapshot", default: {}, null: false
+    t.jsonb "actual_costs", default: {}, null: false
+    t.string "safe_error_code"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["ai_generation_id", "scene_index"], name: "index_ai_generation_scenes_on_ai_generation_id_and_scene_index", unique: true
+    t.index ["ai_generation_id", "status"], name: "index_ai_generation_scenes_on_ai_generation_id_and_status"
+    t.index ["ai_generation_id"], name: "index_ai_generation_scenes_on_ai_generation_id"
+  end
+
+  create_table "ai_generations", force: :cascade do |t|
+    t.bigint "video_project_id", null: false
+    t.bigint "source_asset_id"
+    t.string "status", null: false
+    t.string "correlation_id", null: false
+    t.string "task_id"
+    t.integer "provider_state"
+    t.string "safe_error_code"
+    t.jsonb "input_snapshot", default: {}, null: false
+    t.jsonb "estimate_snapshot", default: {}, null: false
+    t.jsonb "consent_snapshot", default: {}, null: false
+    t.jsonb "actual_costs", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["correlation_id"], name: "index_ai_generations_on_correlation_id", unique: true
+    t.index ["source_asset_id"], name: "index_ai_generations_on_source_asset_id"
+    t.index ["task_id"], name: "index_ai_generations_on_task_id", unique: true, where: "(task_id IS NOT NULL)"
+    t.index ["video_project_id"], name: "index_ai_generations_on_video_project_id"
   end
 
   create_table "outbound_attempts", force: :cascade do |t|
@@ -175,6 +213,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_07_090100) do
 
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
+  add_foreign_key "ai_generation_scenes", "ai_generations"
+  add_foreign_key "ai_generations", "source_assets"
+  add_foreign_key "ai_generations", "video_projects"
   add_foreign_key "outbound_attempts", "workflow_runs"
   add_foreign_key "project_media_assets", "video_projects"
   add_foreign_key "render_versions", "source_assets"

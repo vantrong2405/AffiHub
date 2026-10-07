@@ -85,6 +85,7 @@ RSpec.describe Mpt::Client, type: :service do
   end
 
   describe "#create_video" do
+    let(:correlation_id) { "correlation-123" }
     let(:video_request) do
       stub_request(:post, "http://mpt.test/api/v1/videos")
         .with(body: { "video_source" => "muapi" })
@@ -92,11 +93,29 @@ RSpec.describe Mpt::Client, type: :service do
     end
 
     before { video_request }
-    subject(:response) { client.create_video(payload: { video_source: "muapi" }) }
+    subject(:response) { client.create_video(payload: { video_source: "muapi" }, task_id: correlation_id) }
 
     it "returns the task ID from the MPT response" do
       expect(response).to eq("task_id" => "mpt-task-123")
       expect(video_request).to have_been_requested.once
+    end
+
+    it "sends the stable correlation ID in the X-Task-ID header" do
+      response
+
+      expect(
+        a_request(:post, "http://mpt.test/api/v1/videos")
+          .with(headers: { "x-task-id" => correlation_id })
+      ).to have_been_made.once
+    end
+
+    context "when the correlation ID is missing" do
+      let(:correlation_id) { nil }
+
+      it "does not send a video request" do
+        expect { response }.to raise_error(described_class::Error, "missing_task_id")
+        expect(video_request).not_to have_been_requested
+      end
     end
   end
 
@@ -122,6 +141,32 @@ RSpec.describe Mpt::Client, type: :service do
     it "returns task state and every generated output reference" do
       expect(task).to eq(task_result.stringify_keys)
       expect(task_request).to have_been_requested.once
+    end
+  end
+
+  describe "#tasks" do
+    let(:task_page) do
+      {
+        "tasks" => [
+          { "task_id" => "mpt-task-123", "request_id" => "correlation-123", "state" => 4 }
+        ],
+        "total" => 1,
+        "page" => 2,
+        "page_size" => 1000
+      }
+    end
+    let(:task_list_request) do
+      stub_request(:get, "http://mpt.test/api/v1/tasks?page=2&page_size=1000")
+        .with(headers: { "x-api-key" => "affihub-test-key" })
+        .to_return(status: 200, body: { status: 200, data: task_page }.to_json)
+    end
+
+    before { task_list_request }
+    subject(:tasks) { client.tasks(page: 2, page_size: 1000) }
+
+    it "returns the requested task page with its correlation IDs" do
+      expect(tasks).to eq(task_page)
+      expect(task_list_request).to have_been_requested.once
     end
   end
 end
