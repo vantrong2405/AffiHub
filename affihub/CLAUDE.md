@@ -75,10 +75,12 @@ interactions that have behavior beyond visual styling.
 
 ### RSpec assertion/double style
 
-- Give each `it` one independently meaningful behavior. Write a separate, explicitly named `it` for
-  each input boundary or outcome; do not put several independent cases into one example. Multiple
-  expectations are fine when together they prove that example's one behavior. Avoid loops, case tables,
-  or `shared_examples` when they hide which individual case is being tested.
+- Give each `it` one case with one clearly named behavior. Put every independent input or branch in
+  its own `it`; do not bundle different outputs or state changes into one example. Prefer one focused
+  expectation per `it`. Multiple expectations are appropriate only when they verify parts of that same
+  behavior (for example, rejection and its lack of side effects). Add another `it` for an independent
+  outcome, even when it uses the same setup or action. Avoid loops, case tables, and `shared_examples`
+  that hide individual cases.
 - Keep each example focused and readable; there is no fixed line limit. Keep its setup, action, and
   expectations easy to follow, and extract setup only when that improves clarity.
 - Use `describe '#method'`/`describe '.method'` for methods and readable `context 'when ...'` blocks
@@ -97,6 +99,9 @@ interactions that have behavior beyond visual styling.
   object across related specs (`video_project`, `source_asset`, `render_version`). Use deterministic
   values; use FactoryBot sequences when uniqueness matters and Faker only when varied input helps the
   behavior being tested. Use the local RuboCop quote style and sibling specs as formatting references.
+- Name variables after their domain objects; avoid vague names such as `record`, `item`, or `data` when
+  a name like `video_project` or `ai_generation` is clearer. Keep setup local to an example unless the
+  nearest group genuinely shares it; do not extract one-use helpers just to shorten a spec.
 - Use Shoulda-Matchers for standard Rails association and validation contracts when they make the
   example clearer.
 - Put shared setup in the nearest `context` using `let`/`before`. Prefer a named model scope for a
