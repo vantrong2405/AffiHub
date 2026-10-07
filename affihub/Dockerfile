@@ -25,6 +25,7 @@ ENV RAILS_ENV="production" \
     BUNDLE_DEPLOYMENT="1" \
     BUNDLE_PATH="/usr/local/bundle" \
     BUNDLE_WITHOUT="development" \
+    SOLID_QUEUE_IN_PUMA="true" \
     LD_PRELOAD="/usr/local/lib/libjemalloc.so"
 
 # Resolve Tailwind plugins in a dedicated Node package stage.
