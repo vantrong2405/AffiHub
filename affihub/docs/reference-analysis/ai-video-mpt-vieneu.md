@@ -23,7 +23,13 @@ MPT router dùng prefix `/api/v1`. Các route LLM và video cùng áp dụng `ve
 | `POST /api/v1/videos` | `TaskVideoRequest`, gồm subject/script/terms, aspect, clip duration, source, voice/subtitle settings và material data | Trả `task_id`; gọi nền, không phải file MP4 đồng bộ trong response. |
 | `GET /api/v1/tasks?page=&page_size=` | Trang và số task/trang (tối đa 1000) | Trả task list có `task_id`, `request_id`, `state` và progress; dùng để reconcile submit timeout theo correlation ID. |
 | `GET /api/v1/tasks/{task_id}` | task ID | `task_id`, integer `state`, `progress`, tùy chọn `videos`, `combined_videos`, `failed_stage`, `error`; các trường mở rộng được giữ lại. |
-| `GET /api/v1/download/{file_path}` | Đường dẫn file nằm trong task directory | Tải artifact task sau khi hoàn tất; route kiểm tra file nằm trong task directory và trả `FileResponse`. |
+| `GET /api/v1/download/{file_path}` | Đường dẫn file tương đối với task directory | Tải artifact task sau khi hoàn tất; route kiểm tra file nằm trong task directory và trả `FileResponse`. |
+
+MPT tạo output reference với prefix `tasks/{task_id}/{relative_path}`, trong khi route download
+resolve `file_path` từ chính thư mục `storage/tasks`. Vì vậy adapter Rails xác nhận task ID trong
+reference, bỏ đúng prefix `tasks/` rồi mới gọi endpoint download đã cấu hình; request gửi
+`{task_id}/{relative_path}`. Nếu gửi nguyên prefix từ task response, route sẽ tìm nhầm
+`storage/tasks/tasks/{task_id}/...`.
 
 Contract Pydantic chi tiết nằm trong [pinned `schema.py`](https://github.com/harry0703/MoneyPrinterTurbo/blob/fafec0fbf3142ad5ad7212c2e17996bf247c360a/app/models/schema.py); controller và route trong [pinned `llm.py`](https://github.com/harry0703/MoneyPrinterTurbo/blob/fafec0fbf3142ad5ad7212c2e17996bf247c360a/app/controllers/v1/llm.py) và [pinned `video.py`](https://github.com/harry0703/MoneyPrinterTurbo/blob/fafec0fbf3142ad5ad7212c2e17996bf247c360a/app/controllers/v1/video.py). MPT response state là số nguyên; AffiHub cần map state theo constant/source của đúng phiên bản, không đoán ý nghĩa chỉ từ số.
 
