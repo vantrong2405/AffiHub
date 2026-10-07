@@ -262,7 +262,7 @@ RSpec.describe AiGenerations::TtsFallbackCallbackService, type: :service do
     end
 
     context "when the callback matches the approved scene and current consent" do
-      it "persists the submitting attempt before calling Azure" do
+      it "stores the WAV and confirms the fallback attempt for the approved scene" do
         attempt_status_at_request = []
         stub_request(:post, "https://azure-speech.test/cognitiveservices/v1")
           .to_return do
@@ -273,41 +273,11 @@ RSpec.describe AiGenerations::TtsFallbackCallbackService, type: :service do
         call_result
 
         expect(attempt_status_at_request).to eq([ "submitting" ])
-      end
-
-      it "returns the Azure WAV for the approved scene" do
-        call_result
-
         expect(service.audio_data).to eq(azure_audio)
-      end
-
-      it "attaches the generated WAV to the approved scene" do
-        call_result
-
         expect(ai_generation_scene.reload.voiceover.download).to eq(azure_audio)
-      end
-
-      it "marks the scene completed after storing the WAV" do
-        call_result
-
         expect(ai_generation_scene.reload.status).to eq("completed")
-      end
-
-      it "keeps the generation processing after completing one scene" do
-        call_result
-
         expect(ai_generation.reload.status).to eq("processing")
-      end
-
-      it "confirms the outbound attempt after Azure succeeds" do
-        call_result
-
         expect(workflow_run.outbound_attempts.sole.status).to eq("confirmed")
-      end
-
-      it "records Azure Speech and the consented quote on the attempt" do
-        call_result
-
         expect(workflow_run.outbound_attempts.sole.provider_reference).to eq(
           "provider" => "azure_speech",
           "quoted_amount" => "0.01",
@@ -322,15 +292,9 @@ RSpec.describe AiGenerations::TtsFallbackCallbackService, type: :service do
           replay_service.call
         end
 
-        it "returns the saved WAV" do
+        it "returns the saved WAV without calling Azure or creating another attempt" do
           expect(replay_service.audio_data).to eq(azure_audio)
-        end
-
-        it "does not send another Azure request" do
           expect(azure_request).to have_been_requested.once
-        end
-
-        it "does not create another outbound attempt" do
           expect(workflow_run.outbound_attempts.count).to eq(1)
         end
       end
@@ -364,23 +328,11 @@ RSpec.describe AiGenerations::TtsFallbackCallbackService, type: :service do
         replay_service.call
       end
 
-      it "returns an unsuccessful result" do
+      it "keeps the generation incomplete and does not retry the unknown Azure request" do
         expect(service).not_to be_success
-      end
-
-      it "keeps the generation processing while the result is unknown" do
         expect(ai_generation.reload.status).to eq("processing")
-      end
-
-      it "marks the scene outcome unknown" do
         expect(ai_generation_scene.reload.status).to eq("outcome_unknown")
-      end
-
-      it "marks the outbound attempt outcome unknown" do
         expect(workflow_run.outbound_attempts.sole.status).to eq("outcome_unknown")
-      end
-
-      it "does not send Azure another request after a replay" do
         expect(azure_request).to have_been_requested.once
       end
     end

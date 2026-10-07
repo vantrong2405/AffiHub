@@ -265,63 +265,28 @@ RSpec.describe AiGenerations::SubmitService, type: :service do
     end
 
     context "when the estimate is confirmed and every scene is approved" do
-      it "returns the accepted MPT task ID" do
+      it "submits the approved request and stores its TTS fallback details" do
         call_result
 
         expect(service.task_id).to eq("mpt-task-123")
-      end
-
-      it "sends the expected video request to MPT" do
-        call_result
-
         expect(service.video_request).to eq(expected_video_request)
-      end
-
-      it "creates the TTS scene before MPT receives the request" do
-        call_result
-
         expect(submission_scene_snapshot.fetch(:attributes).slice("scene_index", "status")).to eq(
           "scene_index" => 0,
           "status" => "processing"
         )
-      end
-
-      it "persists the approved narration on the TTS scene" do
-        call_result
-
         expect(submission_scene_snapshot.fetch(:attributes).fetch("narration_snapshot")).to eq(
           generation_inputs.fetch(:video_script)
         )
-      end
-
-      it "persists the approved Azure voice on the TTS scene" do
-        call_result
-
         expect(submission_scene_snapshot.fetch(:attributes).fetch("voice_name")).to eq(
           "vi-VN-HoaiMyNeural"
         )
-      end
-
-      it "persists the Azure quote on the TTS scene" do
-        call_result
-
         expect(submission_scene_snapshot.fetch(:estimate_snapshot)).to eq(
           estimate.fetch(:cost_breakdown).fetch(:tts_fallback).deep_stringify_keys
         )
-      end
-
-      it "persists consent for the exact Azure quote on the TTS scene" do
-        call_result
-
         expect(submission_scene_snapshot.fetch(:consent_snapshot)).to include(
           "confirmed" => true,
           "estimate" => estimate.fetch(:cost_breakdown).fetch(:tts_fallback).deep_stringify_keys
         )
-      end
-
-      it "submits one video request to MPT" do
-        call_result
-
         expect(video_request).to have_been_requested.once
       end
     end
@@ -362,25 +327,12 @@ RSpec.describe AiGenerations::SubmitService, type: :service do
       end
       let(:service) { described_class.new(ai_generation_id: ai_generation.id) }
 
-      it "returns success for the saved task" do
-        expect(call_result).to be(true)
-      end
-
-      it "returns the existing MPT task ID" do
+      it "returns the saved task without submitting or listing it again" do
         call_result
 
+        expect(service).to be_success
         expect(service.task_id).to eq("mpt-task-existing")
-      end
-
-      it "does not submit another video request" do
-        call_result
-
         expect(video_request).not_to have_been_requested
-      end
-
-      it "does not request the MPT task list" do
-        call_result
-
         expect(WebMock).not_to have_requested(:get, %r{/api/v1/tasks})
       end
     end
@@ -388,7 +340,7 @@ RSpec.describe AiGenerations::SubmitService, type: :service do
     context "when MPT accepts the request without returning a task ID" do
       let(:video_request) do
         stub_request(:post, %r{/api/v1/videos\z})
-      .with(body: expected_video_request.deep_stringify_keys)
+          .with(body: expected_video_request.deep_stringify_keys)
           .to_return(status: 200, body: { status: 200, data: { state: 4 } }.to_json)
       end
       let(:task_list_request) do
@@ -414,21 +366,11 @@ RSpec.describe AiGenerations::SubmitService, type: :service do
 
       before { task_list_request }
 
-      it "returns the task ID found during reconciliation" do
+      it "recovers the task ID without submitting the video request again" do
         call_result
 
         expect(service.task_id).to eq("mpt-task-recovered")
-      end
-
-      it "checks the MPT task list once" do
-        call_result
-
         expect(task_list_request).to have_been_requested.once
-      end
-
-      it "does not send another video request during reconciliation" do
-        call_result
-
         expect(video_request).to have_been_requested.once
       end
     end
@@ -464,46 +406,21 @@ RSpec.describe AiGenerations::SubmitService, type: :service do
           end
       end
 
-      it "persists the approved input snapshot before the MPT request" do
+      it "persists the approved generation and attempt before the MPT request" do
         call_result
 
         expect(submission_observations[:input_snapshot]).to eq(generation_inputs.deep_stringify_keys)
-      end
-
-      it "persists the approved estimate before the MPT request" do
-        call_result
-
         expect(submission_observations[:estimate_snapshot]).to eq(estimate.deep_stringify_keys)
-      end
-
-      it "persists the user's cost consent before the MPT request" do
-        call_result
-
         expect(submission_observations[:consent_snapshot]).to include(
           "confirmed" => true,
           "amount" => "0.50",
           "currency" => "USD"
         )
-      end
-
-      it "persists the submitting attempt before the MPT request" do
-        call_result
-
         expect(submission_observations[:attempt_status]).to eq("submitting")
-      end
-
-      it "sends the generation's saved correlation ID in the MPT header" do
-        call_result
-
         expect(
           a_request(:post, "http://mpt.test/api/v1/videos")
             .with(headers: { "x-task-id" => submission_observations[:correlation_id] })
         ).to have_been_made.once
-      end
-
-      it "stores the accepted MPT task ID on the generation" do
-        call_result
-
         expect(service.ai_generation.reload.task_id).to eq("mpt-task-123")
       end
     end
@@ -546,27 +463,12 @@ RSpec.describe AiGenerations::SubmitService, type: :service do
 
       before { task_list_request }
 
-      it "returns success when the task is found by request ID" do
+      it "recovers the accepted task by request ID without submitting it again" do
         call_result
 
         expect(service).to be_success
-      end
-
-      it "stores the recovered MPT task ID" do
-        call_result
-
         expect(service.ai_generation.reload.task_id).to eq("mpt-task-recovered")
-      end
-
-      it "does not submit another video request during recovery" do
-        call_result
-
         expect(video_request).to have_been_requested.once
-      end
-
-      it "checks the task list once during recovery" do
-        call_result
-
         expect(task_list_request).to have_been_requested.once
       end
 
@@ -589,15 +491,9 @@ RSpec.describe AiGenerations::SubmitService, type: :service do
           recovery_service.call
         end
 
-        it "keeps the generation outcome unknown after restart" do
+        it "keeps both outcomes unknown and blocks a second submission after restart" do
           expect(service.ai_generation.reload.status).to eq("outcome_unknown")
-        end
-
-        it "keeps the outbound attempt outcome unknown after restart" do
           expect(service.ai_generation.workflow_run.outbound_attempts.sole.status).to eq("outcome_unknown")
-        end
-
-        it "blocks a second video submission after restart" do
           expect(video_request).to have_been_requested.once
         end
       end
@@ -614,15 +510,9 @@ RSpec.describe AiGenerations::SubmitService, type: :service do
           recovery_service.call
         end
 
-        it "keeps the generation outcome unknown when the task list is unavailable" do
+        it "keeps both outcomes unknown and blocks a second submission when the task list is unavailable" do
           expect(service.ai_generation.reload.status).to eq("outcome_unknown")
-        end
-
-        it "keeps the outbound attempt outcome unknown when the task list is unavailable" do
           expect(service.ai_generation.workflow_run.outbound_attempts.sole.status).to eq("outcome_unknown")
-        end
-
-        it "does not submit the video twice when the task list is unavailable" do
           expect(video_request).to have_been_requested.once
         end
       end
@@ -669,21 +559,11 @@ RSpec.describe AiGenerations::SubmitService, type: :service do
 
         before { task_list_page_two_request }
 
-        it "stores the task found on the later page" do
+        it "finds the task on a later page without submitting the video again" do
           call_result
 
           expect(service.ai_generation.reload.task_id).to eq("mpt-task-recovered")
-        end
-
-        it "requests the later task-list page once" do
-          call_result
-
           expect(task_list_page_two_request).to have_been_requested.once
-        end
-
-        it "does not resubmit the video while checking later pages" do
-          call_result
-
           expect(video_request).to have_been_requested.once
         end
       end
