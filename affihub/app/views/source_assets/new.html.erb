@@ -1,0 +1,15 @@
+<% content_for :title, "Nhập video | #{@video_project.name}" %>
+
+<section class="mx-auto max-w-3xl space-y-6">
+  <div class="space-y-2">
+    <%= link_to "← #{@video_project.name}", video_project_path(@video_project), class: "link link-hover text-sm" %>
+    <h1 class="text-3xl font-bold">Nhập video từ máy</h1>
+    <p class="text-base-content/70">File được lưu trong workspace cục bộ và kiểm tra ở tiến trình nền. Source gốc không bị thay đổi khi biên tập.</p>
+  </div>
+
+  <div class="alert alert-info items-start">
+    <span>Chọn file MP4 hoặc MOV. Nếu file không đọc được hoặc quá giới hạn, project vẫn được giữ và bạn có thể chọn file khác.</span>
+  </div>
+
+  <%= render "form" %>
+</section>

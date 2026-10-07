@@ -1,50 +1,95 @@
-<% content_for :title, "#{@video_project.title} · AffiHub" %>
+<% content_for :title, "#{@video_project.name} | AffiHub" %>
 
-<div class="mx-auto flex w-full max-w-6xl flex-col gap-7">
-  <div class="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-    <div class="min-w-0">
-      <%= link_to "Tải video khác lên", root_path, class: "link link-hover text-sm" %>
-      <p class="mt-6"><span class="badge badge-outline">Bước 2 · Xem lại</span></p>
-      <h1 class="mt-3 break-words text-2xl font-bold text-base-content sm:text-3xl"><%= @video_project.title %></h1>
-      <p class="mt-2 text-sm leading-6 text-base-content/70">Video đã được lưu trong AffiHub. Xem lại rồi tải MP4 về máy khi cần.</p>
+<section class="space-y-8">
+  <div class="space-y-4">
+    <%= link_to "← Dự án video", video_projects_path, class: "link link-hover text-sm" %>
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <div class="space-y-2">
+        <div class="flex flex-wrap items-center gap-3">
+          <h1 class="text-3xl font-bold"><%= @video_project.name %></h1>
+          <%= workflow_status_badge(@video_project.status, resource: "video_project") %>
+        </div>
+        <p class="text-base-content/70">Nguồn và các bản render của project được giữ riêng, kể cả khi bạn tạo version mới.</p>
+      </div>
+      <div class="flex flex-col gap-2 sm:flex-row">
+        <%= link_to "Đổi tên", edit_video_project_path(@video_project), class: "btn btn-outline" %>
+        <% if @source_assets.empty? && @render_versions.empty? %>
+          <%= button_to "Xóa project", video_project_path(@video_project), method: :delete, class: "btn btn-ghost text-error", form: { data: { turbo_confirm: "Xóa project này?" } } %>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <div class="card border border-primary/20 bg-primary/5">
+    <div class="card-body gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div class="space-y-1">
+        <h2 class="card-title">Bắt đầu với một video</h2>
+        <p class="text-sm text-base-content/70">Chọn file MP4 hoặc MOV. AffiHub lưu file cục bộ rồi kiểm tra metadata trong nền.</p>
+      </div>
+      <%= link_to "Nhập video", new_video_project_source_asset_path(@video_project), class: "btn btn-primary w-full sm:w-auto" %>
+    </div>
+  </div>
+
+  <section class="space-y-4" aria-labelledby="source-assets-heading">
+    <div class="flex items-center justify-between gap-3">
+      <div>
+        <h2 id="source-assets-heading" class="text-xl font-bold">Source video</h2>
+        <p class="text-sm text-base-content/60"><%= @source_assets.length %> nguồn</p>
+      </div>
+      <% if @source_assets.any? %>
+        <%= link_to "Xem tất cả", video_project_source_assets_path(@video_project), class: "link link-hover text-sm" %>
+      <% end %>
     </div>
 
-    <%= link_to "Tải MP4 về máy", export_render_version_path(@render_version), class: "btn btn-primary shrink-0" %>
-  </div>
-
-  <div class="grid min-w-0 grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_20rem] xl:gap-6">
-    <section class="card card-border min-w-0 bg-base-100" aria-labelledby="preview-title">
-      <div class="card-body p-4 sm:p-6">
-        <header>
-          <h2 id="preview-title" class="card-title">Xem trước video</h2>
-          <p class="mt-1 text-sm text-base-content/70">Phát video để kiểm tra nội dung và thời lượng.</p>
-        </header>
-
-        <div class="flex justify-center">
-          <%= video_tag rails_blob_path(@render_version.file, disposition: :inline), controls: true, preload: "metadata", playsinline: true, class: "aspect-[9/16] w-full max-w-[390px] rounded-box bg-neutral object-contain" %>
-        </div>
+    <% if @source_assets.any? %>
+      <div class="grid gap-4 md:grid-cols-2">
+        <% @source_assets.each do |source_asset| %>
+          <article class="card border border-base-300 bg-base-100 shadow-sm">
+            <div class="card-body gap-4">
+              <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0 space-y-1">
+                  <h3 class="card-title text-base"><%= source_asset.file.attached? ? source_asset.file.filename : "Video import" %></h3>
+                  <p class="text-sm text-base-content/60"><%= l(source_asset.created_at, format: :short) %></p>
+                </div>
+                <%= workflow_status_badge(source_asset.status, resource: "source_asset") %>
+              </div>
+              <div class="card-actions justify-end">
+                <%= link_to "Chi tiết", video_project_source_asset_path(@video_project, source_asset), class: "btn btn-outline btn-sm" %>
+              </div>
+            </div>
+          </article>
+        <% end %>
       </div>
-    </section>
-
-    <aside class="card card-border bg-base-100" aria-labelledby="file-title">
-      <div class="card-body p-4 sm:p-6">
-        <h2 id="file-title" class="card-title">Thông tin tệp</h2>
-        <p><span class="badge badge-success">Sẵn sàng</span></p>
-        <dl class="divide-y divide-base-300">
-          <div class="py-3 first:pt-0">
-            <dt class="text-sm font-medium text-base-content/70">Tên tệp</dt>
-            <dd class="mt-1 break-all text-sm font-medium"><%= @source_asset.file.filename %></dd>
-          </div>
-          <div class="py-3">
-            <dt class="text-sm font-medium text-base-content/70">Dung lượng</dt>
-            <dd class="mt-1 text-sm"><%= number_to_human_size(@source_asset.file.byte_size) %></dd>
-          </div>
-          <div class="py-3 last:pb-0">
-            <dt class="text-sm font-medium text-base-content/70">Lưu trữ</dt>
-            <dd class="mt-1 text-sm">Đã lưu trong AffiHub; chưa đăng lên mạng xã hội.</dd>
-          </div>
-        </dl>
+    <% else %>
+      <div class="rounded-box border border-dashed border-base-300 bg-base-100 p-6 text-sm text-base-content/70">
+        Chưa có source. Nhập file MP4 hoặc MOV để bắt đầu.
       </div>
-    </aside>
-  </div>
-</div>
+    <% end %>
+  </section>
+
+  <section class="space-y-4" aria-labelledby="render-versions-heading">
+    <div>
+      <h2 id="render-versions-heading" class="text-xl font-bold">Bản render</h2>
+      <p class="text-sm text-base-content/60">Mỗi lần render tạo một version riêng.</p>
+    </div>
+    <% if @render_versions.any? %>
+      <div class="grid gap-4 md:grid-cols-2">
+        <% @render_versions.each do |render_version| %>
+          <article class="card border border-base-300 bg-base-100">
+            <div class="card-body flex-row items-center justify-between gap-3">
+              <div>
+                <h3 class="font-semibold">Version <%= render_version.version_number %></h3>
+                <p class="text-sm text-base-content/60"><%= l(render_version.created_at, format: :short) %></p>
+              </div>
+              <%= workflow_status_badge(render_version.status, resource: "render_version") %>
+            </div>
+          </article>
+        <% end %>
+      </div>
+    <% else %>
+      <div class="rounded-box border border-dashed border-base-300 bg-base-100 p-6 text-sm text-base-content/70">
+        Chưa có bản render. Source được giữ nguyên khi bạn tạo bản chỉnh sửa sau này.
+      </div>
+    <% end %>
+  </section>
+</section>

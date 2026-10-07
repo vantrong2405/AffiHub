@@ -1,0 +1,48 @@
+vi:
+  date:
+    formats:
+      default: "%d/%m/%Y"
+      short: "%d/%m"
+      long: "%d/%m/%Y"
+  time:
+    formats:
+      default: "%d/%m/%Y %H:%M"
+      short: "%d/%m %H:%M"
+      long: "%d/%m/%Y lúc %H:%M"
+  activerecord:
+    attributes:
+      video_project:
+        name: Tên project
+    errors:
+      messages:
+        blank: không được để trống
+  errors:
+    format: "%{attribute} %{message}"
+    messages:
+      blank: không được để trống
+  video_workflow:
+    media_metadata:
+      width: Chiều rộng
+      height: Chiều cao
+      duration_seconds: Thời lượng (giây)
+      file_size_bytes: Dung lượng (byte)
+      video_codec: Codec video
+      has_audio: Có âm thanh
+      audio_codec: Codec âm thanh
+      frame_rate: Tốc độ khung hình
+    statuses:
+      video_project:
+        draft: Nháp
+        processing: Đang xử lý
+        ready: Sẵn sàng
+        failed: Cần xử lý
+      source_asset:
+        pending: Đang chờ
+        processing: Đang kiểm tra
+        ready: Sẵn sàng chỉnh sửa
+        failed: Không đọc được
+      render_version:
+        pending: Đang chờ render
+        processing: Đang render
+        ready: Đã render
+        failed: Render lỗi

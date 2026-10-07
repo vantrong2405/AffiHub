@@ -25,8 +25,11 @@ existing development database contains legacy POC tables and was left unchanged;
 migrations intentionally do not convert that legacy schema.
 
 The active product contract remains
-../../openspec/changes/affihub-mvp-video-workflow/. Its task progress was reset because the
-implementation that had been marked complete was removed.
+../../openspec/changes/affihub-mvp-video-workflow/. The project and local-source screens are now
+implemented through `VideoProjectsController` and `SourceAssetsController`, with resource-scoped
+Services and ERB templates. Local MP4/MOV uploads enqueue `SourceAssets::InspectJob`; the source
+page displays the saved processing state, verified media metadata, and an inline preview once the
+inspection succeeds. Editor, render, and external integration screens remain in progress.
 
 ## Product requirements and references
 
@@ -42,10 +45,13 @@ implementation that had been marked complete was removed.
 | Path | Purpose |
 |---|---|
 | app/controllers/application_controller.rb, main_controller.rb, api_controller.rb | Rails controller base classes |
+| app/controllers/dashboard_controller.rb, video_projects_controller.rb, source_assets_controller.rb | Dashboard redirect and local project/source HTTP actions |
 | app/controllers/concerns/ | Shared HTML/JSON response concerns |
 | app/forms/main_form.rb, app/operations/main_operation.rb, app/serializers/ | Generated HMVC scaffold |
 | app/models/application_record.rb, video_project.rb, source_asset.rb, render_version.rb | Active Record base and initial video domain |
 | app/jobs/application_job.rb | Active Job base class |
+| app/services/video_projects/, app/services/source_assets/ | Project workflows, local import, and source inspection |
+| app/helpers/workflow_status_helper.rb, app/views/video_projects/, app/views/source_assets/ | Vietnamese status labels and project/source pages |
 | app/views/layouts/, app/views/pwa/ | Default Rails layouts and PWA templates |
 | app/assets/, app/javascript/ | Tailwind/daisyUI and importmap scaffold |
 | config/routes.rb | Rails health check, dashboard root, and resource routes from the active change |

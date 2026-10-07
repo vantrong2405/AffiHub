@@ -1,0 +1,11 @@
+<% content_for :title, "Tạo project | AffiHub" %>
+
+<section class="mx-auto max-w-2xl space-y-6">
+  <div class="space-y-2">
+    <%= link_to "← Dự án video", video_projects_path, class: "link link-hover text-sm" %>
+    <h1 class="text-3xl font-bold">Tạo project</h1>
+    <p class="text-base-content/70">Project gom source video và các bản render liên quan.</p>
+  </div>
+
+  <%= render "form", video_project: @video_project, submit_label: "Tạo project" %>
+</section>

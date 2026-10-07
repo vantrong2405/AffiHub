@@ -1,0 +1,41 @@
+shared:
+  oauth_state_ttl_seconds: 600
+  statuses:
+    social_connection:
+      default: connected
+      values:
+        connected: connected
+        reauth_required: reauth_required
+        revoked: revoked
+        failed: failed
+    social_destination:
+      default: connected
+      values:
+        connected: connected
+        reauth_required: reauth_required
+        revoked: revoked
+        unavailable: unavailable
+  providers:
+    facebook:
+      client_id: <%= ENV.fetch("META_APP_ID", "") %>
+      client_secret: <%= Rails.application.credentials.dig(:meta, :app_secret) %>
+      api_version: v26.0
+      authorization_base_url: https://www.facebook.com
+      graph_api_base_url: https://graph.facebook.com
+      redirect_uri: http://localhost:3000/auth/facebook/callback
+      allowed_redirect_uris:
+        - http://localhost:3000/auth/facebook/callback
+      scopes:
+        - pages_show_list
+        - pages_read_engagement
+        - pages_manage_posts
+      pkce_enabled: false
+      open_timeout_seconds: 10
+      read_timeout_seconds: 30
+      upload_timeout_seconds: 900
+
+test:
+  providers:
+    facebook:
+      client_id: affihub-test-client
+      client_secret: affihub-test-secret

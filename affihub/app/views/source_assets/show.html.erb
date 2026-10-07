@@ -1,0 +1,57 @@
+<% content_for :title, "#{@source_asset.file.attached? ? @source_asset.file.filename : 'Source video'} | #{@video_project.name}" %>
+
+<section class="mx-auto max-w-4xl space-y-6">
+  <div class="space-y-3">
+    <%= link_to "← #{@video_project.name}", video_project_path(@video_project), class: "link link-hover text-sm" %>
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div class="min-w-0 space-y-2">
+        <h1 class="break-words text-2xl font-bold sm:text-3xl"><%= @source_asset.file.attached? ? @source_asset.file.filename : "Source video" %></h1>
+        <p class="text-sm text-base-content/60">Nhập lúc <%= l(@source_asset.created_at, format: :long) %></p>
+      </div>
+      <%= workflow_status_badge(@source_asset.status, resource: "source_asset") %>
+    </div>
+  </div>
+
+  <% if @source_asset.failed? %>
+    <div class="alert alert-error" role="alert">
+      <span><%= @source_asset.inspection_error.presence || "Không thể đọc file video. Hãy chọn một file MP4 hoặc MOV hợp lệ." %></span>
+    </div>
+  <% elsif @source_asset.pending? || @source_asset.processing? %>
+    <div class="alert alert-info" role="status">
+      <span>File đã được nhận. Worker đang kiểm tra video; tải lại trang sau ít phút để xem trạng thái mới.</span>
+    </div>
+  <% end %>
+
+  <% if @source_asset.ready? && @source_asset.file.attached? %>
+    <div class="card border border-base-300 bg-base-100">
+      <div class="card-body gap-5">
+        <h2 class="card-title">Preview source</h2>
+        <video controls playsinline preload="metadata" class="mx-auto max-h-[70vh] w-full max-w-sm rounded-box bg-neutral">
+          <source src="<%= url_for(@source_asset.file) %>">
+        </video>
+        <p class="text-sm text-base-content/60">Đây là source gốc. AffiHub giữ file này khi bạn chỉnh sửa hoặc render version mới.</p>
+      </div>
+    </div>
+  <% end %>
+
+  <% if @source_asset.ready? && @source_asset.media_metadata.present? %>
+    <div class="card border border-base-300 bg-base-100">
+      <div class="card-body">
+        <h2 class="card-title">Thông tin video</h2>
+        <dl class="grid gap-3 sm:grid-cols-2">
+          <% @source_asset.media_metadata.each do |key, value| %>
+            <div class="rounded-box bg-base-200 p-3">
+              <dt class="text-xs font-semibold uppercase tracking-wide text-base-content/60"><%= t("video_workflow.media_metadata.#{key}", default: key.humanize) %></dt>
+              <dd class="mt-1 break-words font-medium"><%= value.nil? ? "—" : value %></dd>
+            </div>
+          <% end %>
+        </dl>
+      </div>
+    </div>
+  <% end %>
+
+  <div class="flex flex-col gap-2 sm:flex-row">
+    <%= link_to "Tất cả source", video_project_source_assets_path(@video_project), class: "btn btn-outline w-full sm:w-auto" %>
+    <%= link_to "Nhập file khác", new_video_project_source_asset_path(@video_project), class: "btn btn-primary w-full sm:w-auto" %>
+  </div>
+</section>

@@ -68,5 +68,9 @@ end
 group :test do
   gem "webmock"
   gem "capybara"
+  gem "database_cleaner"
+  gem "faker"
   gem "selenium-webdriver"
+  gem "shoulda-matchers"
+  gem "simplecov", require: false
 end

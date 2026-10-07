@@ -1,8 +1,8 @@
 FactoryBot.define do
   factory :render_version do
-    association :source_asset
-    version_number { 1 }
-    edit_config { {} }
-    metadata { {} }
+    association :video_project
+    source_asset do
+      association(:source_asset, video_project: video_project, status: "ready")
+    end
   end
 end

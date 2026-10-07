@@ -1,0 +1,75 @@
+shared:
+  lease_duration_seconds: 60
+  limits:
+    source_file_max_bytes: 1073741824
+    project_media_asset_max_bytes: 20971520
+    render_segment_max_count: 50
+    render_overlay_max_count: 20
+    render_text_max_characters: 1000
+    delogo_region_max_count: 20
+  media:
+    ffmpeg_command: ffmpeg
+    ffmpeg_timeout_seconds: 1800
+    ffmpeg_threads: 2
+    ffmpeg_font_file: /usr/share/fonts/truetype/noto/NotoSans-Regular.ttf
+    ffprobe_command: ffprobe
+    ffprobe_timeout_seconds: 30
+    ffprobe_max_output_bytes: 1048576
+  render_profile:
+    width: 1080
+    height: 1920
+    frame_rate: 30
+    video_codec: libx264
+    video_preset: veryfast
+    audio_codec: aac
+    video_crf: 23
+  statuses:
+    video_project:
+      default: draft
+      values:
+        draft: draft
+        processing: processing
+        ready: ready
+        failed: failed
+    source_asset:
+      default: pending
+      values:
+        pending: pending
+        processing: processing
+        ready: ready
+        failed: failed
+    render_version:
+      default: pending
+      values:
+        pending: pending
+        processing: processing
+        ready: ready
+        failed: failed
+    workflow_run:
+      default: queued
+      values:
+        queued: queued
+        running: running
+        reconciliation_required: reconciliation_required
+        outcome_unknown: outcome_unknown
+        completed: completed
+        failed: failed
+    outbound_attempt:
+      default: prepared
+      values:
+        prepared: prepared
+        submitting: submitting
+        confirmed: confirmed
+        failed: failed
+        outcome_unknown: outcome_unknown
+        manual_outcome_confirmed: manual_outcome_confirmed
+        manual_outcome_not_occurred: manual_outcome_not_occurred
+test:
+  media:
+    ffmpeg_command: ffmpeg
+    ffmpeg_timeout_seconds: 15
+    ffmpeg_threads: 2
+    ffmpeg_font_file: /usr/share/fonts/truetype/noto/NotoSans-Regular.ttf
+    ffprobe_command: ffprobe
+    ffprobe_timeout_seconds: 1
+    ffprobe_max_output_bytes: 1048576

@@ -10,6 +10,7 @@
 # Ignore local bundle install (run `bundle config set --local path 'vendor/bundle'` then `bundle install`).
 /vendor/bundle
 /node_modules/
+/coverage/
 
 # Ignore all environment files.
 /.env*

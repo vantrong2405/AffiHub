@@ -1,5 +1,5 @@
 FactoryBot.define do
   factory :video_project do
-    title { "Example video project" }
+    sequence(:name) { |index| "Video Project #{index}" }
   end
 end

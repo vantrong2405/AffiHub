@@ -121,6 +121,19 @@ interactions that have behavior beyond visual styling.
 
 No `bcrypt`/`has_secure_password` added yet — add explicitly when auth is implemented.
 
+## UI conventions
+
+- Render product screens with ERB, Tailwind CSS 4, and daisyUI 5.7.47. The pinned npm package and
+  `@plugin "daisyui"` declaration are both required for CSS compilation.
+- Run `npm ci` from `affihub/` after changing `package.json` or `package-lock.json`. The production
+  Docker build installs the locked npm packages before `assets:precompile` and removes
+  `node_modules` from the runtime image afterward.
+- Use daisyUI components such as `btn`, `card`, `badge`, `alert`, `input`, and `file-input` for
+  repeated controls. Tailwind utilities may arrange components and responsive layouts; do not
+  recreate a daisyUI component with custom CSS.
+- Keep customer-facing copy and status labels in Vietnamese. Review presentation in a browser at
+  desktop and mobile sizes; do not add view specs that assert markup or styling.
+
 ## Local gem install
 
 Gems install into `vendor/bundle` (project-local, gitignored), not system gems:

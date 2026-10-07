@@ -1,19 +1,36 @@
-# frozen_string_literal: true
-
 require "rails_helper"
 
-RSpec.describe SourceAsset do
-  let(:source_asset) { create(:source_asset) }
+RSpec.describe SourceAsset, type: :model do
+  describe "status" do
+    it "returns pending for a newly built source" do
+      expect(build(:source_asset).status).to eq("pending")
+    end
 
-  it "defaults to pending" do
-    expect(source_asset.status).to eq("pending")
+    it "returns processing for a source under inspection" do
+      source_asset = build(:source_asset, status: "processing")
+
+      expect(source_asset.status).to eq("processing")
+    end
+
+    it "returns ready for an inspected source" do
+      source_asset = build(:source_asset, status: "ready")
+
+      expect(source_asset.status).to eq("ready")
+    end
+
+    it "returns failed for a source that could not be inspected" do
+      source_asset = build(:source_asset, status: "failed")
+
+      expect(source_asset.status).to eq("failed")
+    end
   end
 
-  it "persists each supported processing status" do
-    %w[pending processing ready failed].each do |status|
-      source_asset.update!(status:)
+  describe "video project reference" do
+    it "returns the project that owns the source" do
+      project = build(:video_project)
+      source = build(:source_asset, video_project: project)
 
-      expect(source_asset.reload.status).to eq(status)
+      expect(source.video_project).to eq(project)
     end
   end
 end

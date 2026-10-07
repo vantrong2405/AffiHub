@@ -1,6 +1,16 @@
 class VideoProject < ApplicationRecord
-  has_many :source_assets, inverse_of: :video_project
-  has_many :render_versions, through: :source_assets
+  STATUS_CONFIGURATION = Rails.application.config_for(:video_workflow)
+    .deep_symbolize_keys
+    .fetch(:statuses)
+    .fetch(:video_project)
 
-  enum :status, { draft: 0, processing: 1, ready: 2, failed: 3 }
+  enum :status, STATUS_CONFIGURATION.fetch(:values), default: STATUS_CONFIGURATION.fetch(:default).to_sym
+
+  has_many :source_assets, inverse_of: :video_project, dependent: :restrict_with_error
+  has_many :project_media_assets, inverse_of: :video_project, dependent: :restrict_with_error
+  has_many :render_versions, inverse_of: :video_project, dependent: :restrict_with_error
+
+  scope :ordered_by_name, proc { order(:name, :id) }
+
+  validates :name, presence: true
 end
