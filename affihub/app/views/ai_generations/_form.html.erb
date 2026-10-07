@@ -1,0 +1,60 @@
+<%= form_with model: @create_form,
+              scope: :ai_generation,
+              url: video_project_ai_generations_path(@video_project),
+              class: "space-y-5" do |form| %>
+  <% if @create_form.errors.any? %>
+    <div role="alert" class="alert alert-error">
+      <ul class="list-disc pl-5">
+        <% @create_form.errors.full_messages.each do |error_message| %>
+          <li><%= error_message %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="space-y-2">
+    <%= form.label :topic, "Chủ đề video", class: "label font-medium" %>
+    <%= form.text_field :topic,
+                        required: true,
+                        class: "input input-bordered w-full",
+                        placeholder: "Ví dụ: Quy trình chăm sóc da mùa hè" %>
+  </div>
+
+  <div class="grid gap-5 sm:grid-cols-2">
+    <div class="space-y-2">
+      <%= form.label :language, "Ngôn ngữ kịch bản", class: "label font-medium" %>
+      <%= form.select :language,
+                      [["Tiếng Việt", "vi"], ["English", "en"]],
+                      { prompt: "Chọn ngôn ngữ" },
+                      class: "select select-bordered w-full" %>
+    </div>
+
+    <div class="space-y-2">
+      <%= form.label :tone, "Giọng điệu", class: "label font-medium" %>
+      <%= form.select :tone,
+                      [["Thân thiện", "friendly"], ["Chuyên nghiệp", "professional"], ["Năng động", "energetic"]],
+                      { prompt: "Chọn giọng điệu" },
+                      class: "select select-bordered w-full" %>
+    </div>
+  </div>
+
+  <div class="space-y-2">
+    <%= form.label :target_duration, "Thời lượng mục tiêu (giây)", class: "label font-medium" %>
+    <%= form.number_field :target_duration,
+                          min: 1,
+                          step: 1,
+                          required: true,
+                          class: "input input-bordered w-full",
+                          placeholder: "Ví dụ: 30" %>
+  </div>
+
+  <div class="rounded-box bg-base-200 p-4 text-sm">
+    <p class="font-medium">Hồ sơ tạo video</p>
+    <p class="mt-1 text-base-content/70"><%= @create_form.model_id %> · <%= @create_form.resolution %> · <%= @create_form.scene_count %> cảnh × <%= @create_form.scene_duration %> giây</p>
+  </div>
+
+  <div class="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+    <%= link_to "Hủy", video_project_path(@video_project), class: "btn btn-ghost" %>
+    <%= form.submit "Tạo kịch bản", class: "btn btn-primary w-full sm:w-auto" %>
+  </div>
+<% end %>

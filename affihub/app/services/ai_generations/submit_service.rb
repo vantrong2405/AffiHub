@@ -7,7 +7,7 @@ class AiGenerations::SubmitService < ApplicationService
   SUBMISSION_STAGE = "mpt_video_submission"
   TTS_SCENE_INDEX = 0
 
-  attr_reader :ai_generation, :outbound_attempt, :task_id, :video_request, :workflow_run
+  attr_reader :ai_generation, :outbound_attempt, :task_id, :video_project, :video_request, :workflow_run
 
   # Initializes a new MPT submission or a recovery for an existing generation.
   #
@@ -16,14 +16,19 @@ class AiGenerations::SubmitService < ApplicationService
   # @param budget [String, Numeric, nil] the user-set maximum cost
   # @param confirmed [Boolean] whether the user confirmed the current estimate
   # @param video_project [VideoProject, nil] the project receiving a new generation
+  # @param video_project_id [Integer, nil] the project that owns a saved generation
+  # @param draft_generation_id [Integer, nil] the saved generation to submit
   # @param ai_generation_id [Integer, nil] the persisted generation to reconcile
   # @return [AiGenerations::SubmitService] the configured service
-  def initialize(inputs: nil, estimate: nil, budget: nil, confirmed: false, video_project: nil, ai_generation_id: nil)
+  def initialize(inputs: nil, estimate: nil, budget: nil, confirmed: false, video_project: nil,
+                 video_project_id: nil, draft_generation_id: nil, ai_generation_id: nil)
     @inputs = inputs.to_h.deep_symbolize_keys
     @estimate = estimate.to_h.deep_symbolize_keys
     @budget = budget
     @confirmed = confirmed
     @video_project = video_project
+    @video_project_id = video_project_id
+    @draft_generation_id = draft_generation_id
     @ai_generation_id = ai_generation_id
     super()
   end
@@ -33,6 +38,7 @@ class AiGenerations::SubmitService < ApplicationService
   # @return [Boolean] whether MPT accepted or an existing task was recovered
   def call
     return step_recover_submission if @ai_generation_id.present?
+    return false if @draft_generation_id.present? && !step_load_draft_generation
     return false unless step_validate_submission
     return false unless step_prepare_submission
     return false unless step_claim_submission
@@ -42,6 +48,27 @@ class AiGenerations::SubmitService < ApplicationService
   end
 
   private
+
+  def step_load_draft_generation
+    @video_project ||= VideoProject.find(@video_project_id)
+    @ai_generation = @video_project.ai_generations.find(@draft_generation_id)
+    @workflow_run = @ai_generation.workflow_run
+    return step_fail!("AI generation chưa sẵn sàng để gửi hoặc thử lại.") unless draft_ready_for_submission?
+
+    @inputs = @ai_generation.input_snapshot.deep_symbolize_keys
+    @estimate = @ai_generation.estimate_snapshot.deep_symbolize_keys
+    true
+  end
+
+  def draft_ready_for_submission?
+    return true if @ai_generation.prompts_ready? && @workflow_run.nil?
+    return false unless @ai_generation.outcome_unknown? && @workflow_run&.queued?
+
+    previous_attempt = @workflow_run.outbound_attempts.for_stage(SUBMISSION_STAGE).first
+    previous_attempt&.manual_outcome_not_occurred? &&
+      previous_attempt.sender_stopped_at.present? &&
+      previous_attempt.request_timeout_at <= Time.current
+  end
 
   def step_validate_submission
     return step_fail!("Cần xác nhận báo giá hiện tại trước khi tạo video.") unless @confirmed == true
@@ -66,14 +93,21 @@ class AiGenerations::SubmitService < ApplicationService
     build_video_request
     @consent_snapshot = consent_snapshot
     AiGeneration.transaction do
-      @ai_generation = @video_project.ai_generations.create!(
-        correlation_id: SecureRandom.uuid,
-        status: :submitting,
-        input_snapshot: @inputs,
-        estimate_snapshot: @estimate,
-        consent_snapshot: @consent_snapshot
+      if @draft_generation_id.present?
+        @ai_generation.update!(status: :submitting, consent_snapshot: @consent_snapshot)
+      else
+        @ai_generation = @video_project.ai_generations.create!(
+          correlation_id: SecureRandom.uuid,
+          status: :submitting,
+          input_snapshot: @inputs,
+          estimate_snapshot: @estimate,
+          consent_snapshot: @consent_snapshot
+        )
+      end
+      ai_generation_scene = @ai_generation.ai_generation_scenes.find_or_initialize_by(
+        scene_index: TTS_SCENE_INDEX
       )
-      @ai_generation.ai_generation_scenes.create!(
+      ai_generation_scene.update!(
         scene_index: TTS_SCENE_INDEX,
         status: :processing,
         narration_snapshot: @inputs.fetch(:video_script),
@@ -87,7 +121,7 @@ class AiGenerations::SubmitService < ApplicationService
         stage: SUBMISSION_STAGE,
         status: :queued,
         checkpoint: { "correlation_id" => @ai_generation.correlation_id }
-      )
+      ) unless @workflow_run
     end
     true
   rescue ActiveRecord::RecordInvalid => error
@@ -176,7 +210,7 @@ class AiGenerations::SubmitService < ApplicationService
     @workflow_run = @ai_generation.workflow_run
     return step_fail!("Không tìm thấy workflow cần đối soát.") unless @workflow_run
 
-    @outbound_attempt = @workflow_run.outbound_attempts.find_by(stage: SUBMISSION_STAGE)
+    @outbound_attempt = @workflow_run.outbound_attempts.for_stage(SUBMISSION_STAGE).first
     return step_fail!("Không tìm thấy outbound attempt cần đối soát.") unless @outbound_attempt
 
     true
@@ -297,6 +331,7 @@ class AiGenerations::SubmitService < ApplicationService
       confirmed: true,
       confirmed_at: Time.current.iso8601,
       amount: @estimate.fetch(:total_amount).to_s,
+      budget: @budget.to_s,
       currency: @estimate.fetch(:currency),
       estimate: @estimate
     }

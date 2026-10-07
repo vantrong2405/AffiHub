@@ -10,6 +10,8 @@ class OutboundAttempt < ApplicationRecord
 
   has_many :workflow_audit_events, inverse_of: :outbound_attempt, dependent: :restrict_with_exception
 
+  scope :for_stage, proc { |stage| where(stage: stage).order(attempt_number: :desc) }
+
   validates :attempt_id, :attempt_number, :stage, :request_timeout_at, presence: true
   validates :attempt_id, uniqueness: true
   validates :attempt_number, numericality: { only_integer: true, greater_than: 0 }

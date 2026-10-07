@@ -295,6 +295,95 @@ RSpec.describe AiGenerations::SubmitService, type: :service do
       end
     end
 
+    context "when submitting a saved and approved generation" do
+      let(:draft_generation) do
+        create(
+          :ai_generation,
+          video_project: video_project,
+          status: :prompts_ready,
+          input_snapshot: generation_inputs,
+          estimate_snapshot: estimate
+        )
+      end
+      let(:service) do
+        described_class.new(
+          video_project: video_project,
+          draft_generation_id: draft_generation.id,
+          budget: budget,
+          confirmed: confirmed
+        )
+      end
+
+      it "submits the saved snapshot without creating another generation" do
+        draft_generation
+        expect { call_result }.not_to change(AiGeneration, :count)
+
+        expect(service.ai_generation).to eq(draft_generation)
+        expect(service.ai_generation.reload.input_snapshot).to eq(generation_inputs.deep_stringify_keys)
+        expect(service.ai_generation.estimate_snapshot).to eq(estimate.deep_stringify_keys)
+        expect(service.ai_generation.consent_snapshot).to include(
+          "confirmed" => true,
+          "amount" => "0.50",
+          "budget" => "1.00",
+          "currency" => "USD"
+        )
+        expect(video_request).to have_been_requested.once
+      end
+    end
+
+    context "when retrying a generation confirmed as not submitted" do
+      let(:draft_generation) do
+        create(
+          :ai_generation,
+          video_project: video_project,
+          status: :outcome_unknown,
+          input_snapshot: generation_inputs,
+          estimate_snapshot: estimate
+        )
+      end
+      let(:workflow_run) do
+        create(
+          :workflow_run,
+          workflowable: draft_generation,
+          operation: "ai_video_generation",
+          stage: "mpt_video_submission",
+          status: "queued"
+        )
+      end
+      let(:previous_attempt) do
+        create(
+          :outbound_attempt,
+          workflow_run: workflow_run,
+          stage: "mpt_video_submission",
+          status: "manual_outcome_not_occurred",
+          sender_stopped_at: 2.minutes.ago,
+          request_timeout_at: 1.minute.ago
+        )
+      end
+      let(:service) do
+        described_class.new(
+          video_project: video_project,
+          draft_generation_id: draft_generation.id,
+          budget: budget,
+          confirmed: confirmed
+        )
+      end
+
+      it "reuses the saved generation and starts the next safe attempt" do
+        previous_attempt
+
+        expect { call_result }.not_to change(AiGeneration, :count)
+
+        expect(service).to be_success
+        expect(service.ai_generation).to eq(draft_generation)
+        expect(workflow_run.reload.outbound_attempts.order(:attempt_number).pluck(:attempt_number, :status)).to eq(
+          [ [ 1, "manual_outcome_not_occurred" ], [ 2, "confirmed" ] ]
+        )
+        expect(draft_generation.ai_generation_scenes.count).to eq(1)
+        expect(video_request).to have_been_requested.once
+      end
+    end
+
     context "when MPT rejects the video submission" do
       let(:video_request) do
         stub_request(:post, %r{/api/v1/videos\z})

@@ -10,7 +10,8 @@ RSpec.describe OutboundAttempts::ResolveService, type: :service do
         outbound_attempt_id: attempt.id,
         decision: :not_occurred,
         evidence: "Không tìm thấy bài đăng",
-        actor_reference: "operator-1"
+        actor_reference: "operator-1",
+        risk_confirmed: true
       )
     end
 
@@ -69,7 +70,8 @@ RSpec.describe OutboundAttempts::ResolveService, type: :service do
         expect(attempt.workflow_run.workflow_audit_events.sole.details).to eq(
           "decision" => "not_occurred",
           "evidence" => "Không tìm thấy bài đăng",
-          "actor_reference" => "operator-1"
+          "actor_reference" => "operator-1",
+          "risk_confirmed" => true
         )
       end
     end
@@ -80,7 +82,8 @@ RSpec.describe OutboundAttempts::ResolveService, type: :service do
           outbound_attempt_id: attempt.id,
           decision: :occurred,
           evidence: "Post đã xuất hiện",
-          actor_reference: "operator-1"
+          actor_reference: "operator-1",
+          provider_reference: "https://mpt.example/tasks/mpt-task-123"
         )
       end
 
@@ -88,11 +91,15 @@ RSpec.describe OutboundAttempts::ResolveService, type: :service do
         service.call
 
         expect(attempt.reload.status).to eq("manual_outcome_confirmed")
+        expect(attempt.provider_reference).to include(
+          "manual_reference" => "https://mpt.example/tasks/mpt-task-123"
+        )
         expect(attempt.workflow_run.reload.status).to eq("completed")
         expect(attempt.workflow_run.workflow_audit_events.sole.details).to eq(
           "decision" => "occurred",
           "evidence" => "Post đã xuất hiện",
-          "actor_reference" => "operator-1"
+          "actor_reference" => "operator-1",
+          "provider_reference" => "https://mpt.example/tasks/mpt-task-123"
         )
       end
     end
@@ -103,7 +110,8 @@ RSpec.describe OutboundAttempts::ResolveService, type: :service do
           outbound_attempt_id: attempt.id,
           decision: :unknown,
           evidence: "Trang đích chưa cập nhật",
-          actor_reference: "operator-1"
+          actor_reference: "operator-1",
+          risk_confirmed: true
         )
       end
 
@@ -117,6 +125,44 @@ RSpec.describe OutboundAttempts::ResolveService, type: :service do
           "evidence" => "Trang đích chưa cập nhật",
           "actor_reference" => "operator-1"
         )
+      end
+    end
+
+    context "when the operator marks the request as not occurred without confirming the retry risk" do
+      let(:service) do
+        described_class.new(
+          outbound_attempt_id: attempt.id,
+          decision: :not_occurred,
+          evidence: "Không tìm thấy task",
+          actor_reference: "operator-1",
+          risk_confirmed: false
+        )
+      end
+
+      it "returns failure and keeps the attempt unresolved" do
+        service.call
+
+        expect(service).not_to be_success
+        expect(attempt.reload.status).to eq("outcome_unknown")
+      end
+    end
+
+    context "when the operator marks the request as occurred without a provider reference" do
+      let(:service) do
+        described_class.new(
+          outbound_attempt_id: attempt.id,
+          decision: :occurred,
+          evidence: "Tác vụ xuất hiện trong tài khoản provider",
+          actor_reference: "operator-1",
+          provider_reference: nil
+        )
+      end
+
+      it "returns failure and keeps the attempt unresolved" do
+        service.call
+
+        expect(service).not_to be_success
+        expect(attempt.reload.status).to eq("outcome_unknown")
       end
     end
   end

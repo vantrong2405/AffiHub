@@ -20,14 +20,26 @@
     </div>
   </div>
 
-  <div class="card border border-primary/20 bg-primary/5">
-    <div class="card-body gap-4 sm:flex-row sm:items-center sm:justify-between">
-      <div class="space-y-1">
-        <h2 class="card-title">Bắt đầu với một video</h2>
-        <p class="text-sm text-base-content/70">Chọn file MP4 hoặc MOV. AffiHub lưu file cục bộ rồi kiểm tra metadata trong nền.</p>
+  <div class="grid gap-4 md:grid-cols-2">
+    <article class="card border border-primary/20 bg-primary/5">
+      <div class="card-body justify-between gap-4 sm:flex-row sm:items-center">
+        <div class="space-y-1">
+          <h2 class="card-title">Tạo video bằng AI</h2>
+          <p class="text-sm text-base-content/70">Duyệt kịch bản, cảnh và báo giá trước khi gửi job text-to-video.</p>
+        </div>
+        <%= link_to "Tạo video AI", new_video_project_ai_generation_path(@video_project), class: "btn btn-primary w-full sm:w-auto" %>
       </div>
-      <%= link_to "Nhập video", new_video_project_source_asset_path(@video_project), class: "btn btn-primary w-full sm:w-auto" %>
-    </div>
+    </article>
+
+    <article class="card border border-base-300 bg-base-100">
+      <div class="card-body justify-between gap-4 sm:flex-row sm:items-center">
+        <div class="space-y-1">
+          <h2 class="card-title">Đã có video?</h2>
+          <p class="text-sm text-base-content/70">Nhập file MP4 hoặc MOV để kiểm tra metadata trong nền.</p>
+        </div>
+        <%= link_to "Nhập video", new_video_project_source_asset_path(@video_project), class: "btn btn-outline w-full sm:w-auto" %>
+      </div>
+    </article>
   </div>
 
   <% if @ai_generations.any? %>
@@ -46,6 +58,16 @@
                   <p class="text-sm text-base-content/60"><%= l(ai_generation.created_at, format: :short) %></p>
                 </div>
                 <%= workflow_status_badge(ai_generation.status, resource: "ai_generation") %>
+              </div>
+              <div class="card-actions justify-end">
+                <%= link_to "Xem trạng thái",
+                            video_project_ai_generation_path(@video_project, ai_generation),
+                            class: "btn btn-outline btn-sm" %>
+                <% if ai_generation.script_ready? || ai_generation.prompts_ready? %>
+                  <%= link_to "Tiếp tục",
+                              edit_video_project_ai_generation_path(@video_project, ai_generation),
+                              class: "btn btn-primary btn-sm" %>
+                <% end %>
               </div>
             </div>
           </article>

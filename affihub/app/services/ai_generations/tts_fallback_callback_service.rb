@@ -91,7 +91,7 @@ class AiGenerations::TtsFallbackCallbackService < ApplicationService
   def step_handle_existing_attempt
     return true unless @workflow_run
 
-    @outbound_attempt = @workflow_run.outbound_attempts.find_by(stage: outbound_stage)
+    @outbound_attempt = @workflow_run.outbound_attempts.for_stage(outbound_stage).first
     return true unless @outbound_attempt
 
     if @outbound_attempt.confirmed? && @ai_generation_scene.voiceover.attached?

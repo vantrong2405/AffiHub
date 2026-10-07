@@ -6,13 +6,18 @@ class OutboundAttempts::ResolveService < ApplicationService
   # @param outbound_attempt_id [Integer] the attempt to resolve
   # @param decision [String, Symbol] occurred, not_occurred, or unknown
   # @param evidence [String] the operator's evidence for the decision
+  # @param provider_reference [String, nil] the provider task URL or ID when the request occurred
+  # @param risk_confirmed [Boolean] whether the operator accepts the retry risk for not_occurred
   # @param actor_reference [String] the operator identifier
   # @return [OutboundAttempts::ResolveService] the configured service
-  def initialize(outbound_attempt_id:, decision:, evidence:, actor_reference:)
+  def initialize(outbound_attempt_id:, decision:, evidence:, actor_reference:, provider_reference: nil,
+                 risk_confirmed: false)
     @outbound_attempt_id = outbound_attempt_id
     @decision = decision.to_s
     @evidence = evidence
     @actor_reference = actor_reference
+    @provider_reference = provider_reference
+    @risk_confirmed = risk_confirmed
     super()
   end
 
@@ -54,7 +59,12 @@ class OutboundAttempts::ResolveService < ApplicationService
   end
 
   def step_valid_decision?
-    %w[occurred not_occurred unknown].include?(@decision) && @actor_reference.present? && @evidence.present?
+    return false unless %w[occurred not_occurred unknown].include?(@decision)
+    return false if @actor_reference.blank? || @evidence.blank?
+    return false if @decision == "occurred" && @provider_reference.blank?
+    return false if @decision == "not_occurred" && @risk_confirmed != true
+
+    true
   end
 
   def step_retry_is_safe?
@@ -64,11 +74,13 @@ class OutboundAttempts::ResolveService < ApplicationService
   def step_record_manual_decision(workflow_run)
     safe_evidence = Security::SensitiveDataRedactor.new.call(@evidence.to_s)
     safe_actor_reference = Security::SensitiveDataRedactor.new.call(@actor_reference.to_s)
-    @outbound_attempt.update!(
+    attempt_attributes = {
       status: attempt_status_for_decision,
       manual_evidence: safe_evidence,
       actor_reference: safe_actor_reference
-    )
+    }
+    attempt_attributes[:provider_reference] = manual_provider_reference if @decision == "occurred"
+    @outbound_attempt.update!(attempt_attributes)
     workflow_run.update!(status: workflow_status_for_decision)
     workflow_run.update!(worker_id: nil, lease_expires_at: nil) if @decision == "not_occurred"
     workflow_run.workflow_audit_events.create!(
@@ -76,12 +88,24 @@ class OutboundAttempts::ResolveService < ApplicationService
       event_type: "manual_outcome_resolved",
       stage: @outbound_attempt.stage,
       actor_reference: safe_actor_reference,
-      details: Security::SensitiveDataRedactor.new.call({
-        decision: @decision,
-        evidence: safe_evidence,
-        actor_reference: safe_actor_reference
-      })
+      details: manual_decision_details(safe_evidence, safe_actor_reference)
     )
+  end
+
+  def manual_provider_reference
+    safe_reference = Security::SensitiveDataRedactor.new.call(@provider_reference.to_s)
+    @outbound_attempt.provider_reference.to_h.merge("manual_reference" => safe_reference)
+  end
+
+  def manual_decision_details(safe_evidence, safe_actor_reference)
+    details = {
+      decision: @decision,
+      evidence: safe_evidence,
+      actor_reference: safe_actor_reference
+    }
+    details[:provider_reference] = Security::SensitiveDataRedactor.new.call(@provider_reference.to_s) if @decision == "occurred"
+    details[:risk_confirmed] = @risk_confirmed if @decision == "not_occurred"
+    Security::SensitiveDataRedactor.new.call(details)
   end
 
   def attempt_status_for_decision
