@@ -50,10 +50,18 @@ Don't append `[skip ci]` by default; add it only if the user asks for it in the 
   `affihub`, run the relevant RSpec specs with the explicit `RAILS_ENV=test` command above and
   perform any required manual verification before committing. Do not leave a verified major
   feature sitting uncommitted while moving on to another feature.
+- Implement larger work as stable feature slices. Commit each completed and verified slice before
+  starting the next one, with one coherent behavior change per commit instead of accumulating files
+  from several features.
+- Commit coherent documentation/specification work in its own `docs:` commit before implementing
+  the behavior it defines. For OpenSpec work, include the related proposal, design, specs, tasks, and
+  reference notes in that documentation slice when they belong together.
+- Before committing in a dirty worktree, inspect the exact staged paths and commit only files for
+  the current slice. Keep unrelated staged and unstaged changes out of the commit.
 - Report the passing verification and the commit hash to the user. If verification fails, fix the
   feature and rerun the relevant checks before committing.
-- This requirement does not make small edits or documentation-only changes mandatory commits;
-  use judgment for those. Preserve the `[skip ci]` choice rule above for every commit in the task.
+- Small unrelated edits can still be grouped by judgment. Preserve the `[skip ci]` choice rule above
+  for every commit in the task.
 
 ## 5. Database setup (affihub)
 
