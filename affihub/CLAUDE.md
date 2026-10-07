@@ -34,6 +34,12 @@ This workspace also uses **OpenSpec** for spec-driven change proposals, tracked 
 - **Specs, proposals, design docs, tasks, commit/PR descriptions, chat/explanations to the user:** Vietnamese. Keep technical terms (class/model/method names, file paths, repo names, API field names) in English inside Vietnamese text.
 - **Code: Ruby, RSpec, views, config, comments in code:** English, always.
 
+## Ruby readability conventions
+
+- Use simple, consistent variable names; use the same name for the same domain object across related code.
+- Prefer clear direct code over one-use abstractions that hide the behavior. Move repeated queries into a named model scope and shared behavior into the nearest common layer so a fix does not need to be repeated in many places.
+- Do not use Ruby lambda syntax (`->` or `lambda`) in application code or specs. Use a named method or a regular block instead.
+
 ## TDD — RSpec-first (mandatory)
 
 **RSpec** (`spec/`) is the test framework configured for this application. The `minitest` gem may
@@ -83,8 +89,7 @@ interactions that have behavior beyond visual styling.
 - Each `it` is one named test case with one behavior. Write a separate explicit `it` for each input,
   boundary, or outcome; do not combine cases, generate examples from loops/tables, or use
   `shared_examples` to hide the individual cases.
-- Do not use Ruby lambda syntax (`->` or `lambda`) in specs. Use readable `context` blocks and
-  separate examples instead.
+- Use readable `context` blocks and separate examples for different cases.
 - Put shared setup in the nearest `context` using `let` and `before`; keep variable names simple and
   use the same name for the same domain object across related specs (`video_project`, `source_asset`,
   `render_version`). Prefer clear scoped setup over copying setup into several examples or adding
@@ -218,7 +223,9 @@ shared helper:
 ```ruby
 service = VideoProjects::ImportService.new(file: params[:file])
 service.call
-render_service(service, success: -> { video_project_path(service.video_project) }, failure: :index)
+render_service(service, failure: :index) do
+  video_project_path(service.video_project)
+end
 ```
 
 Pass `current_user:` explicitly only to services whose behavior is scoped to the signed-in user.
