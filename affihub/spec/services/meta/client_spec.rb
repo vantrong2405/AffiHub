@@ -1,13 +1,13 @@
 require "rails_helper"
 
-RSpec.describe "Meta::Client", type: :service do
+RSpec.describe Meta::Client, type: :service do
   describe "#exchange_code" do
     it "returns the token response from the configured Graph API version" do
       stub_request(:get, "https://graph.facebook.com/v26.0/oauth/access_token")
         .with(query: hash_including("code" => "oauth-code", "redirect_uri" => "http://localhost:3000/auth/facebook/callback"))
         .to_return(body: { access_token: "user-token", expires_in: 5_184_000 }.to_json)
 
-      response = "Meta::Client".constantize.new.exchange_code(
+      response = described_class.new.exchange_code(
         code: "oauth-code", redirect_uri: "http://localhost:3000/auth/facebook/callback"
       )
 
@@ -21,7 +21,7 @@ RSpec.describe "Meta::Client", type: :service do
         .with(query: hash_including("access_token" => "user-token"))
         .to_return(body: { data: [ { id: "page-1", name: "Page Một", access_token: "page-token" } ] }.to_json)
 
-      pages = "Meta::Client".constantize.new.pages(access_token: "user-token")
+      pages = described_class.new.pages(access_token: "user-token")
 
       expect(pages).to eq([ { "id" => "page-1", "name" => "Page Một", "access_token" => "page-token" } ])
     end
@@ -33,7 +33,7 @@ RSpec.describe "Meta::Client", type: :service do
         .with(query: hash_including("fields" => "id,source", "access_token" => "page-token"))
         .to_return(body: { id: "video-1", source: "https://video.cdn.example/download" }.to_json)
 
-      video = "Meta::Client".constantize.new.page_video(video_id: "video-1", page_access_token: "page-token")
+      video = described_class.new.page_video(video_id: "video-1", page_access_token: "page-token")
 
       expect(video).to eq("id" => "video-1", "source" => "https://video.cdn.example/download")
     end
@@ -45,9 +45,19 @@ RSpec.describe "Meta::Client", type: :service do
         .with(query: hash_including("upload_phase" => "start", "access_token" => "page-token"))
         .to_return(body: { video_id: "video-1", upload_url: "https://rupload.facebook.com/upload/video-1" }.to_json)
 
-      response = "Meta::Client".constantize.new.start_reel_upload(page_id: "page-1", page_access_token: "page-token")
+      response = described_class.new.start_reel_upload(page_id: "page-1", page_access_token: "page-token")
 
       expect(response).to eq("video_id" => "video-1", "upload_url" => "https://rupload.facebook.com/upload/video-1")
+    end
+
+    it "encodes the selected Page ID as one Graph API path segment" do
+      stub_request(:post, "https://graph.facebook.com/v26.0/page%2Fone/video_reels")
+        .with(query: hash_including("upload_phase" => "start"))
+        .to_return(body: { video_id: "video-1", upload_url: "https://rupload.facebook.com/upload/video-1" }.to_json)
+
+      response = described_class.new.start_reel_upload(page_id: "page/one", page_access_token: "page-token")
+
+      expect(response.fetch("video_id")).to eq("video-1")
     end
   end
 
@@ -58,12 +68,29 @@ RSpec.describe "Meta::Client", type: :service do
         .with(headers: { "Authorization" => "OAuth page-token", "offset" => "0", "file_size" => "16" })
         .to_return(body: { success: true }.to_json)
 
-      response = "Meta::Client".constantize.new.upload_reel(
+      response = described_class.new.upload_reel(
         upload_url: "https://rupload.facebook.com/video-upload/v26.0/video-1",
         page_access_token: "page-token", file:, file_size: 16
       )
 
       expect(response).to eq("success" => true)
+    end
+
+    context "when the upload URL is outside Meta's upload host" do
+      it "rejects the URL without sending the video file" do
+        upload_url = "https://127.0.0.1/internal/upload"
+        upload_request = stub_request(:post, upload_url).to_return(body: { success: true }.to_json)
+
+        expect do
+          described_class.new.upload_reel(
+            upload_url:,
+            page_access_token: "page-token",
+            file: StringIO.new("sample mp4 bytes"),
+            file_size: 16
+          )
+        end.to raise_error(described_class::Error, "invalid_upload_url")
+        expect(upload_request).not_to have_been_requested
+      end
     end
   end
 
@@ -73,7 +100,7 @@ RSpec.describe "Meta::Client", type: :service do
         .with(query: hash_including("upload_phase" => "finish", "video_id" => "video-1", "video_state" => "PUBLISHED"))
         .to_return(body: { success: true }.to_json)
 
-      response = "Meta::Client".constantize.new.finish_reel_upload(
+      response = described_class.new.finish_reel_upload(
         page_id: "page-1", page_access_token: "page-token", video_id: "video-1", caption: "Caption"
       )
 
@@ -82,14 +109,28 @@ RSpec.describe "Meta::Client", type: :service do
   end
 
   describe "#reel_status" do
-    it "returns the confirmed final status and permalink fields" do
+    it "returns the Reel status and permalink fields from Meta" do
       stub_request(:get, "https://graph.facebook.com/v26.0/video-1")
         .with(query: hash_including("fields" => "status,permalink_url"))
-        .to_return(body: { status: { video_status: "PUBLISHED" }, permalink_url: "https://facebook.com/reel/1" }.to_json)
+        .to_return(
+          body: {
+            status: {
+              video_status: "ready",
+              publishing_phase: { status: "complete" }
+            },
+            permalink_url: "https://facebook.com/reel/1"
+          }.to_json
+        )
 
-      status = "Meta::Client".constantize.new.reel_status(video_id: "video-1", page_access_token: "page-token")
+      status = described_class.new.reel_status(video_id: "video-1", page_access_token: "page-token")
 
-      expect(status).to eq("status" => { "video_status" => "PUBLISHED" }, "permalink_url" => "https://facebook.com/reel/1")
+      expect(status).to eq(
+        "status" => {
+          "video_status" => "ready",
+          "publishing_phase" => { "status" => "complete" }
+        },
+        "permalink_url" => "https://facebook.com/reel/1"
+      )
     end
   end
 
@@ -99,8 +140,8 @@ RSpec.describe "Meta::Client", type: :service do
         .with(query: hash_including("access_token" => "user-token-secret"))
         .to_return(status: 400, body: { error: { code: 190, message: "Invalid user-token-secret" } }.to_json)
 
-      expect { "Meta::Client".constantize.new.pages(access_token: "user-token-secret") }
-        .to raise_error("Meta::Client::Error".constantize, "graph_api_190")
+      expect { described_class.new.pages(access_token: "user-token-secret") }
+        .to raise_error(described_class::Error, "graph_api_190")
     end
   end
 
@@ -113,8 +154,8 @@ RSpec.describe "Meta::Client", type: :service do
       Rails.logger = ActiveSupport::Logger.new(log_output)
       stub_request(:post, upload_url).to_return(status: 500, body: { error: { message: page_access_token } }.to_json)
 
-      expect { "Meta::Client".constantize.new.upload_reel(upload_url:, page_access_token:, file: StringIO.new("mp4"), file_size: 3) }
-        .to raise_error("Meta::Client::Error".constantize, "graph_api_http_500")
+      expect { described_class.new.upload_reel(upload_url:, page_access_token:, file: StringIO.new("mp4"), file_size: 3) }
+        .to raise_error(described_class::Error, "graph_api_http_500")
       expect(log_output.string).not_to include(page_access_token, upload_url)
     ensure
       Rails.logger = original_logger

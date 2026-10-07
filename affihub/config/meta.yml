@@ -36,6 +36,8 @@ shared:
       open_timeout_seconds: 10
       read_timeout_seconds: 30
       upload_timeout_seconds: 900
+      reel_status_poll_interval_seconds: 30
+      reel_status_max_poll_attempts: 20
 
 test:
   providers:

@@ -72,9 +72,10 @@ class Meta::Client
   # @param page_access_token [String] the selected Page access token
   # @return [Hash] the remote video ID and upload URL
   def start_reel_upload(page_id:, page_access_token:)
+    encoded_page_id = URI.encode_www_form_component(page_id)
     request(
       method: :post,
-      url: "#{graph_api_base_url}/#{page_id}/video_reels",
+      url: "#{graph_api_base_url}/#{encoded_page_id}/video_reels",
       params: { upload_phase: "start", access_token: page_access_token }
     )
   end
@@ -87,6 +88,7 @@ class Meta::Client
   # @param file_size [Integer] the file size in bytes
   # @return [Hash] the remote upload acknowledgement
   def upload_reel(upload_url:, page_access_token:, file:, file_size:)
+    validate_upload_url!(upload_url)
     file.rewind
     request(
       method: :post,
@@ -111,9 +113,10 @@ class Meta::Client
   # @param caption [String] the Reel description
   # @return [Hash] the provider acknowledgement for the publish request
   def finish_reel_upload(page_id:, page_access_token:, video_id:, caption:)
+    encoded_page_id = URI.encode_www_form_component(page_id)
     request(
       method: :post,
-      url: "#{graph_api_base_url}/#{page_id}/video_reels",
+      url: "#{graph_api_base_url}/#{encoded_page_id}/video_reels",
       params: {
         upload_phase: "finish",
         video_id:,
@@ -130,14 +133,24 @@ class Meta::Client
   # @param page_access_token [String] the selected Page access token
   # @return [Hash] the provider status and permalink when available
   def reel_status(video_id:, page_access_token:)
+    encoded_video_id = URI.encode_www_form_component(video_id)
     request(
       method: :get,
-      url: "#{graph_api_base_url}/#{video_id}",
+      url: "#{graph_api_base_url}/#{encoded_video_id}",
       params: { fields: "status,permalink_url", access_token: page_access_token }
     )
   end
 
   private
+
+  def validate_upload_url!(upload_url)
+    uri = URI(upload_url.to_s)
+    return if uri.is_a?(URI::HTTPS) && uri.host == "rupload.facebook.com" && uri.port == 443 && uri.userinfo.nil?
+
+    raise Error, "invalid_upload_url"
+  rescue URI::InvalidURIError
+    raise Error, "invalid_upload_url"
+  end
 
   def request(method:, url:, params: {}, headers: {}, stream: nil, file_size: nil, timeout_seconds: nil)
     uri = URI(url)
