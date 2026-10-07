@@ -47,7 +47,7 @@
 
 ## 5. MetaGraphPublisher và review flow
 
-- [ ] 5.1 Viết RSpec cho Publication theo destination, manual confirmation, caption riêng, preflight gate, timeout ba trạng thái xử lý thủ công có audit và status chỉ thành `Published` sau xác nhận cuối từ platform; xác nhận đỏ.
+- [x] 5.1 Viết RSpec cho Publication theo destination, manual confirmation, caption riêng, preflight gate, timeout ba trạng thái xử lý thủ công có audit và status chỉ thành `Published` sau xác nhận cuối từ platform; xác nhận đỏ. Mỗi case/outcome độc lập có một `it` riêng; giữ các expectation cùng xác nhận một case ở chung `it`, không gộp các case độc lập; không tạo case bằng loop/case table hoặc `shared_examples`, không dùng lambda syntax.
 - [ ] 5.2 Implement `MetaGraphPublisher` cụ thể dựa trên Porting Note/tài liệu Meta; cấu hình API vào YAML/`config_for`, dùng private request method của Client và không tạo abstraction chung quá sớm. Kiểm chứng: RSpec xanh cùng smoke test Page test lưu permalink/provider ID.
 - [ ] 5.3 Gọi `ui-ux` trước khi dựng review/caption/confirmation và xử lý kết quả chưa rõ. Kiểm chứng: request specs cho HTTP/persistence; system spec cho confirmation behavior khi ổn định; browser review render version/Page/caption và trạng thái chưa xác nhận. Không viết view spec/style-only spec.
 
