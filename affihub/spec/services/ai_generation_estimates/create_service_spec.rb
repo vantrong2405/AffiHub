@@ -47,13 +47,13 @@ RSpec.describe AiGenerationEstimates::CreateService, type: :service do
     end
 
     after { travel_back }
-    subject(:call_result) { service.call }
-    subject(:scene_estimate) do
+    let(:call_result) { service.call }
+    let(:scene_estimate) do
       service.call
       service.scene_estimates.first
     end
 
-    it "returns the exact MuAPI quote for the scene input" do
+    it "returns the exact MuAPI quote and ordered categories for the scene input" do
       expect(scene_estimate).to eq(
         scene_number: 1,
         model_id: "seedance-lite-t2v",
@@ -66,6 +66,7 @@ RSpec.describe AiGenerationEstimates::CreateService, type: :service do
         source: "MuAPI estimate-cost",
         estimated_at: Time.zone.parse("2026-10-07 12:00:00")
       )
+      expect(service.cost_breakdown.keys).to eq([ :muapi, :llm, :stock, :tts_fallback, :unknown ])
     end
 
     context "when there are multiple scenes" do
@@ -83,29 +84,13 @@ RSpec.describe AiGenerationEstimates::CreateService, type: :service do
 
       before { second_request }
 
-      it "requests an estimate for the first scene" do
+      it "estimates each scene and sums the returned costs" do
         call_result
 
         expect(first_request).to have_been_requested.once
-      end
-
-      it "requests an estimate for the second scene" do
-        call_result
-
         expect(second_request).to have_been_requested.once
-      end
-
-      it "returns the total amount for both scene estimates" do
-        call_result
-
         expect(service.cost_breakdown.fetch(:muapi).fetch(:amount)).to eq("0.5")
       end
-    end
-
-    it "returns the cost breakdown categories in the expected order" do
-      call_result
-
-      expect(service.cost_breakdown.keys).to eq([ :muapi, :llm, :stock, :tts_fallback, :unknown ])
     end
 
     context "when MuAPI does not return a quote" do
@@ -118,21 +103,11 @@ RSpec.describe AiGenerationEstimates::CreateService, type: :service do
         }
       end
 
-      it "returns no MuAPI amount when the quote is missing" do
+      it "marks the estimate incomplete when the MuAPI quote is missing" do
         call_result
 
         expect(service.cost_breakdown.fetch(:muapi).fetch(:amount)).to be_nil
-      end
-
-      it "marks required costs as unknown when the quote is missing" do
-        call_result
-
         expect(service.required_costs_known).to be(false)
-      end
-
-      it "returns no total when the quote is missing" do
-        call_result
-
         expect(service.total_amount).to be_nil
       end
     end
@@ -146,15 +121,10 @@ RSpec.describe AiGenerationEstimates::CreateService, type: :service do
         }
       end
 
-      it "returns the total when every provider quote is known" do
+      it "returns the total and marks required costs known" do
         call_result
 
         expect(service.total_amount).to eq(BigDecimal("0.30"))
-      end
-
-      it "marks required costs as known when every provider quote is known" do
-        call_result
-
         expect(service.required_costs_known).to be(true)
       end
     end
@@ -195,15 +165,10 @@ RSpec.describe AiGenerationEstimates::CreateService, type: :service do
         }
       end
 
-      it "marks required costs as unknown when provider currencies differ" do
+      it "marks costs unknown and omits a total when currencies differ" do
         call_result
 
         expect(service.required_costs_known).to be(false)
-      end
-
-      it "returns no total when provider currencies differ" do
-        call_result
-
         expect(service.total_amount).to be_nil
       end
     end

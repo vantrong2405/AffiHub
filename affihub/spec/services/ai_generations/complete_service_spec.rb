@@ -17,40 +17,20 @@ RSpec.describe AiGenerations::CompleteService, type: :service do
   describe "#call" do
     subject(:call_result) { service.call }
 
-    it "returns the generated clip references" do
+    it "returns all generated media references after MPT completes" do
       call_result
 
       expect(service.output.fetch(:clips)).to eq([ "scene-1.mp4" ])
-    end
-
-    it "returns the generated voiceover reference" do
-      call_result
-
       expect(service.output.fetch(:voiceover)).to eq("voiceover.wav")
-    end
-
-    it "returns the generated subtitle reference" do
-      call_result
-
       expect(service.output.fetch(:subtitle)).to eq("subtitles.srt")
-    end
-
-    it "returns the generated preview reference" do
-      call_result
-
       expect(service.output.fetch(:preview_mp4)).to eq("combined.mp4")
     end
 
     context "when MPT is still processing the task" do
       let(:task_result) { super().merge(state: 4) }
 
-      it "returns false while MPT is still processing the task" do
+      it "returns false and reports that the MPT task is still incomplete" do
         expect(call_result).to be(false)
-      end
-
-      it "records an incomplete-task error" do
-        call_result
-
         expect(service.errors.full_messages).to eq([ "MPT task chưa hoàn tất." ])
       end
     end
@@ -58,13 +38,8 @@ RSpec.describe AiGenerations::CompleteService, type: :service do
     context "when the completed task has no combined MP4" do
       let(:task_result) { super().except(:combined_videos) }
 
-      it "returns false when the preview is missing" do
+      it "returns false and reports the missing required output" do
         expect(call_result).to be(false)
-      end
-
-      it "records an output error when the preview is missing" do
-        call_result
-
         expect(service.errors.full_messages).to eq([ "MPT task thiếu file video, voiceover hoặc subtitle." ])
       end
     end
