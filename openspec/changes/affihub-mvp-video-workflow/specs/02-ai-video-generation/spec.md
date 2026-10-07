@@ -99,11 +99,19 @@ AffiHub MUST xác minh MPT task/queue state có thể được tra cứu sau res
 - **THEN** preflight chặn job AI trả phí và giữ import, edit, render cùng local export hoạt động
 
 ### Requirement: Hiển thị TTS fallback
-AffiHub MUST báo rõ khi pipeline dùng giọng dự phòng thay cho VieNeu-TTS.
+AffiHub MUST dùng VieNeu-TTS v3 Turbo qua adapter WAV mặc định. Azure Speech chỉ được dùng làm fallback tự động khi provider đã cấu hình, có estimate giá hiện hành và người dùng đã xác nhận chi phí. AffiHub MUST báo rõ provider và chi phí trước khi người dùng duyệt audio fallback. Nếu thiếu estimate hoặc consent, không tự gọi Azure hoặc Edge; chỉ chặn phần TTS/job AI phụ thuộc và giữ các chức năng local hoạt động. Edge TTS chỉ được dùng khi người dùng chọn rõ như phương án best-effort.
 
-#### Scenario: VieNeu-TTS không khả dụng
-- **WHEN** pipeline chuyển sang Edge TTS hoặc Azure Speech
-- **THEN** giao diện ghi rõ đang dùng giọng dự phòng trước khi người dùng duyệt audio kết quả
+#### Scenario: VieNeu-TTS không khả dụng và Azure đã được xác nhận
+- **WHEN** VieNeu lỗi, Azure Speech đã cấu hình, estimate hiện hành được chấp nhận và người dùng xác nhận chi phí
+- **THEN** AffiHub dùng Azure, hiển thị provider cùng chi phí trước khi người dùng duyệt audio
+
+#### Scenario: Thiếu estimate hoặc consent cho Azure
+- **WHEN** VieNeu lỗi và chưa có estimate giá hiện hành hoặc người dùng chưa xác nhận chi phí Azure
+- **THEN** AffiHub không gọi Azure hay tự chuyển sang Edge, báo TTS/job AI bị chặn cùng provider/lỗi, còn edit/render/export local vẫn hoạt động
+
+#### Scenario: Người dùng tự chọn Edge TTS
+- **WHEN** người dùng chủ động chọn Edge TTS sau khi được thông báo đây là phương án best-effort
+- **THEN** AffiHub hiển thị Edge là provider đang dùng trước khi người dùng duyệt audio
 
 ### Requirement: Cô lập lỗi nhánh AI
 Lỗi LLM, video provider hoặc TTS MUST chỉ dừng job AI phụ thuộc dịch vụ lỗi.
