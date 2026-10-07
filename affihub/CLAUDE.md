@@ -75,12 +75,16 @@ interactions that have behavior beyond visual styling.
 
 ### RSpec assertion/double style
 
-- Give each `it` one case with one clearly named behavior. Put every independent input or branch in
-  its own `it`; do not bundle different outputs or state changes into one example. Prefer one focused
-  expectation per `it`. Multiple expectations are appropriate only when they verify parts of that same
-  behavior (for example, rejection and its lack of side effects). Add another `it` for an independent
-  outcome, even when it uses the same setup or action. Avoid loops, case tables, and `shared_examples`
-  that hide individual cases.
+- Give each `it` one test case: one set of preconditions, one action, and the expected behavior. Put
+  independent inputs, branches, or scenarios in separate `it`s; never combine separate cases in one
+  example. A spec file may contain many cases, with one explicit `it` for each case.
+- Keep expectations for the same case together. A case may need multiple expectations when they
+  describe the same action's result and related side effects; do not create one `it` per assertion or
+  repeat the same setup and action just to split those expectations. Separate an expectation into a
+  new `it` when it represents a different case or behavior.
+- Keep each example focused and readable. Do not generate multiple cases with loops or case tables.
+  Use `shared_examples` only for genuinely identical shared behavior when the individual cases remain
+  easy to identify; otherwise write explicit examples.
 - Keep each example focused and readable; there is no fixed line limit. Keep its setup, action, and
   expectations easy to follow, and extract setup only when that improves clarity.
 - Use `describe "#method"`/`describe ".method"` for methods and readable `context "when ..."` blocks
@@ -110,7 +114,8 @@ interactions that have behavior beyond visual styling.
 
 ### RSpec support gems
 
-- FactoryBot creates persisted records; avoid Rails fixtures and direct Active Record construction.
+- Use FactoryBot to build or create records; avoid Rails fixtures and direct Active Record
+  construction for test data.
 - Faker is available for realistic or varied test input; prefer fixed values and FactoryBot sequences
   when deterministic values are part of the behavior.
 - DatabaseCleaner owns database cleanup. Rails transactional fixtures stay disabled; examples use
