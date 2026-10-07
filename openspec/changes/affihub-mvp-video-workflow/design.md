@@ -2,7 +2,7 @@
 
 ## Context
 
-Xem `proposal.md` để biết lý do/phạm vi và các spec `01`–`10` để biết behavior contract. `affihub/docs/architecture/OVERVIEW.md` ghi nhận chưa có code video để tương thích dữ liệu cũ; Rails local là UI/state owner, PostgreSQL là nguồn sự thật, Solid Queue xử lý job nền. FFmpeg, MoneyPrinterTurbo (MPT), VieNeu-TTS và các API ngoài chạy qua ranh giới worker/service riêng.
+Xem `proposal.md` để biết lý do/phạm vi và các spec `01`–`10` để biết behavior contract. `affihub/docs/architecture/OVERVIEW.md` là bản đồ code hiện tại; design baseline bắt đầu từ Rails scaffold và không có video data cũ cần migrate. Rails local là UI/state owner, PostgreSQL là nguồn sự thật, Solid Queue xử lý job nền. FFmpeg, MoneyPrinterTurbo (MPT), VieNeu-TTS và các API ngoài chạy qua ranh giới worker/service riêng.
 
 ## Goals / Non-Goals
 
@@ -190,6 +190,6 @@ OAuth `state` là giá trị ngẫu nhiên 32 byte; session lưu SHA-256 digest,
 
 ## Migration Plan
 
-Chưa có video model hoặc user data video cần migrate. Thực hiện foundation/domain và luồng video local trước; chạy Meta OAuth/Page/upload smoke spike sớm như section 2 để gỡ rủi ro API, rồi làm local source/edit/render, MPT/TTS, và hoàn thiện `MetaGraphPublisher`/review flow sau đó. Tiếp tục URL/discovery; TikTok/Instagram/YouTube; PublisherResolver/Scheduler; comment reply; Google; Telegram; cuối cùng chạy e2e từng nhánh. Spike Meta sớm là bước xác minh riêng, không phải publisher hoàn chỉnh. Schema được thêm cùng feature và RSpec; không ghi đè file source/render cũ.
+Design baseline không có video model hoặc user data video cần migrate. Thực hiện foundation/domain và luồng video local trước; thử Meta OAuth/Page/upload smoke spike sớm như section 2 để gỡ rủi ro API. Nếu chưa có app-role/Page test credentials, ghi rõ phần chưa xác minh thành cổng nghiệm thu live ở task 13.8 rồi tiếp tục các task local/độc lập; WebMock không thay thế bằng chứng quyền API thật. Tiếp tục local source/edit/render, MPT/TTS, `MetaGraphPublisher`/review flow, URL/discovery, TikTok/Instagram/YouTube, PublisherResolver/Scheduler, comment reply, Google và Telegram; cuối cùng chạy e2e từng nhánh. Spike Meta sớm là bước xác minh riêng, không phải publisher hoàn chỉnh. Schema được thêm cùng feature và RSpec; không ghi đè file source/render cũ.
 
 Nếu cần dừng triển khai sau một phase, pause Scheduler/AutoResponder, disable connector/job mới tương ứng và giữ database, source, render cùng external outcome đã lưu. Không tự xóa bài đã publish hoặc dữ liệu Drive; rollback schema chỉ thực hiện theo migration đã review và không được làm mất record side effect ngoài hệ thống.
