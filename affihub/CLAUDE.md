@@ -75,15 +75,16 @@ interactions that have behavior beyond visual styling.
 
 ### RSpec assertion/double style
 
-- Treat each `it` as one complete case: one scenario, one set of preconditions, one action, and one
-  expected behavior. Write a separate `it` for each independent input case, branch, scenario, or
-  outcome, even when setup or action is shared.
-- Keep related expectations for that case together when they jointly verify the same behavior, result,
-  and directly related side effects. Do not split one case into one `it` per assertion or field, and
-  do not combine independent cases just to reduce repetition.
+- A spec file or `describe` may contain multiple examples, but each `it` represents exactly one case:
+  one set of preconditions, one action, and one expected behavior/outcome. Put every independent
+  input, branch, scenario, or outcome in its own `it`, even when cases share setup or action. Never
+  combine independent cases in one `it` to reduce repetition.
+- One case may need multiple expectations. Keep those expectations in that case's `it` when they
+  jointly verify its result and directly related side effects. Do not create separate `it` examples
+  just to assert individual fields or effects of the same case.
 - Write an explicit `it` for each case. Do not generate examples with loops or case tables, and do not
   use `shared_examples` to hide distinct cases. Share setup in the nearest `context` with `let` and
-  `before`, while keeping each case and its expected result visible beside its `it`.
+  `before`; keep each case, action, and expected outcome visible in its own `it`.
 - Keep each example focused and readable; there is no fixed line limit. Keep its setup, action, and
   expectations easy to follow, and extract setup only when that improves clarity.
 - Use `describe "#method"`/`describe ".method"` for methods and readable `context "when ..."` blocks
