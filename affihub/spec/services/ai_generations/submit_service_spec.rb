@@ -14,12 +14,28 @@ RSpec.describe AiGenerations::SubmitService, type: :service do
     }
   end
   let(:estimate_snapshot) { generation_inputs }
+  let(:tts_fallback_quote) do
+    {
+      amount: "0.01",
+      currency: "USD",
+      provider: "Azure Speech",
+      source: "Azure Speech pricing estimate",
+      estimated_at: 1.minute.ago.iso8601,
+      input_snapshot: {
+        narration: generation_inputs.fetch(:video_script),
+        voice: "vi-VN-HoaiMyNeural"
+      }
+    }
+  end
   let(:estimate) do
     {
       total_amount: "0.50",
       currency: "USD",
       required_costs_known: true,
-      input_snapshot: estimate_snapshot
+      input_snapshot: estimate_snapshot,
+      cost_breakdown: {
+        tts_fallback: tts_fallback_quote
+      }
     }
   end
   let(:budget) { "1.00" }
@@ -45,15 +61,31 @@ RSpec.describe AiGenerations::SubmitService, type: :service do
       video_source: "muapi",
       video_language: "vi",
       voice_name: "chatterbox:Mai Anh",
+      tts_fallback_voice: "vi-VN-HoaiMyNeural",
       subtitle_enabled: true,
       match_materials_to_script: true
     }
   end
   let(:video_request) do
     stub_request(:post, %r{/api/v1/videos\z})
-      .with(body: expected_video_request.deep_stringify_keys)
-      .to_return(status: 200, body: { status: 200, data: { task_id: "mpt-task-123" } }.to_json)
+      .to_return do
+        ai_generation = AiGeneration.order(:id).last
+        ai_generation_scene = ai_generation&.ai_generation_scenes&.find_by(scene_index: 0)
+        if ai_generation_scene
+          submission_scene_snapshot[:attributes] = ai_generation_scene.attributes.slice(
+            "scene_index",
+            "status",
+            "narration_snapshot",
+            "voice_name"
+          )
+          submission_scene_snapshot[:estimate_snapshot] = ai_generation_scene.estimate_snapshot
+          submission_scene_snapshot[:consent_snapshot] = ai_generation_scene.consent_snapshot
+        end
+
+        { status: 200, body: { status: 200, data: { task_id: "mpt-task-123" } }.to_json }
+      end
   end
+  let(:submission_scene_snapshot) { {} }
 
   describe "#call" do
     before { video_request }
@@ -132,6 +164,77 @@ RSpec.describe AiGenerations::SubmitService, type: :service do
       end
     end
 
+    context "when the TTS fallback quote is missing" do
+      let(:estimate) { super().except(:cost_breakdown) }
+
+      it "does not submit a video job without an Azure quote" do
+        call_result
+
+        expect(service).not_to be_success
+        expect(video_request).not_to have_been_requested
+      end
+    end
+
+    context "when the TTS fallback quote is for different narration" do
+      let(:tts_fallback_quote) do
+        super().merge(
+          input_snapshot: {
+            narration: "Different narration.",
+            voice: "vi-VN-HoaiMyNeural"
+          }
+        )
+      end
+
+      it "does not submit a video job with a mismatched Azure quote" do
+        call_result
+
+        expect(service).not_to be_success
+        expect(video_request).not_to have_been_requested
+      end
+    end
+
+    context "when the TTS fallback quote is for a different Azure voice" do
+      let(:tts_fallback_quote) do
+        super().merge(
+          input_snapshot: {
+            narration: generation_inputs.fetch(:video_script),
+            voice: "vi-VN-NamMinhNeural"
+          }
+        )
+      end
+
+      it "does not submit a video job with a mismatched Azure voice quote" do
+        call_result
+
+        expect(service).not_to be_success
+        expect(video_request).not_to have_been_requested
+      end
+    end
+
+    context "when the TTS fallback quote has expired" do
+      let(:tts_fallback_quote) do
+        super().merge(estimated_at: 2.hours.ago.iso8601)
+      end
+
+      it "does not submit a video job with an expired Azure quote" do
+        call_result
+
+        expect(service).not_to be_success
+        expect(video_request).not_to have_been_requested
+      end
+    end
+
+    context "when the TTS fallback quote uses a different currency" do
+      let(:tts_fallback_quote) { super().merge(currency: "EUR") }
+
+      it "does not submit a video job with a currency mismatch" do
+        call_result
+
+        expect(service).not_to be_success
+        expect(video_request).not_to have_been_requested
+      end
+    end
+
     context "when scene durations differ" do
       let(:generation_inputs) do
         super().merge(scenes: [
@@ -174,10 +277,65 @@ RSpec.describe AiGenerations::SubmitService, type: :service do
         expect(service.video_request).to eq(expected_video_request)
       end
 
+      it "creates the TTS scene before MPT receives the request" do
+        call_result
+
+        expect(submission_scene_snapshot.fetch(:attributes).slice("scene_index", "status")).to eq(
+          "scene_index" => 0,
+          "status" => "processing"
+        )
+      end
+
+      it "persists the approved narration on the TTS scene" do
+        call_result
+
+        expect(submission_scene_snapshot.fetch(:attributes).fetch("narration_snapshot")).to eq(
+          generation_inputs.fetch(:video_script)
+        )
+      end
+
+      it "persists the approved Azure voice on the TTS scene" do
+        call_result
+
+        expect(submission_scene_snapshot.fetch(:attributes).fetch("voice_name")).to eq(
+          "vi-VN-HoaiMyNeural"
+        )
+      end
+
+      it "persists the Azure quote on the TTS scene" do
+        call_result
+
+        expect(submission_scene_snapshot.fetch(:estimate_snapshot)).to eq(
+          estimate.fetch(:cost_breakdown).fetch(:tts_fallback).deep_stringify_keys
+        )
+      end
+
+      it "persists consent for the exact Azure quote on the TTS scene" do
+        call_result
+
+        expect(submission_scene_snapshot.fetch(:consent_snapshot)).to include(
+          "confirmed" => true,
+          "estimate" => estimate.fetch(:cost_breakdown).fetch(:tts_fallback).deep_stringify_keys
+        )
+      end
+
       it "submits one video request to MPT" do
         call_result
 
         expect(video_request).to have_been_requested.once
+      end
+    end
+
+    context "when MPT rejects the video submission" do
+      let(:video_request) do
+        stub_request(:post, %r{/api/v1/videos\z})
+          .to_return(status: 400, body: { detail: "invalid request" }.to_json)
+      end
+
+      it "marks the saved TTS scene failed with the generation" do
+        call_result
+
+        expect(service.ai_generation.ai_generation_scenes.sole.status).to eq("failed")
       end
     end
 
@@ -230,7 +388,7 @@ RSpec.describe AiGenerations::SubmitService, type: :service do
     context "when MPT accepts the request without returning a task ID" do
       let(:video_request) do
         stub_request(:post, %r{/api/v1/videos\z})
-          .with(body: expected_video_request.deep_stringify_keys)
+      .with(body: expected_video_request.deep_stringify_keys)
           .to_return(status: 200, body: { status: 200, data: { state: 4 } }.to_json)
       end
       let(:task_list_request) do

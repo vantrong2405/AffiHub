@@ -2,8 +2,10 @@
 
 class AiGenerations::SubmitService < ApplicationService
   CONFIGURATION = Rails.application.config_for(:money_printer_turbo).deep_symbolize_keys
+  AZURE_CONFIGURATION = Rails.application.config_for(:azure_speech).deep_symbolize_keys
   PROFILE = CONFIGURATION.fetch(:generation_profile)
   SUBMISSION_STAGE = "mpt_video_submission"
+  TTS_SCENE_INDEX = 0
 
   attr_reader :ai_generation, :outbound_attempt, :task_id, :video_request, :workflow_run
 
@@ -54,6 +56,7 @@ class AiGenerations::SubmitService < ApplicationService
     return step_fail!("MPT chỉ nhận một thời lượng chung cho các cảnh.") unless one_scene_duration?
     return step_fail!("Model hoặc resolution không khớp cấu hình MPT.") unless profile_matches?
     return step_fail!("Thiếu chủ đề, ngôn ngữ hoặc kịch bản.") unless required_inputs_present?
+    return step_fail!("Báo giá Azure TTS không còn hợp lệ.") unless tts_fallback_quote_is_current?
     return step_fail!("Project video không tồn tại.") unless @video_project&.persisted?
 
     true
@@ -61,13 +64,22 @@ class AiGenerations::SubmitService < ApplicationService
 
   def step_prepare_submission
     build_video_request
+    @consent_snapshot = consent_snapshot
     AiGeneration.transaction do
       @ai_generation = @video_project.ai_generations.create!(
         correlation_id: SecureRandom.uuid,
         status: :submitting,
         input_snapshot: @inputs,
         estimate_snapshot: @estimate,
-        consent_snapshot: consent_snapshot
+        consent_snapshot: @consent_snapshot
+      )
+      @ai_generation.ai_generation_scenes.create!(
+        scene_index: TTS_SCENE_INDEX,
+        status: :processing,
+        narration_snapshot: @inputs.fetch(:video_script),
+        voice_name: tts_fallback_voice,
+        estimate_snapshot: tts_fallback_quote,
+        consent_snapshot: tts_fallback_consent_snapshot
       )
       @workflow_run = @ai_generation.create_workflow_run!(
         operation_id: "ai-generation-#{@ai_generation.id}-mpt-video",
@@ -255,6 +267,10 @@ class AiGenerations::SubmitService < ApplicationService
         safe_error_code: error_code
       )
       @ai_generation.update!(status: :failed, safe_error_code: error_code)
+      @ai_generation.ai_generation_scenes.find_by!(scene_index: TTS_SCENE_INDEX).update!(
+        status: :failed,
+        safe_error_code: error_code
+      )
       @workflow_run.update!(status: :failed, worker_id: nil, lease_expires_at: nil)
       @workflow_run.workflow_audit_events.create!(
         outbound_attempt: @outbound_attempt,
@@ -291,6 +307,7 @@ class AiGenerations::SubmitService < ApplicationService
       video_source: PROFILE.fetch(:video_source),
       video_language: @inputs.fetch(:language),
       voice_name: configured_voice_name,
+      tts_fallback_voice: tts_fallback_voice,
       subtitle_enabled: true,
       match_materials_to_script: true
     }
@@ -331,6 +348,31 @@ class AiGenerations::SubmitService < ApplicationService
   def configured_voice_name
     tts_configuration = CONFIGURATION.fetch(:tts)
     "#{tts_configuration.fetch(:provider)}:#{tts_configuration.fetch(:voice_name)}"
+  end
+
+  def tts_fallback_voice
+    AZURE_CONFIGURATION.fetch(:voice)
+  end
+
+  def tts_fallback_quote
+    @estimate.dig(:cost_breakdown, :tts_fallback).to_h.deep_symbolize_keys
+  end
+
+  def tts_fallback_quote_is_current?
+    AiGenerationEstimates::FallbackQuoteValidator.new(
+      quote: tts_fallback_quote,
+      narration: @inputs[:video_script],
+      voice: tts_fallback_voice,
+      currency: @estimate[:currency]
+    ).valid?
+  end
+
+  def tts_fallback_consent_snapshot
+    {
+      confirmed: @confirmed,
+      confirmed_at: @consent_snapshot.fetch(:confirmed_at),
+      estimate: tts_fallback_quote
+    }
   end
 
   def money_amount(amount)

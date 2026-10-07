@@ -2,6 +2,7 @@
 
 class AiGenerationEstimates::CreateService < ApplicationService
   CATEGORIES = %i[llm stock tts_fallback].freeze
+  AZURE_CONFIGURATION = Rails.application.config_for(:azure_speech).deep_symbolize_keys
   attr_reader :model_id, :scenes, :input_snapshot, :scene_estimates, :cost_breakdown, :total_amount,
     :required_costs_known
 
@@ -103,7 +104,7 @@ class AiGenerationEstimates::CreateService < ApplicationService
       },
       llm: category_costs.fetch(:llm),
       stock: category_costs.fetch(:stock),
-      tts_fallback: category_costs.fetch(:tts_fallback),
+      tts_fallback: tts_fallback_cost_record,
       unknown: unknown_cost
     }
     @required_costs_known = unknown_categories.empty?
@@ -122,6 +123,18 @@ class AiGenerationEstimates::CreateService < ApplicationService
       },
       tts_fallback: unknown_provider_cost("TTS fallback")
     }
+  end
+
+  def tts_fallback_cost_record
+    cost_record = @provider_costs.fetch(:tts_fallback)
+    return cost_record if cost_record.key?(:input_snapshot)
+
+    cost_record.merge(
+      input_snapshot: {
+        narration: @input_snapshot[:video_script],
+        voice: AZURE_CONFIGURATION.fetch(:voice)
+      }
+    )
   end
 
   def unknown_provider_cost(provider)

@@ -1,0 +1,73 @@
+diff --git a/app/services/voice.py b/app/services/voice.py
+--- a/app/services/voice.py
++++ b/app/services/voice.py
+@@ -2492,4 +2492,5 @@ def _openai_compatible_tts(
+     text: str,
+     voice_rate: float,
+     voice_file: str,
++    response_format: str = "mp3",
+ ) -> Union[SubMaker, None]:
+@@ -2505,9 +2506,12 @@ def _openai_compatible_tts(
+     if api_key:
+         headers["Authorization"] = f"Bearer {api_key}"
++    if response_format not in {"mp3", "wav"}:
++        logger.error(f"{provider} tts has unsupported response format: {response_format}")
++        return None
+     payload = {
+         "model": model_id,
+         "input": text,
+         "voice": voice,
+-        "response_format": "mp3",
++        "response_format": response_format,
+         # OpenAI speech API accepts speed 0.25-4.0; MoneyPrinterTurbo's rate is a
+         # 1.0-centred multiplier, so it maps directly (clamped to the valid range).
+@@ -2539,7 +2544,7 @@ def _openai_compatible_tts(
+             # 已有试听/配音；先关闭文件再解码和替换，兼容 Windows 文件占用规则。
+             with tempfile.NamedTemporaryFile(
+                 dir=os.path.dirname(os.path.abspath(voice_file)),
+-                suffix=".mp3", delete=False,
++                suffix=f".{response_format}", delete=False,
+             ) as f:
+                 temporary_audio = f.name
+                 f.write(response.content)
+@@ -2610,7 +2615,12 @@ def chatterbox_tts(
+     api_key = config.chatterbox.get("api_key", "")
+     if not model_id:
+         model_id = config.chatterbox.get("model_id", "chatterbox") or "chatterbox"
++    response_format = str(config.chatterbox.get("response_format", "mp3") or "mp3").strip().lower()
++    if response_format not in {"mp3", "wav"}:
++        logger.error(f"Chatterbox has unsupported response format: {response_format}")
++        return None
+ 
+     return _openai_compatible_tts(
+-        "chatterbox", base_url, api_key, model_id, voice, text, voice_rate, voice_file
++        "chatterbox", base_url, api_key, model_id, voice, text, voice_rate, voice_file,
++        response_format=response_format,
+     )
+diff --git a/app/services/task.py b/app/services/task.py
+--- a/app/services/task.py
++++ b/app/services/task.py
+@@ -571,6 +571,11 @@ def _create_audio(
+ 
+         logger.info("no custom audio file provided, using TTS to generate audio.")
+-        audio_file = path.join(utils.task_dir(task_id), "audio.mp3")
++        audio_format = "mp3"
++        if (params.voice_name or "").startswith("chatterbox:"):
++            audio_format = str(
++                config.chatterbox.get("response_format", "mp3") or "mp3"
++            ).strip().lower()
++        audio_file = path.join(utils.task_dir(task_id), f"audio.{audio_format}")
+         tts_kwargs = {
+             "text": video_script,
+             "voice_name": voice.parse_voice_name(params.voice_name),
+diff --git a/config.example.toml b/config.example.toml
+--- a/config.example.toml
++++ b/config.example.toml
+@@ -617,5 +617,7 @@ [chatterbox]
+ base_url = "http://127.0.0.1:4123/v1"
+ api_key = ""
+ model_id = "chatterbox"
++# Use "wav" for VieNeu-TTS; the default OpenAI-compatible format remains "mp3".
++response_format = "mp3"
+ # Voice names exposed by the configured Chatterbox server.
+ voices = ["default-Female"]

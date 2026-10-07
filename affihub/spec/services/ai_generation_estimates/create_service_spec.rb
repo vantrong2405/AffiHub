@@ -83,11 +83,21 @@ RSpec.describe AiGenerationEstimates::CreateService, type: :service do
 
       before { second_request }
 
-      it "returns one estimate for each scene's exact input" do
+      it "requests an estimate for the first scene" do
         call_result
 
         expect(first_request).to have_been_requested.once
+      end
+
+      it "requests an estimate for the second scene" do
+        call_result
+
         expect(second_request).to have_been_requested.once
+      end
+
+      it "returns the total amount for both scene estimates" do
+        call_result
+
         expect(service.cost_breakdown.fetch(:muapi).fetch(:amount)).to eq("0.5")
       end
     end
@@ -108,11 +118,21 @@ RSpec.describe AiGenerationEstimates::CreateService, type: :service do
         }
       end
 
-      it "returns an incomplete estimate with no total" do
+      it "returns no MuAPI amount when the quote is missing" do
         call_result
 
         expect(service.cost_breakdown.fetch(:muapi).fetch(:amount)).to be_nil
+      end
+
+      it "marks required costs as unknown when the quote is missing" do
+        call_result
+
         expect(service.required_costs_known).to be(false)
+      end
+
+      it "returns no total when the quote is missing" do
+        call_result
+
         expect(service.total_amount).to be_nil
       end
     end
@@ -126,11 +146,43 @@ RSpec.describe AiGenerationEstimates::CreateService, type: :service do
         }
       end
 
-      it "returns the total and marks required costs as known" do
+      it "returns the total when every provider quote is known" do
         call_result
 
         expect(service.total_amount).to eq(BigDecimal("0.30"))
+      end
+
+      it "marks required costs as known when every provider quote is known" do
+        call_result
+
         expect(service.required_costs_known).to be(true)
+      end
+    end
+
+    context "when the Azure fallback quote has a known amount" do
+      let(:narration) { "A short skincare story." }
+      let(:input_snapshot) { super().merge(video_script: narration) }
+      let(:provider_costs) do
+        {
+          llm: { amount: "0.08", currency: "USD", provider: "Moonshot", source: "estimate" },
+          stock: { amount: "0.00", currency: "USD", provider: "Pexels", source: "license" },
+          tts_fallback: {
+            amount: "0.02",
+            currency: "USD",
+            provider: "Azure Speech",
+            source: "estimate",
+            estimated_at: Time.current.iso8601
+          }
+        }
+      end
+
+      it "ties the quote to the approved narration and configured Azure voice" do
+        call_result
+
+        expect(service.cost_breakdown.fetch(:tts_fallback).fetch(:input_snapshot)).to eq(
+          narration:,
+          voice: "vi-VN-HoaiMyNeural"
+        )
       end
     end
 
@@ -143,10 +195,15 @@ RSpec.describe AiGenerationEstimates::CreateService, type: :service do
         }
       end
 
-      it "returns an incomplete estimate without summing currencies" do
+      it "marks required costs as unknown when provider currencies differ" do
         call_result
 
         expect(service.required_costs_known).to be(false)
+      end
+
+      it "returns no total when provider currencies differ" do
+        call_result
+
         expect(service.total_amount).to be_nil
       end
     end

@@ -42,6 +42,19 @@ permission checks, using existing daisyUI components. Request and system specs c
 handling, Page token redaction, and permission errors. The remaining external integrations are
 still in progress.
 
+### AI generation và TTS fallback
+
+`AiGeneration` và `AiGenerationScene` lưu lần tạo cùng narration/voice/quote/consent đã duyệt. Các
+Service tại `app/services/ai_generations/` xử lý script, scene prompts, submit và output MPT; estimate
+được tổng hợp trong `AiGenerationEstimates::CreateService`. Submit lưu scene TTS trước khi gọi MPT.
+`POST /internal/mpt/tts_fallback` đi qua `Internal::Mpt::TtsFallbacksController` và
+`AiGenerations::TtsFallbackCallbackService`, xác minh callback rồi mới tạo outbound attempt và gọi
+`AzureSpeech::Client`; `Vieneu::Client` xử lý endpoint VieNeu. Specs dùng WebMock đã pass, và hai patch
+MPT đã được áp/biên dịch trên source pinned; Docker image build và startup smoke với Redis `/ping`
+đều pass. Callback Rails/Azure, VieNeu live smoke, assembly WAV và khả năng restart/reconcile
+MPT/Redis vẫn chưa được xác minh; xem
+`docs/reference-analysis/ai-video-mpt-vieneu.md` và OpenSpec task 4.4–4.7.
+
 ## Product requirements and references
 
 | Path | Purpose |
@@ -55,17 +68,18 @@ still in progress.
 
 | Path | Purpose |
 |---|---|
-| app/controllers/application_controller.rb, main_controller.rb, api_controller.rb | Rails controller base classes |
+| app/controllers/application_controller.rb, main_controller.rb, api_controller.rb, internal/mpt/tts_fallbacks_controller.rb | Rails controller base classes and authenticated internal MPT TTS callback |
 | app/controllers/dashboard_controller.rb, video_projects_controller.rb, source_assets_controller.rb, render_versions_controller.rb, social_connections_controller.rb, social_destinations_controller.rb, connection_callbacks_controller.rb | Dashboard redirect and local project/source/editor/render/social account/OAuth callback HTTP actions |
 | app/controllers/concerns/ | Shared HTML/JSON response concerns |
 | app/forms/main_form.rb, app/operations/main_operation.rb, app/serializers/ | Generated HMVC scaffold |
-| app/models/application_record.rb, video_project.rb, source_asset.rb, render_version.rb | Active Record base and initial video domain |
+| app/models/application_record.rb, video_project.rb, source_asset.rb, render_version.rb, ai_generation.rb, ai_generation_scene.rb, workflow_run.rb, outbound_attempt.rb, workflow_audit_event.rb | Active Record base, video/AI domain, and durable workflow attempts |
 | app/jobs/application_job.rb | Active Job base class |
-| app/services/video_projects/, app/services/source_assets/, app/services/render_versions/, app/services/meta/, app/services/social_connections/, app/services/connection_callbacks/ | Project workflows, local import/source inspection, render editing, frame comparison/export, Meta API calls, and OAuth callback handling |
+| app/services/video_projects/, app/services/source_assets/, app/services/render_versions/, app/services/ai_generations/, app/services/ai_generation_estimates/, app/services/workflow_runs/, app/services/outbound_attempts/, app/services/meta/, app/services/social_connections/, app/services/connection_callbacks/ | Project workflows, local import/render, AI generation and TTS callback, estimate validation, durable workflow recovery, Meta API calls, and OAuth callback handling |
+| app/clients/azure_speech/, app/clients/vieneu/, docker/mpt/ | Speech clients and pinned MoneyPrinterTurbo image patches |
 | app/helpers/workflow_status_helper.rb, app/views/video_projects/, app/views/source_assets/, app/views/render_versions/, app/views/social_connections/, app/views/social_destinations/ | Vietnamese status labels and project/source/editor/render/social account pages |
 | app/views/layouts/, app/views/pwa/ | Default Rails layouts and PWA templates |
 | app/assets/, app/javascript/ | Tailwind/daisyUI and importmap scaffold |
-| config/routes.rb | Rails health check, dashboard root, and resource routes from the active change |
+| config/routes.rb, config/azure_speech.yml, config/mpt_tts_callback.yml, config/vieneu.yml | Product/internal callback routes and speech provider configuration |
 | config/application.rb, config/database.yml, config/rails_hmvc.yml | Rails, PostgreSQL, Solid Queue, and HMVC configuration |
 | spec/boot_spec.rb, spec/models/, spec/requests/, spec/services/, spec/system/, spec/factories/, spec/rails_helper.rb, spec/spec_helper.rb, spec/support/ | RSpec domain, request, service, and stable editor-interaction coverage |
 | Gemfile, Gemfile.lock, package.json, package-lock.json | Rails, test, and Tailwind dependencies |

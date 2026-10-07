@@ -1,0 +1,6 @@
+shared:
+  secret: <%= ENV.fetch("MPT_TTS_CALLBACK_SECRET", Rails.application.credentials.dig(:money_printer_turbo, :tts_callback_secret).to_s) %>
+  timestamp_tolerance_seconds: 300
+
+test:
+  secret: affihub-test-callback-secret

@@ -30,4 +30,7 @@ Rails.application.routes.draw do
       to: "connection_callbacks#show",
       as: :connection_callback
 
+  post "/internal/mpt/tts_fallback",
+       to: "internal/mpt/tts_fallbacks#create",
+       as: :internal_mpt_tts_fallback
 end
