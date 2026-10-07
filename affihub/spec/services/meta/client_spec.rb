@@ -27,6 +27,18 @@ RSpec.describe "Meta::Client", type: :service do
     end
   end
 
+  describe "#page_video" do
+    it "returns the Page video ID and source from the configured Graph API version" do
+      stub_request(:get, "https://graph.facebook.com/v26.0/video-1")
+        .with(query: hash_including("fields" => "id,source", "access_token" => "page-token"))
+        .to_return(body: { id: "video-1", source: "https://video.cdn.example/download" }.to_json)
+
+      video = "Meta::Client".constantize.new.page_video(video_id: "video-1", page_access_token: "page-token")
+
+      expect(video).to eq("id" => "video-1", "source" => "https://video.cdn.example/download")
+    end
+  end
+
   describe "#start_reel_upload" do
     it "returns the video ID and upload URL from the selected Page" do
       stub_request(:post, "https://graph.facebook.com/v26.0/page-1/video_reels")
@@ -89,6 +101,23 @@ RSpec.describe "Meta::Client", type: :service do
 
       expect { "Meta::Client".constantize.new.pages(access_token: "user-token-secret") }
         .to raise_error("Meta::Client::Error".constantize, "graph_api_190")
+    end
+  end
+
+  describe "sensitive request data" do
+    it "returns no log entries containing a Page token or signed upload URL" do
+      page_access_token = "page-token-secret"
+      upload_url = "https://rupload.facebook.com/video-upload/v26.0/video-1?signature=signed-url-secret"
+      log_output = StringIO.new
+      original_logger = Rails.logger
+      Rails.logger = ActiveSupport::Logger.new(log_output)
+      stub_request(:post, upload_url).to_return(status: 500, body: { error: { message: page_access_token } }.to_json)
+
+      expect { "Meta::Client".constantize.new.upload_reel(upload_url:, page_access_token:, file: StringIO.new("mp4"), file_size: 3) }
+        .to raise_error("Meta::Client::Error".constantize, "graph_api_http_500")
+      expect(log_output.string).not_to include(page_access_token, upload_url)
+    ensure
+      Rails.logger = original_logger
     end
   end
 end

@@ -32,7 +32,12 @@ the saved processing state, verified media metadata, and an inline preview once 
 succeeds. `RenderVersionsController` and its Services provide the source-scoped editor, queued
 render creation, render history/detail, timecode frame comparison, and local MP4 download. The
 editor uses installed daisyUI components for its form and status UI, with Stimulus only for adding
-and removing timeline/overlay/delogo rows. External integration screens remain in progress.
+and removing timeline/overlay/delogo rows. `Meta::Client` loads provider settings from
+`config/meta.yml`, uses one private request method, and covers OAuth token exchange, Page listing,
+Page video source probing, and Facebook Reels upload/status calls. Request specs stub the HTTP
+boundary and cover secret redaction; live Meta permission and publish smoke tests remain unverified
+because this local environment has no Meta app or Page test credentials. Connection/Page-selection
+screens and the remaining external integrations are still in progress.
 
 ## Product requirements and references
 
@@ -48,12 +53,12 @@ and removing timeline/overlay/delogo rows. External integration screens remain i
 | Path | Purpose |
 |---|---|
 | app/controllers/application_controller.rb, main_controller.rb, api_controller.rb | Rails controller base classes |
-| app/controllers/dashboard_controller.rb, video_projects_controller.rb, source_assets_controller.rb, render_versions_controller.rb | Dashboard redirect and local project/source/editor/render HTTP actions |
+| app/controllers/dashboard_controller.rb, video_projects_controller.rb, source_assets_controller.rb, render_versions_controller.rb, social_connections_controller.rb, connection_callbacks_controller.rb | Dashboard redirect and local project/source/editor/render/OAuth callback HTTP actions |
 | app/controllers/concerns/ | Shared HTML/JSON response concerns |
 | app/forms/main_form.rb, app/operations/main_operation.rb, app/serializers/ | Generated HMVC scaffold |
 | app/models/application_record.rb, video_project.rb, source_asset.rb, render_version.rb | Active Record base and initial video domain |
 | app/jobs/application_job.rb | Active Job base class |
-| app/services/video_projects/, app/services/source_assets/, app/services/render_versions/ | Project workflows, local import/source inspection, render editing, frame comparison, and export |
+| app/services/video_projects/, app/services/source_assets/, app/services/render_versions/, app/services/meta/, app/services/social_connections/, app/services/connection_callbacks/ | Project workflows, local import/source inspection, render editing, frame comparison/export, Meta API calls, and OAuth callback handling |
 | app/helpers/workflow_status_helper.rb, app/views/video_projects/, app/views/source_assets/, app/views/render_versions/ | Vietnamese status labels and project/source/editor/render pages |
 | app/views/layouts/, app/views/pwa/ | Default Rails layouts and PWA templates |
 | app/assets/, app/javascript/ | Tailwind/daisyUI and importmap scaffold |

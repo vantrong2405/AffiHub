@@ -52,6 +52,20 @@ class Meta::Client
     response.fetch("data", [])
   end
 
+  # Reads a Page-owned Video node without logging its potentially signed source URL.
+  #
+  # @param video_id [String] the Meta Video ID
+  # @param page_access_token [String] the token authorized for the owning Page
+  # @return [Hash] the Video ID and source URL when the current app permissions allow them
+  def page_video(video_id:, page_access_token:)
+    encoded_video_id = URI.encode_www_form_component(video_id)
+    request(
+      method: :get,
+      url: "#{graph_api_base_url}/#{encoded_video_id}",
+      params: { fields: "id,source", access_token: page_access_token }
+    )
+  end
+
   # Starts a Facebook Reels upload session.
   #
   # @param page_id [String] the selected Facebook Page ID
