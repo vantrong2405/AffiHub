@@ -83,7 +83,7 @@ interactions that have behavior beyond visual styling.
   that hide individual cases.
 - Keep each example focused and readable; there is no fixed line limit. Keep its setup, action, and
   expectations easy to follow, and extract setup only when that improves clarity.
-- Use `describe '#method'`/`describe '.method'` for methods and readable `context 'when ...'` blocks
+- Use `describe "#method"`/`describe ".method"` for methods and readable `context "when ..."` blocks
   for scenarios. Write each example description as one clear statement of the expected behavior.
   Start with `returns`, `raises`, `redirects`, `enqueues`, or another accurate verb as appropriate;
   do not force every description to start with `returns`.
