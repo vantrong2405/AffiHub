@@ -38,7 +38,7 @@ This workspace also uses **OpenSpec** for spec-driven change proposals, tracked 
 
 - Use simple, consistent variable names; use the same name for the same domain object across related code.
 - Prefer clear direct code over one-use abstractions that hide the behavior. Move repeated queries into a named model scope and shared behavior into the nearest common layer so a fix does not need to be repeated in many places.
-- Do not use Ruby lambda syntax (`->` or `lambda`) in application code or specs. Use named methods or ordinary blocks; for Rails DSLs that require a callable scope body, use `proc { ... }` instead.
+- Do not use Ruby lambda syntax (`->` or `lambda`) in application code or specs. Define Rails scopes with `scope :name, proc { ... }`; use a named method or ordinary block for other behavior.
 
 ## TDD — RSpec-first (mandatory)
 
@@ -75,16 +75,13 @@ interactions that have behavior beyond visual styling.
 
 ### RSpec assertion/double style
 
-- Give each `it` one test case: one set of preconditions, one action, and the expected behavior. Put
-  independent inputs, branches, or scenarios in separate `it`s; never combine separate cases in one
-  example. A spec file may contain many cases, with one explicit `it` for each case.
-- Keep expectations for the same case together. A case may need multiple expectations when they
-  describe the same action's result and related side effects; do not create one `it` per assertion or
-  repeat the same setup and action just to split those expectations. Separate an expectation into a
-  new `it` when it represents a different case or behavior.
-- Keep each example focused and readable. Do not generate multiple cases with loops or case tables.
-  Use `shared_examples` only for genuinely identical shared behavior when the individual cases remain
-  easy to identify; otherwise write explicit examples.
+- Give each `it` one case and one focused expected behavior: one set of preconditions, one action, and
+  one clearly named outcome. Put independent outcomes in separate `it`s, even when they use the same
+  setup and action; do not merge examples just to reduce repetition. Keep only assertions that together
+  verify that one named behavior in the example.
+- Write one explicit `it` for every case. Do not generate examples with loops or case tables, and do
+  not use `shared_examples` to hide separate cases. Share setup in the nearest `context` with `let`
+  and `before`, while keeping each case and its expected result visible beside its `it`.
 - Keep each example focused and readable; there is no fixed line limit. Keep its setup, action, and
   expectations easy to follow, and extract setup only when that improves clarity.
 - Use `describe "#method"`/`describe ".method"` for methods and readable `context "when ..."` blocks
@@ -108,9 +105,10 @@ interactions that have behavior beyond visual styling.
   nearest group genuinely shares it; do not extract one-use helpers just to shorten a spec.
 - Use Shoulda-Matchers for standard Rails association and validation contracts when they make the
   example clearer.
-- Put shared setup in the nearest `context` using `let`/`before`. Prefer a named model scope for a
-  repeated query condition and the nearest shared layer for genuinely shared behavior; do not extract
-  one-use helpers or duplicate setup abstractions that make the individual case harder to understand.
+- Put shared setup in the nearest `context` using `let`/`before`. In application code, prefer a named
+  model scope for a repeated query condition and the nearest common layer for repeated behavior, so a
+  later fix is made once. Do not extract one-use helpers or abstractions that make a spec harder to
+  understand; keep independent spec cases explicit even when their setup repeats.
 
 ### RSpec support gems
 
