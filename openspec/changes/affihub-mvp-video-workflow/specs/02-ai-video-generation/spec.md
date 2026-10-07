@@ -127,9 +127,9 @@ AffiHub MUST dùng MPT v1.3.8 pinned source với preset mặc định `seedance
 - **WHEN** người dùng mở AI generation lần đầu cho project
 - **THEN** AffiHub hiển thị model, 480p và 5 cảnh × 6 giây trước khi gửi bất kỳ job tính phí nào
 
-#### Scenario: Người dùng đổi scene duration
-- **WHEN** người dùng chỉnh số cảnh hoặc thời lượng từng cảnh
-- **THEN** AffiHub chấp nhận thời lượng trong 3–12 giây và tính lại estimate trên input mới
+#### Scenario: Người dùng đổi số cảnh hoặc thời lượng chung
+- **WHEN** người dùng chỉnh số cảnh hoặc thời lượng áp dụng chung cho các cảnh
+- **THEN** AffiHub chấp nhận thời lượng trong 3–12 giây, gửi cùng giá trị video_clip_duration cho MPT và tính lại estimate riêng cho prompt từng cảnh
 
 ### Requirement: Hoàn tất pipeline thành preview MP4
 Sau khi được xác nhận, pipeline AI MUST tạo clip cho các cảnh đã duyệt, ghép timeline, tạo voiceover/subtitle và lưu preview MP4 cùng task ID, model và lỗi provider.
