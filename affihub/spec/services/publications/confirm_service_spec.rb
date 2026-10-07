@@ -2,6 +2,8 @@ require "rails_helper"
 
 RSpec.describe Publications::ConfirmService, type: :service do
   describe "#call" do
+    before { ActiveJob::Base.queue_adapter.enqueued_jobs.clear }
+
     let(:render_version) { create(:render_version) }
     let(:social_destination) { create(:social_destination) }
     let(:publication) do
@@ -26,7 +28,7 @@ RSpec.describe Publications::ConfirmService, type: :service do
     end
 
     it "approves only the reviewed Publication and queues its workflow" do
-      service.call
+      expect { service.call }.to have_enqueued_job(Publications::PublishJob)
 
       expect(service).to be_success
       expect(publication.reload.status).to eq("approved")
@@ -43,6 +45,7 @@ RSpec.describe Publications::ConfirmService, type: :service do
 
         expect(service).not_to be_success
         expect(publication.reload.status).to eq("draft")
+        expect(ActiveJob::Base.queue_adapter.enqueued_jobs).to be_empty
       end
     end
 
