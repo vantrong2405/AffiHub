@@ -1,0 +1,10 @@
+shared:
+  base_url: <%= ENV.fetch("MUAPI_BASE_URL", "https://api.muapi.ai") %>
+  api_key: <%= Rails.application.credentials.dig(:muapi, :api_key).to_s %>
+  estimate_cost_endpoint: /api/v1/models/%{model_id}/estimate-cost
+  open_timeout_seconds: 10
+  read_timeout_seconds: 30
+
+test:
+  base_url: http://muapi.test
+  api_key: affihub-test-key
