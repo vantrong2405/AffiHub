@@ -38,7 +38,7 @@ This workspace also uses **OpenSpec** for spec-driven change proposals, tracked 
 
 - Use simple, consistent variable names; use the same name for the same domain object across related code.
 - Prefer clear direct code over one-use abstractions that hide the behavior. Move repeated queries into a named model scope and shared behavior into the nearest common layer so a fix does not need to be repeated in many places.
-- Do not use Ruby lambda syntax (`->` or `lambda`) in application code or specs. Use a named method or a regular block instead.
+- Do not use Ruby lambda syntax (`->` or `lambda`) in application code or specs. Use named methods or ordinary blocks; for Rails DSLs that require a callable scope body, use `proc { ... }` instead.
 
 ## TDD — RSpec-first (mandatory)
 
