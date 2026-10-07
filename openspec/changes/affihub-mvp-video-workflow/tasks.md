@@ -35,7 +35,7 @@
 
 ## 4. Tạo video AI, cost gate và TTS
 
-- [ ] 4.1 Viết Porting Note cho MoneyPrinterTurbo v1.3.8/pinned commit, MuAPI, LLM, stock provider, VieNeu-TTS và fallback; ghi endpoint/schema, license, state, pricing và file source đã đọc. Kiểm chứng: note chỉ rõ mọi giả định còn cần spike.
+- [x] 4.1 Viết Porting Note cho MoneyPrinterTurbo v1.3.8/pinned commit, MuAPI, LLM, stock provider, VieNeu-TTS và fallback; ghi endpoint/schema, license, state, pricing và file source đã đọc. Kiểm chứng: `affihub/docs/reference-analysis/ai-video-mpt-vieneu.md` ghi rõ contract, khác biệt MP3/WAV và mọi giả định còn cần spike.
 - [ ] 4.2 Chạy spike VieNeu-TTS với đúng request/response của MPT `_openai_compatible_tts`; ghi kết quả và lựa chọn fallback Edge/Azure nếu không tương thích. Kiểm chứng: lưu request mẫu, audio mẫu tiếng Việt và thời gian/RTF đo được.
 - [ ] 4.3 Viết RSpec cho input bắt buộc topic/language/tone/target duration; profile mặc định `seedance-lite-t2v`/480p, 5 scene × 6 giây, giới hạn scene 3–12 giây, đầu ra clip/voiceover/subtitle/preview MP4, script/scene approval, báo giá MuAPI `estimate-cost` theo prompt/duration/resolution thật của từng scene, tổng hợp MuAPI/LLM/stock/TTS-fallback/unknown, job budget và xác nhận trước job tính phí; xác nhận đỏ.
 - [ ] 4.4 Implement MPT Client/AI flow và assembly đủ clip/voiceover/subtitle/preview MP4; endpoint/model/ID/timeout nằm trong YAML qua `Rails.application.config_for`, mỗi Client có private request method dùng chung và lấy báo giá dynamic MuAPI theo input thật. Kiểm chứng: RSpec xanh và không gửi job nếu thiếu xác nhận, vượt trần hoặc thiếu phí bắt buộc.
