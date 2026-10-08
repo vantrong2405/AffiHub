@@ -11,9 +11,13 @@ AffiHub MUST hiển thị bốn lựa chọn AI: ChatGPT, Codex, Gemini, Antigra
 
 Connection MUST lưu các model do API đã xác thực trả về. `AiProviderConnections#update` MUST chỉ đổi selected model sang model đang có trong danh sách của chính connection; model không có quyền hoặc không thuộc danh sách MUST giữ nguyên lựa chọn cũ.
 
+#### Scenario: Đăng ký ChatGPT lần đầu trả về client ID riêng
+- **WHEN** người dùng hoàn tất Sign in with ChatGPT dynamic registration cho runtime local của AffiHub
+- **THEN** AffiHub kiểm chứng ID token/JWKS/issuer/audience/nonce, lưu issued client ID cùng identity/token mã hóa và scopes; không lưu `dynamic_agent_client` như client ID của connection
+
 #### Scenario: Kết nối ChatGPT được cấp quyền dùng AI
-- **WHEN** ứng dụng và tài khoản đủ điều kiện, người dùng hoàn tất OAuth và chấp thuận scope dùng ChatGPT plan
-- **THEN** AffiHub kiểm chứng ID token, scope được cấp, lưu connection/token mã hóa và cho người dùng chọn model thuộc tài khoản đó mà không yêu cầu OpenAI API key
+- **WHEN** token response của OAuth có scope `chatgpt.tokens.use.direct` và model list trả về model hiển thị cho account
+- **THEN** AffiHub cho người dùng chọn model thuộc account đó, không yêu cầu OpenAI API key và chỉ coi model thực sự chạy đến `response.completed` là đã xác minh inference
 
 #### Scenario: Chỉ đăng nhập danh tính
 - **WHEN** callback có danh tính hợp lệ nhưng không có scope dùng ChatGPT plan cho inference
@@ -26,6 +30,10 @@ Connection MUST lưu các model do API đã xác thực trả về. `AiProviderC
 #### Scenario: ID token nonce không khớp OAuth attempt
 - **WHEN** provider đã đổi authorization code nhưng ID token có nonce không khớp digest đã lưu trong phiên
 - **THEN** AffiHub từ chối connection và không lưu access token hoặc refresh token
+
+#### Scenario: Callback OpenAI đổi issued client ID hoặc account đã chọn
+- **WHEN** callback reauthorization trả client ID khác attempt đang chờ hoặc ID token subject không khớp connection được chọn
+- **THEN** AffiHub từ chối kết quả và giữ nguyên token/connection đang hoạt động
 
 #### Scenario: Quyền hoặc hạn mức ChatGPT hết hiệu lực
 - **WHEN** access token hết hạn, quyền bị thu hồi hoặc provider báo hết hạn mức
@@ -44,11 +52,15 @@ Connection MUST lưu các model do API đã xác thực trả về. `AiProviderC
 - **THEN** AffiHub từ chối cập nhật, giữ lựa chọn cũ và không gọi LLM
 
 ### Requirement: Gemini API OAuth và gate Antigravity
-AffiHub MUST chỉ bật Gemini sau khi có Google Cloud project/OAuth client dành cho AffiHub, scope/consent phù hợp, quota/billing được xác minh và request Gemini API thật thành công. AffiHub MUST NOT dùng token Gemini CLI hoặc endpoint Cloud Code Assist nội bộ. AffiHub MUST NOT khởi tạo Antigravity OAuth khi Google chưa có contract cho tích hợp bên thứ ba của AffiHub.
+AffiHub MUST dùng Google OAuth chính thức cho Gemini API của Google Cloud project AffiHub, không dùng Gemini CLI token. OAuth connection có thể được lưu sau callback hợp lệ nhưng MUST giữ trạng thái `pending_verification` và không được dùng cho inference cho tới khi scope, model, token refresh, `generateContent`, project quota/billing và nguồn giá được xác minh. AffiHub MUST NOT dùng endpoint Cloud Code Assist nội bộ. AffiHub MUST NOT khởi tạo Antigravity OAuth khi Google chưa có contract cho tích hợp bên thứ ba của AffiHub.
 
 #### Scenario: Gemini API đã đủ quyền
 - **WHEN** người dùng kết nối Google OAuth cho Gemini API và quyền/model/quota được xác minh
 - **THEN** AffiHub cho chọn model Gemini thuộc quyền đã cấp, lưu token mã hóa và hiển thị nguồn quota/giá theo project, không yêu cầu API key LLM nhập tay
+
+#### Scenario: OAuth Gemini thành công nhưng inference chưa được xác minh
+- **WHEN** callback OAuth hợp lệ nhưng chưa có smoke test `generateContent` và quota/billing trên đúng project
+- **THEN** AffiHub lưu connection ở trạng thái `pending_verification`, không gọi LLM và hiển thị rõ gate cần hoàn tất
 
 #### Scenario: Gemini chỉ có phiên CLI hoặc thiếu quyền API
 - **WHEN** tài khoản chỉ đăng nhập Gemini CLI hoặc OAuth Gemini API thiếu scope/consent/quota phù hợp
