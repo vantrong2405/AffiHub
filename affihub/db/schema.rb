@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_07_150000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_08_100000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -241,6 +241,23 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_07_150000) do
     t.index ["status", "lease_expires_at"], name: "index_workflow_runs_on_status_and_lease_expires_at"
     t.index ["workflowable_type", "workflowable_id", "operation"], name: "idx_on_workflowable_type_workflowable_id_operation_ee5e2f5ea7"
     t.index ["workflowable_type", "workflowable_id"], name: "index_workflow_runs_on_workflowable"
+  end
+
+  create_table "youtube_discovery_metadata", force: :cascade do |t|
+    t.string "video_id", null: false
+    t.string "title", null: false
+    t.string "channel_title", null: false
+    t.text "thumbnail_url", null: false
+    t.text "attribution_url", null: false
+    t.string "discovery_type", null: false
+    t.string "search_query"
+    t.string "region_code"
+    t.string "video_category_id"
+    t.datetime "fetched_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["fetched_at"], name: "index_youtube_discovery_metadata_on_fetched_at"
+    t.index ["video_id"], name: "index_youtube_discovery_metadata_on_video_id", unique: true
   end
 
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"

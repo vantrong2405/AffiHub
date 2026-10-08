@@ -9,6 +9,7 @@ shared:
   open_timeout_seconds: 10
   read_timeout_seconds: 30
   metadata_ttl_days: 30
+  metadata_expiry_buffer_seconds: 300
 
 test:
   api_key: affihub-test-key
