@@ -32,11 +32,11 @@ AffiHub MUST mặc định dùng duyệt tay; auto-publish chỉ chạy khi ngư
 - **THEN** Scheduler claim Publication một lần và publish mà không yêu cầu xác nhận mới cho từng bài
 
 ### Requirement: Chỉ ghi Published sau xác nhận cuối
-AffiHub MUST ghi `Published` chỉ khi API nền tảng xác nhận trạng thái cuối và lưu platform ID, permalink cùng thời điểm publish.
+AffiHub MUST ghi `Published` chỉ khi API nền tảng xác nhận trạng thái cuối. AffiHub MUST lưu ID/permalink do provider trả về khi có; không được tự tạo ID hoặc URL. Nếu API xác nhận publish nhưng không cung cấp ID/permalink (TikTok `SELF_ONLY`), vẫn ghi `Published`, lưu provider publish reference và thời điểm xác nhận, để ID/permalink trống và nêu rõ chưa có liên kết công khai.
 
 #### Scenario: API xác nhận publish hoàn tất
 - **WHEN** platform workflow hoàn tất và trả kết quả cuối
-- **THEN** AffiHub lưu trạng thái `Published`, platform ID, permalink và thời điểm cho đúng Publication
+- **THEN** AffiHub lưu trạng thái `Published`, các platform ID/permalink provider đã trả và thời điểm cho đúng Publication; không giả định mọi provider visibility đều có permalink
 
 #### Scenario: Upload thành công nhưng publish chưa xác nhận
 - **WHEN** upload hoặc phản hồi khởi tạo thành công nhưng trạng thái cuối chưa được xác nhận
@@ -101,6 +101,18 @@ AffiHub MUST upload đúng Render Version bằng workflow chính thức của t�
 #### Scenario: TikTok Direct Post
 - **WHEN** TikTok Publication được gửi
 - **THEN** AffiHub lấy `creator_info` ngay trước đăng, yêu cầu consent với privacy/interaction/disclosure settings, upload qua `FILE_UPLOAD` theo chunk và poll kết quả theo publish ID; mỗi publish ID, upload reference và chunk checkpoint được lưu trước bước tiếp theo
+
+#### Scenario: TikTok SELF_ONLY hoàn tất nhưng không có public post ID
+- **WHEN** TikTok status fetch trả `PUBLISH_COMPLETE` nhưng không trả `publicaly_available_post_id`
+- **THEN** AffiHub ghi `Published`, `publish_id` cùng thời điểm xác nhận; `platform_post_id` và permalink được giữ trống, không suy diễn URL từ `publish_id`
+
+#### Scenario: TikTok public post có ID và share URL
+- **WHEN** TikTok trả `publicaly_available_post_id` và Display API `video/query` với scope `video.list` trả `share_url`
+- **THEN** AffiHub lưu đúng post ID và URL do API trả; AffiHub không tự ghép permalink
+
+#### Scenario: TikTok không trả được permalink
+- **WHEN** TikTok xác nhận `PUBLISH_COMPLETE` nhưng không cấp `video.list` hoặc lookup không trả `share_url`
+- **THEN** AffiHub vẫn ghi `Published` theo xác nhận provider, để permalink trống và thông báo chưa có liên kết công khai
 
 #### Scenario: Instagram Reels
 - **WHEN** Instagram Publication được gửi
