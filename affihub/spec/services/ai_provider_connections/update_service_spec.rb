@@ -14,6 +14,44 @@ RSpec.describe AiProviderConnections::UpdateService, type: :service do
       expect(ai_provider_connection.reload.selected_model).to eq("gpt-6-luna")
     end
 
+    it "updates only the provider account selected by its connection ID" do
+      selected_connection = create(
+        :ai_provider_connection,
+        available_models: [
+          { "slug" => "gpt-6-luna", "display_name" => "GPT 6 Luna" },
+          { "slug" => "gpt-6-luna-fast", "display_name" => "GPT 6 Luna Fast" }
+        ],
+        selected_model: "gpt-6-luna"
+      )
+      other_connection = create(:ai_provider_connection, selected_model: "gpt-6-luna")
+      service = described_class.new(
+        ai_provider_connection_id: selected_connection.id,
+        selected_model: "gpt-6-luna-fast"
+      )
+
+      expect(service.call).to be(true)
+      expect(selected_connection.reload.selected_model).to eq("gpt-6-luna-fast")
+      expect(other_connection.reload.selected_model).to eq("gpt-6-luna")
+    end
+
+    it "rejects a model that exists only in another provider account's catalog" do
+      selected_connection = create(:ai_provider_connection, selected_model: "gpt-6-luna")
+      other_connection = create(
+        :ai_provider_connection,
+        available_models: [ { "slug" => "other-account-model", "display_name" => "Other Account Model" } ],
+        selected_model: "other-account-model"
+      )
+      service = described_class.new(
+        ai_provider_connection_id: selected_connection.id,
+        selected_model: other_connection.selected_model
+      )
+
+      expect(service.call).to be(false)
+      expect(selected_connection.reload.selected_model).to eq("gpt-6-luna")
+      expect(other_connection.reload.selected_model).to eq("other-account-model")
+      expect(service.errors.full_messages).to include("Model này không có trong danh sách của kết nối.")
+    end
+
     it "rejects a model absent from this connection and preserves the current selection" do
       service = described_class.new(
         ai_provider_connection_id: ai_provider_connection.id,
