@@ -94,6 +94,21 @@ Audit MUST hiển thị kết quả `content_publishing_limit` cho Instagram des
 - **WHEN** API không trả current publishing limit
 - **THEN** audit đánh dấu riêng Instagram là `Chưa thể kiểm tra` và không hardcode cap cũ hoặc chặn destination khác
 
+### Requirement: Kiểm tra TikTok cap signals và báo thiếu counter
+Audit MUST áp dụng app-local poster cap khi chưa audit và gọi TikTok Query Creator Info để nhận diện provider cap errors trước Direct Post. Audit MUST phân biệt `spam_risk_too_many_posts` (creator posting cap đã đạt) với `reached_active_user_cap` (app-client active creator cap đã đạt); nếu response thành công nhưng không có error này, audit MUST báo `Chưa thể kiểm tra số bài còn lại` vì API không trả numeric usage/cap/reset time.
+
+#### Scenario: TikTok báo creator posting cap đã đạt
+- **WHEN** Query Creator Info trả `spam_risk_too_many_posts`
+- **THEN** audit chặn riêng TikTok destination và ghi nhận provider cap đã đạt, không ước lượng lượt còn lại hoặc giờ reset
+
+#### Scenario: TikTok báo app active creator cap đã đạt
+- **WHEN** Query Creator Info trả `reached_active_user_cap`
+- **THEN** audit chặn riêng TikTok destination và ghi nhận app-client active creator quota đã đạt
+
+#### Scenario: TikTok không trả numeric posting counter
+- **WHEN** Query Creator Info thành công nhưng không trả cap error hoặc numeric usage/cap/reset fields
+- **THEN** audit hiển thị `Chưa thể kiểm tra số bài còn lại` và không diễn giải trạng thái đó thành cap đã đạt
+
 ### Requirement: Hiển thị YouTube quota do AffiHub sử dụng
 Audit MUST hiển thị bộ đếm call `search.list`/`videos.insert` do AffiHub tạo, nguồn limit đang dùng và link Google Cloud Console.
 

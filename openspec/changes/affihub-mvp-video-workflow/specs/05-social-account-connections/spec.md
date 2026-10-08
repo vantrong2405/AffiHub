@@ -44,7 +44,7 @@ AffiHub MUST liệt kê và cho chọn riêng các Page, kênh hoặc tài kho�
 - **THEN** người dùng chọn channel đích cụ thể trước khi publish
 
 ### Requirement: Kết nối Instagram qua Facebook Login
-AffiHub MUST dùng Instagram API with Facebook Login, thông qua Facebook Login for Business OAuth cho MVP; lấy các Page được profile quản lý qua `/me/accounts`, rồi lưu Page Access Token cùng `instagram_business_account` ID của Page được chọn. Scope chính xác MUST được kiểm tra lại với tài liệu Meta hiện hành trước implementation.
+AffiHub MUST dùng Instagram API with Facebook Login, thông qua Facebook Login for Business OAuth cho MVP; lấy các Page được profile quản lý qua `/me/accounts`, rồi lưu Page Access Token cùng `instagram_business_account` ID của Page được chọn. Theo Meta-published Instagram API collection được đối chiếu ngày 2026-10-08, flow này dùng `pages_show_list`, `pages_read_engagement`, `instagram_basic`, `instagram_content_publish`; các scope `instagram_business_*` thuộc Instagram Login và MUST NOT được dùng trong Facebook Login flow này. Trước implementation MUST xác minh lại permission dependency/access tier với Meta docs/App Dashboard.
 
 #### Scenario: Chọn Page có Instagram Business account
 - **WHEN** OAuth profile trả về Page có Instagram Business account liên kết

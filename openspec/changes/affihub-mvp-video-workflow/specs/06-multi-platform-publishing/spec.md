@@ -156,15 +156,23 @@ AffiHub MUST lấy `creator_info` ngay trước mỗi Direct Post, không đặt
 - **THEN** AffiHub lấy `creator_info` mới và tạm dừng Publication để người dùng xác nhận lại nếu consent đã lưu không còn hợp lệ
 
 ### Requirement: Áp dụng TikTok poster và creator caps
-AffiHub MUST áp dụng các cap app-local đã biết trước Direct Post, gồm giới hạn app chưa audit tối đa 5 poster khác nhau trong 24 giờ; dùng tín hiệu creator-cap chính thức nếu provider cung cấp. Nếu API không expose cap creator động, AffiHub MUST báo cap đó chưa thể kiểm tra, không suy ra từ `creator_info`, và xử lý giới hạn qua lỗi provider.
+AffiHub MUST áp dụng cap app-local đã biết trước Direct Post, gồm giới hạn app chưa audit tối đa 5 poster khác nhau trong 24 giờ. AffiHub MUST coi `spam_risk_too_many_posts` từ TikTok Query Creator Info/Direct Post là tín hiệu chính thức rằng creator đã chạm daily posting cap, và `reached_active_user_cap` là tín hiệu app client đã chạm daily active creator quota. API không trả số usage/cap còn lại hoặc thời điểm reset trong các tín hiệu này; AffiHub MUST NOT ước lượng từ mức điển hình được tài liệu nhắc tới. Khi Query Creator Info thành công mà không có lỗi cap, AffiHub MUST hiển thị `Chưa thể kiểm tra số bài còn lại`, không tuyên bố creator cap đã đạt.
 
-#### Scenario: Cap TikTok đã đạt
-- **WHEN** cap app-local hoặc creator cap chính thức đã đạt, hoặc app chưa audit đã dùng 5 poster khác nhau trong 24 giờ
-- **THEN** AffiHub chặn riêng Direct Post đó và hiển thị cap/usage/giờ thử lại nếu API trả dữ liệu; nếu creator cap không có endpoint/tín hiệu chính thức thì hiển thị `Chưa thể kiểm tra` và không tuyên bố đã biết cap hiện hành
+#### Scenario: TikTok creator posting cap đã đạt
+- **WHEN** Query Creator Info hoặc Direct Post trả `spam_risk_too_many_posts`
+- **THEN** AffiHub chặn riêng Direct Post đó, ghi nhận provider báo creator cap đã đạt và không tự tạo retry; AffiHub không hiển thị usage, quota còn lại hoặc giờ thử lại nếu API không trả các giá trị đó
 
-#### Scenario: Creator cap động không được API công bố
-- **WHEN** tài liệu/API hiện hành không cung cấp giá trị creator cap động
-- **THEN** AffiHub không lấy cap đó từ `creator_info`, vẫn áp dụng cap local đã biết và hiển thị lỗi giới hạn do provider trả về nếu có
+#### Scenario: TikTok app active creator cap đã đạt
+- **WHEN** TikTok trả `reached_active_user_cap`
+- **THEN** AffiHub chặn riêng Direct Post đó, ghi nhận app-client active creator quota đã đạt và không tự tạo retry
+
+#### Scenario: TikTok creator cap chưa có counter
+- **WHEN** Query Creator Info thành công nhưng không có lỗi cap
+- **THEN** AffiHub hiển thị `Chưa thể kiểm tra số bài còn lại`, không ước lượng số bài hoặc reset time; trạng thái này không được diễn giải thành cap đã đạt
+
+#### Scenario: TikTok cap app-local đã đạt
+- **WHEN** app chưa audit đã dùng đủ 5 poster khác nhau trong 24 giờ
+- **THEN** AffiHub chặn Direct Post mới cho poster tiếp theo và hiển thị thời điểm thử lại chỉ khi local rolling-window counter xác định được
 
 ### Requirement: Kiểm tra Instagram publishing limit hiện hành
 AffiHub MUST gọi API đọc `content_publishing_limit` trước publish Reels và không hardcode cap nền tảng lịch sử.
