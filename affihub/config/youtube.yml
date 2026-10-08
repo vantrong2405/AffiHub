@@ -1,0 +1,16 @@
+shared:
+  api_base_url: https://www.googleapis.com/youtube
+  api_version: v3
+  api_key: <%= Rails.application.credentials.dig(:youtube, :api_key).to_s %>
+  search_endpoint: search
+  videos_endpoint: videos
+  default_region_code: VN
+  max_results: 25
+  open_timeout_seconds: 10
+  read_timeout_seconds: 30
+  metadata_ttl_days: 30
+
+test:
+  api_key: affihub-test-key
+  open_timeout_seconds: 1
+  read_timeout_seconds: 1
