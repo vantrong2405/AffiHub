@@ -19,9 +19,13 @@ Connection MUST lưu các model do API đã xác thực trả về. `AiProviderC
 - **WHEN** callback có danh tính hợp lệ nhưng không có scope dùng ChatGPT plan cho inference
 - **THEN** AffiHub báo thiếu quyền dùng AI và không gọi LLM hoặc đánh dấu connection sẵn sàng tạo script
 
-#### Scenario: Callback sai phiên, hết hạn hoặc bị phát lại
-- **WHEN** OAuth state/nonce/PKCE hoặc callback URI không hợp lệ, đã dùng, hết hạn hay thuộc phiên khác
-- **THEN** AffiHub từ chối connection, không đổi authorization code và không lưu token
+#### Scenario: State, PKCE hoặc callback URI không hợp lệ
+- **WHEN** OAuth state/PKCE hoặc callback URI không hợp lệ, đã dùng, hết hạn hay thuộc phiên khác
+- **THEN** AffiHub từ chối callback trước khi đổi authorization code và không lưu token
+
+#### Scenario: ID token nonce không khớp OAuth attempt
+- **WHEN** provider đã đổi authorization code nhưng ID token có nonce không khớp digest đã lưu trong phiên
+- **THEN** AffiHub từ chối connection và không lưu access token hoặc refresh token
 
 #### Scenario: Quyền hoặc hạn mức ChatGPT hết hiệu lực
 - **WHEN** access token hết hạn, quyền bị thu hồi hoặc provider báo hết hạn mức
