@@ -20,6 +20,19 @@ RUN apt-get update -qq && \
     ln -s /usr/lib/$(uname -m)-linux-gnu/libjemalloc.so.2 /usr/local/lib/libjemalloc.so && \
     rm -rf /var/lib/apt/lists /var/cache/apt/archives
 
+ARG TARGETARCH
+RUN case "$TARGETARCH" in \
+      amd64) asset="yt-dlp_linux"; checksum="58162f9bfdc27458ea47bfcb311cf47028f17d8154a8bf7d689861d46399230a" ;; \
+      arm64) asset="yt-dlp_linux_aarch64"; checksum="b16e4dab368a816cd05d477d698a605a6ae87ccee1c8ffd38fa21d7254141fcc" ;; \
+      *) echo "Unsupported yt-dlp target architecture: $TARGETARCH" >&2; exit 1 ;; \
+    esac && \
+    curl --fail --location --silent --show-error \
+      "https://github.com/yt-dlp/yt-dlp/releases/download/2026.08.19/$asset" \
+      --output /usr/local/bin/yt-dlp && \
+    echo "$checksum  /usr/local/bin/yt-dlp" | sha256sum --check --status && \
+    chmod 0755 /usr/local/bin/yt-dlp && \
+    test "$(/usr/local/bin/yt-dlp --version)" = "2026.08.19"
+
 # Set production environment variables and enable jemalloc for reduced memory usage and latency.
 ENV RAILS_ENV="production" \
     BUNDLE_DEPLOYMENT="1" \
