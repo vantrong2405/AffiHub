@@ -3,6 +3,45 @@
 require "rails_helper"
 
 RSpec.describe SourceAssets::DownloadEgressProxy, type: :service do
+  describe "#start" do
+    let(:proxy) { described_class.new }
+    let(:upstream_server) { TCPServer.new("127.0.0.1", 0) }
+    let(:upstream_handler) do
+      Thread.new do
+        socket = upstream_server.accept
+        socket.write(socket.read(5))
+        socket.close
+      end
+    end
+
+    before do
+      proxy_url = proxy.start
+      allow(Resolv).to receive(:getaddresses).with("www.youtube.com").and_return([ "142.251.35.4" ])
+      upstream_handler
+      upstream_socket = TCPSocket.new("127.0.0.1", upstream_server.addr[1])
+      allow(Socket).to receive(:tcp).with("142.251.35.4", 443, anything).and_return(upstream_socket)
+      uri = URI.parse(proxy_url)
+      @proxy_client = TCPSocket.new(uri.host, uri.port)
+      @proxy_client.write("CONNECT www.youtube.com:443 HTTP/1.1\r\nHost: www.youtube.com:443\r\n\r\n")
+    end
+
+    after do
+      @proxy_client&.close
+      proxy.stop
+      upstream_server.close
+      upstream_handler&.join
+    end
+
+    it "tunnels HTTPS traffic through the address resolved and pinned by the proxy" do
+      expect(@proxy_client.gets).to eq("HTTP/1.1 200 Connection Established\r\n")
+      expect(@proxy_client.gets).to eq("\r\n")
+      @proxy_client.write("hello")
+
+      expect(@proxy_client.read(5)).to eq("hello")
+      expect(Socket).to have_received(:tcp).with("142.251.35.4", 443, anything)
+    end
+  end
+
   describe "#open_upstream" do
     let(:url) { "https://www.youtube.com/watch?v=video-123" }
     let(:addresses) { [ "142.251.35.4" ] }
