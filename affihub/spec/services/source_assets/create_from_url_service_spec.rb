@@ -32,7 +32,7 @@ RSpec.describe SourceAssets::CreateFromUrlService, type: :service do
 
     context "when the user has not confirmed the rights warning" do
       let(:service) do
-        described_class.new(video_project:, url:, rights_confirmed: false)
+        described_class.new(video_project:, url:, rights_confirmed: "0")
       end
 
       it "returns failure without creating a source or queuing a download" do

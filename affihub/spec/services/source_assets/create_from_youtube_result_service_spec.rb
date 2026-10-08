@@ -64,7 +64,7 @@ RSpec.describe SourceAssets::CreateFromYoutubeResultService, type: :service do
         described_class.new(
           video_project:,
           discovery_metadata_id: discovery_metadata.id,
-          rights_confirmed: false
+          rights_confirmed: "0"
         )
       end
 
