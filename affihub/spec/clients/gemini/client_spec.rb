@@ -18,7 +18,7 @@ RSpec.describe Gemini::Client, type: :service do
   let(:client) { described_class.new(configuration:) }
 
   describe "#exchange_code" do
-    it "exchanges a Google authorization code with the registered client and PKCE verifier" do
+    it "returns Google credentials after exchanging the authorization code with PKCE" do
       token_request = stub_request(:post, "https://oauth2.googleapis.com/token")
         .with(
           body: {
@@ -53,14 +53,14 @@ RSpec.describe Gemini::Client, type: :service do
   end
 
   describe "#verify_id_token" do
-    it "delegates Google ID-token signature, issuer, expiry, and audience checks to googleauth" do
+    it "returns the verified Google identity after delegating token checks to googleauth" do
       allow(Google::Auth::IDTokens).to receive(:verify_oidc).and_return(
         { "sub" => "google-subject", "aud" => "gemini-web-client" }
       )
 
       identity = client.verify_id_token("google-id-token")
 
-      expect(identity).to include("sub" => "google-subject", "aud" => "gemini-web-client")
+      expect(identity).to eq("sub" => "google-subject", "aud" => "gemini-web-client")
       expect(Google::Auth::IDTokens).to have_received(:verify_oidc).with(
         "google-id-token",
         aud: "gemini-web-client"
@@ -105,7 +105,7 @@ RSpec.describe Gemini::Client, type: :service do
       expect do
         client.list_models(access_token: "gemini-access-token")
       end.to raise_error(described_class::Error, "http_403") { |error|
-        expect(error.message).not_to include("private Google project detail")
+        expect(error.message).not_to match(Regexp.escape("private Google project detail"))
       }
     end
 
@@ -148,7 +148,7 @@ RSpec.describe Gemini::Client, type: :service do
       expect do
         client.refresh_token(refresh_token: "revoked-gemini-refresh-token")
       end.to raise_error(described_class::Error, "invalid_grant") { |error|
-        expect(error.message).not_to include("private Google token detail")
+        expect(error.message).not_to match(Regexp.escape("private Google token detail"))
       }
     end
   end

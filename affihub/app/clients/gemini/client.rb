@@ -1,17 +1,7 @@
 require "googleauth/id_tokens"
 
 class Gemini::Client
-  class Error < StandardError
-    attr_reader :code
-
-    # Initializes a provider error without exposing response data or credentials.
-    #
-    # @param code [String] a safe provider error category
-    # @return [Gemini::Client::Error] the sanitized API error
-    def initialize(code)
-      @code = code
-      super(code)
-    end
+  class Error < AiProviderClientError
   end
 
   # Initializes the Gemini API client with Google OAuth and project settings.
@@ -19,7 +9,7 @@ class Gemini::Client
   # @param configuration [Hash, nil] provider configuration or the configured Gemini settings
   # @return [Gemini::Client] the configured client
   def initialize(configuration: nil)
-    @configuration = configuration || Rails.application.config_for(:ai_providers).deep_symbolize_keys.fetch(:providers).fetch(:gemini)
+    @configuration = configuration || AiProviderConfiguration.for_client(client_class_name: self.class.name)
   end
 
   # Exchanges a Google authorization code for Gemini API account tokens.

@@ -1,5 +1,5 @@
 class AiProviderCallbacks::ShowService < ApplicationService
-  attr_reader :ai_provider_connection
+  attr_reader :ai_provider_connection, :provider_configuration
 
   # Initializes validation and completion of a provider callback.
   #
@@ -87,87 +87,66 @@ class AiProviderCallbacks::ShowService < ApplicationService
   end
 
   def step_validate_returned_client_id
-    if @provider == "gemini"
-      @client_id = @oauth_attempt.fetch("client_id", @provider_configuration.fetch(:client_id))
-      return true
-    end
-
-    @client_id = @oauth_attempt.fetch("client_id")
-    if @provider == "codex"
-      return step_fail!("OAuth callback không khớp client ID Codex đã cấu hình.") unless @client_id == @provider_configuration.fetch(:client_id)
-      return step_fail!("Callback trả client ID khác với kết nối Codex.") if @params["client_id"].present? && @params["client_id"] != @client_id
-
-      return true
-    end
-
+    @client_id = @oauth_attempt.fetch("client_id", @provider_configuration.fetch(:client_id))
     returned_client_id = @params["client_id"].to_s
-    if @client_id == @provider_configuration.fetch(:client_id)
-      return step_fail!("OpenAI không trả issued client ID cho đăng ký mới.") if returned_client_id.blank? || returned_client_id == @client_id
+    validation_mode = @provider_configuration.fetch(:client_id_validation_mode).to_s
 
-      @client_id = returned_client_id
-      return true
+    case validation_mode
+    when "configured"
+      true
+    when "fixed"
+      provider_name = @provider_configuration.fetch(:display_name)
+      return step_fail!("OAuth callback không khớp client ID #{provider_name} đã cấu hình.") unless @client_id == @provider_configuration.fetch(:client_id)
+      return step_fail!("Callback trả client ID khác với kết nối #{provider_name}.") if returned_client_id.present? && returned_client_id != @client_id
+
+      true
+    else
+      step_fail!("Cấu hình kiểm tra OAuth client ID không hợp lệ.")
     end
-
-    return step_fail!("Callback trả client ID khác với tài khoản đang kết nối.") if returned_client_id.present? && returned_client_id != @client_id
-
-    true
   rescue KeyError
-    step_fail!("OpenAI chưa cấu hình client ID đăng ký ban đầu.")
+    step_fail!("OAuth provider chưa cấu hình client ID.")
   end
 
   def step_exchange_code
-    @client = if @provider == "openai"
-      OpenAi::Client.new(configuration: @provider_configuration)
-    elsif @provider == "codex"
-      Codex::Client.new(configuration: @provider_configuration)
-    else
-      Gemini::Client.new(configuration: @provider_configuration)
-    end
-    @token_payload = if @provider == "openai"
-      @client.exchange_code(
-        code: @params.fetch("code"),
-        client_id: @client_id,
-        code_verifier: @oauth_attempt.fetch("code_verifier"),
-        redirect_uri: @oauth_attempt.fetch("redirect_uri")
-      )
-    elsif @provider == "codex"
-      @client.exchange_code(
-        code: @params.fetch("code"),
-        client_id: @client_id,
-        code_verifier: @oauth_attempt.fetch("code_verifier"),
-        redirect_uri: @oauth_attempt.fetch("redirect_uri")
-      )
-    else
-      @client.exchange_code(
-        code: @params.fetch("code"),
-        code_verifier: @oauth_attempt.fetch("code_verifier"),
-        redirect_uri: @oauth_attempt.fetch("redirect_uri")
-      )
-    end
+    @oauth_client_class = @provider_configuration.fetch(:clients).fetch(:oauth)
+    @client = @oauth_client_class.constantize.new(configuration: @provider_configuration)
+    exchange_params = {
+      code: @params.fetch("code"),
+      code_verifier: @oauth_attempt.fetch("code_verifier"),
+      redirect_uri: @oauth_attempt.fetch("redirect_uri")
+    }
+    exchange_params[:client_id] = @client_id if @provider_configuration.fetch(:oauth_client_requires_client_id)
+    @token_payload = @client.exchange_code(**exchange_params)
     return step_fail!("Nhà cung cấp không trả đủ token để xác minh tài khoản.") if @token_payload["access_token"].blank? || @token_payload["id_token"].blank?
 
     true
-  rescue OpenAi::Client::Error, Codex::Client::Error, Gemini::Client::Error, KeyError
+  rescue AiProviderClientError, KeyError
     step_fail!("Không thể xác minh token OAuth. Hãy bắt đầu kết nối lại.")
   end
 
   def step_verify_identity
-    @identity = if [ "openai", "codex" ].include?(@provider)
-      identity_client = @provider == "codex" ? OpenAi::Client.new(configuration: @provider_configuration) : @client
-      identity_client.verify_id_token(id_token: @token_payload.fetch("id_token"), client_id: @client_id)
+    identity_client_class = @provider_configuration.fetch(:clients).fetch(:identity)
+    identity_client = if identity_client_class == @oauth_client_class
+      @client
     else
-      @client.verify_id_token(@token_payload.fetch("id_token"))
+      identity_client_class.constantize.new(configuration: @provider_configuration)
+    end
+    id_token = @token_payload.fetch("id_token")
+    @identity = if @provider_configuration.fetch(:identity_client_requires_client_id)
+      identity_client.verify_id_token(id_token:, client_id: @client_id)
+    else
+      identity_client.verify_id_token(id_token)
     end
     @identity = @identity.deep_stringify_keys
     return step_fail!("Token OAuth không có định danh tài khoản hợp lệ.") if @identity["sub"].blank?
 
     true
-  rescue OpenAi::Client::Error, Gemini::Client::Error, KeyError
+  rescue AiProviderClientError, KeyError
     step_fail!("Không thể xác minh danh tính tài khoản AI.")
   end
 
   def step_validate_nonce
-    return true unless @provider_configuration.fetch(:nonce_enabled, true)
+    return true unless @provider_configuration.fetch(:nonce_enabled)
 
     nonce_digest = Digest::SHA256.hexdigest(@identity["nonce"].to_s)
     return true if @identity["nonce"].present? && nonce_digest == @oauth_attempt["nonce_digest"]
@@ -190,26 +169,19 @@ class AiProviderCallbacks::ShowService < ApplicationService
     @granted_scopes = @token_payload.fetch("scope", "").split.uniq
     @required_scopes = @provider_configuration.fetch(:required_scopes)
     @available_models = []
-    if @provider == "codex"
-      @status = "pending_verification"
-      step_succeed!
-      return
-    end
-
-    @status = if (@required_scopes - @granted_scopes).any?
-      "scope_missing"
-    elsif @provider == "gemini"
-      "pending_verification"
+    missing_scopes = (@required_scopes - @granted_scopes).any?
+    @status = if missing_scopes
+      @provider_configuration.fetch(:callback_status_without_scopes)
     else
-      "ready"
+      @provider_configuration.fetch(:callback_status_with_scopes)
     end
-    return step_succeed! if @status == "scope_missing"
+    return step_succeed! if missing_scopes || !@provider_configuration.fetch(:list_models_after_callback)
 
     @available_models = @client.list_models(access_token: @token_payload.fetch("access_token"))
     step_succeed!
-  rescue OpenAi::Client::Error, Gemini::Client::Error, KeyError
+  rescue AiProviderClientError, KeyError
     @available_models = []
-    @status = "pending_verification"
+    @status = @provider_configuration.fetch(:callback_status_on_model_list_error)
     step_succeed!
   end
 

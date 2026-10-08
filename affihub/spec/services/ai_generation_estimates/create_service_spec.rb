@@ -89,7 +89,7 @@ RSpec.describe AiGenerationEstimates::CreateService, type: :service do
 
       before { second_request }
 
-      it "estimates each scene and sums the returned costs" do
+      it "returns estimates for each scene and sums their costs" do
         call_result
 
         expect(first_request).to have_been_requested.once
@@ -111,9 +111,9 @@ RSpec.describe AiGenerationEstimates::CreateService, type: :service do
       it "marks the estimate incomplete when the MuAPI quote is missing" do
         call_result
 
-        expect(service.cost_breakdown.fetch(:muapi).fetch(:amount)).to be_nil
-        expect(service.required_costs_known).to be(false)
-        expect(service.total_amount).to be_nil
+        expect(service.cost_breakdown.fetch(:muapi).fetch(:amount)).to eq(nil)
+        expect(service.required_costs_known).to eq(false)
+        expect(service.total_amount).to eq(nil)
       end
     end
 
@@ -130,7 +130,7 @@ RSpec.describe AiGenerationEstimates::CreateService, type: :service do
         call_result
 
         expect(service.total_amount).to eq(BigDecimal("0.30"))
-        expect(service.required_costs_known).to be(true)
+        expect(service.required_costs_known).to eq(true)
       end
     end
 
@@ -173,8 +173,8 @@ RSpec.describe AiGenerationEstimates::CreateService, type: :service do
       it "marks costs unknown and omits a total when currencies differ" do
         call_result
 
-        expect(service.required_costs_known).to be(false)
-        expect(service.total_amount).to be_nil
+        expect(service.required_costs_known).to eq(false)
+        expect(service.total_amount).to eq(nil)
       end
     end
   end

@@ -41,9 +41,13 @@ class AiProviderConnections::CreateService < ApplicationService
 
   def step_validate_provider
     return true if @provider_configuration.fetch(:enabled)
-    return step_fail!("Antigravity chưa được phép kết nối với AffiHub.") if @provider == "antigravity"
 
-    step_fail!("Kết nối với nhà cung cấp AI này hiện chưa khả dụng.")
+    message = if @provider == "antigravity"
+      "#{@provider_configuration.fetch(:display_name)} chưa được phép kết nối với AffiHub."
+    else
+      "Kết nối với nhà cung cấp AI này hiện chưa khả dụng."
+    end
+    step_fail!(message)
   end
 
   def step_load_reauthorization_connection
@@ -61,19 +65,7 @@ class AiProviderConnections::CreateService < ApplicationService
     return step_fail!("Callback OAuth chưa nằm trong danh sách được phép.") unless allowed_uris.include?(redirect_uri)
     return false unless step_validate_request_origin(redirect_uri)
 
-    if @provider == "openai" && @configuration.fetch(:host_id).blank?
-      return step_fail!("Chưa cấu hình mã định danh máy chủ OpenAI.")
-    end
-
-    if @provider == "gemini" && [ :client_id, :client_secret, :project_id ].any? do |key|
-         @provider_configuration.fetch(key).blank?
-       end
-      return step_fail!("Chưa cấu hình đầy đủ OAuth và Google Cloud project cho Gemini API.")
-    end
-
-    if @provider == "codex" && step_client_id.blank?
-      return step_fail!("Chưa cấu hình OAuth client ID cho Codex.")
-    end
+    return false unless step_validate_required_configuration
 
     if @ai_provider_connection && @ai_provider_connection.provider != @provider
       return step_fail!("Kết nối tài khoản không khớp với nhà cung cấp đã chọn.")
@@ -96,6 +88,25 @@ class AiProviderConnections::CreateService < ApplicationService
     raise URI::InvalidURIError unless uri.is_a?(URI::HTTP) && uri.userinfo.nil?
 
     "#{uri.scheme}://#{uri.host}:#{uri.port}"
+  end
+
+  def step_validate_required_configuration
+    requirements = @provider_configuration.fetch(:configuration_requirements, {})
+    shared_keys = requirements.fetch(:shared, []).map(&:to_sym)
+    provider_keys = requirements.fetch(:provider, []).map(&:to_sym)
+    shared_missing = shared_keys.any? { |key| @configuration.fetch(key).blank? }
+    provider_missing = provider_keys.any? { |key| @provider_configuration.fetch(key).blank? }
+    return true unless shared_missing || provider_missing
+
+    message = case @provider
+    when "codex"
+      "Chưa cấu hình OAuth client ID cho #{@provider_configuration.fetch(:display_name)}."
+    when "gemini"
+      "Chưa cấu hình đầy đủ OAuth và Google Cloud project cho #{@provider_configuration.fetch(:display_name)}."
+    else
+      "Chưa cấu hình OAuth cho nhà cung cấp AI này."
+    end
+    step_fail!(message)
   end
 
   def step_create_authorization_request
@@ -135,7 +146,7 @@ class AiProviderConnections::CreateService < ApplicationService
   end
 
   def step_nonce
-    return unless @provider_configuration.fetch(:nonce_enabled, true)
+    return unless @provider_configuration.fetch(:nonce_enabled)
 
     SecureRandom.urlsafe_base64(32)
   end
@@ -151,18 +162,13 @@ class AiProviderConnections::CreateService < ApplicationService
   end
 
   def step_add_provider_parameters(authorization_params)
-    if @provider == "openai" && @ai_provider_connection.nil?
-      authorization_params[:agent_name_hint] = @provider_configuration.fetch(:agent_name_hint)
-      authorization_params[:ext_agent_host_id] = @configuration.fetch(:host_id)
-      authorization_params[:resource] = @provider_configuration.fetch(:resource)
-    elsif @provider == "gemini"
-      authorization_params[:access_type] = "offline"
-      authorization_params[:include_granted_scopes] = "true"
-      authorization_params[:prompt] = "consent"
-    elsif @provider == "codex"
-      @provider_configuration.fetch(:extra_params, {}).each do |key, value|
-        authorization_params[key] = value.to_s
-      end
+    return if @ai_provider_connection && @provider_configuration.fetch(:authorization_new_connection_only, false)
+
+    @provider_configuration.fetch(:authorization_extra_parameters, {}).each do |key, value|
+      authorization_params[key.to_sym] = value.to_s
+    end
+    @provider_configuration.fetch(:authorization_shared_parameters, {}).each do |key, source|
+      authorization_params[key.to_sym] = @configuration.fetch(source.to_sym).to_s
     end
   end
 end

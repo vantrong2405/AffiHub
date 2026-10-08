@@ -17,11 +17,14 @@ class AiProviderConnection < ApplicationRecord
   }
   validate :selected_model_is_available
 
-  # Returns OpenAI accounts ready to create an AI generation.
+  # Returns provider accounts configured for script generation.
   #
   # @return [ActiveRecord::Relation<AiProviderConnection>] ready accounts with a selected model
   def self.ready_for_script_generation
-    where(provider: "openai", status: :ready)
+    provider_keys = CONFIGURATION.fetch(:providers).filter_map do |provider, provider_configuration|
+      provider.to_s if provider_configuration.dig(:capabilities, :script_generation)
+    end
+    where(provider: provider_keys, status: :ready)
       .where.not(selected_model: [ nil, "" ])
       .order(:created_at, :id)
   end

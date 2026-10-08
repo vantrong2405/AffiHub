@@ -4,8 +4,20 @@ require "rails_helper"
 
 RSpec.describe AiGenerations::CreatePromptsService, type: :service do
   let(:video_project) { create(:video_project) }
+  let(:ai_provider_connection) do
+    create(
+      :ai_provider_connection,
+      provider: "codex",
+      status: :pending_verification,
+      available_models: [],
+      selected_model: nil
+    )
+  end
   let(:input_snapshot) do
     {
+      ai_provider_connection_id: ai_provider_connection.id,
+      llm_provider: "codex",
+      llm_model: nil,
       topic: "Summer skincare",
       video_subject: "Summer skincare",
       language: "vi",
@@ -24,7 +36,7 @@ RSpec.describe AiGenerations::CreatePromptsService, type: :service do
   let(:ai_generation) do
     create(
       :ai_generation,
-      video_project: video_project,
+      video_project:,
       status: :script_ready,
       input_snapshot: input_snapshot,
       estimate_snapshot: estimate_snapshot
@@ -40,59 +52,29 @@ RSpec.describe AiGenerations::CreatePromptsService, type: :service do
       script_approved: script_approved
     )
   end
-  let(:terms_request) do
-    stub_request(:post, %r{/api/v1/terms\z})
-      .with(body: {
-        "video_subject" => "Summer skincare",
-        "video_script" => video_script,
-        "amount" => 2,
-        "match_materials_to_script" => true
-      })
-      .to_return(
-        status: 200,
-        body: { status: 200, data: { video_terms: [ "sunny bathroom", "skincare bottle" ] } }.to_json
-      )
-  end
 
   describe "#call" do
-    before { terms_request }
+    it "saves the approved script but returns failure while Codex inference is unverified" do
+      expect(Codex::Client).not_to receive(:new)
 
-    it "saves scene prompts as unapproved inputs after script approval" do
-      service.call
-
-      expect(service).to be_success
-      expect(ai_generation.reload.status).to eq("prompts_ready")
-      expect(ai_generation.input_snapshot).to include(
+      expect(service.call).to eq(false)
+      expect(ai_generation.reload.status).to eq("script_ready")
+      expect(ai_generation.input_snapshot.slice("video_script", "script_approved", "scenes")).to eq(
         "video_script" => video_script,
         "script_approved" => true,
-        "scenes" => [
-          {
-            "prompt" => "sunny bathroom",
-            "duration" => 6,
-            "resolution" => "480p",
-            "aspect_ratio" => "9:16",
-            "approved" => false
-          },
-          {
-            "prompt" => "skincare bottle",
-            "duration" => 6,
-            "resolution" => "480p",
-            "aspect_ratio" => "9:16",
-            "approved" => false
-          }
-        ]
+        "scenes" => []
       )
+      expect(service.errors.full_messages).to eq([ "Nhà cung cấp này chưa hỗ trợ tạo nội dung." ])
     end
 
     context "when the user has not approved the script" do
       let(:script_approved) { false }
 
-      it "returns failure without requesting scene prompts" do
-        service.call
+      it "returns false without changing the generation" do
+        expect(service.call).to eq(false)
 
-        expect(service).not_to be_success
-        expect(terms_request).not_to have_been_requested
-        expect(ai_generation.reload.input_snapshot.fetch("script_approved")).to be(false)
+        expect(ai_generation.reload.input_snapshot.fetch("script_approved")).to eq(false)
+        expect(ai_generation.status).to eq("script_ready")
       end
     end
 
@@ -100,8 +82,8 @@ RSpec.describe AiGenerations::CreatePromptsService, type: :service do
       let(:video_script) { "A revised skincare story." }
       let(:estimate_snapshot) { { total_amount: "0.50" } }
 
-      it "saves the script and invalidates the previous estimate" do
-        service.call
+      it "saves the approved script and clears its estimate before the inference gate blocks prompts" do
+        expect(service.call).to eq(false)
 
         expect(ai_generation.reload.input_snapshot.fetch("video_script")).to eq(video_script)
         expect(ai_generation.estimate_snapshot).to eq({})

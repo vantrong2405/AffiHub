@@ -7,6 +7,7 @@ class AiProviderConnectionsController < MainController
     service.call
     @ai_provider_connections = service.ai_provider_connections
     @provider_options = service.provider_options
+    @provider_presentations = service.provider_presentations
   end
 
   # Shows a saved AI account and its available model choices.
@@ -23,6 +24,7 @@ class AiProviderConnectionsController < MainController
     @ai_provider_connection = service.ai_provider_connection
     @callback_origin = service.callback_origin
     @callback_origin_matches = service.callback_origin_matches
+    @provider_presentation = service.provider_presentation
   end
 
   # Starts the selected provider's OAuth authorization flow.

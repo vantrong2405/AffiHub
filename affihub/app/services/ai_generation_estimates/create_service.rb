@@ -82,7 +82,9 @@ class AiGenerationEstimates::CreateService < ApplicationService
     muapi_amount = sum_known_amounts(scene_estimates)
     category_costs = CATEGORIES.index_with { |category| @provider_costs.fetch(category) }
     known_costs = [ *category_costs.values, muapi_cost_record(muapi_amount) ]
-    unknown_categories = CATEGORIES.select { |category| cost_amount(category_costs.fetch(category)).nil? }
+    unknown_categories = CATEGORIES.filter_map do |category|
+      category if cost_amount(category_costs.fetch(category)).nil?
+    end
     unknown_categories << :muapi if muapi_amount.nil?
     unknown_categories << :currency unless consistent_currency?(known_costs)
     currency = common_currency(known_costs)
@@ -108,12 +110,12 @@ class AiGenerationEstimates::CreateService < ApplicationService
       unknown: unknown_cost
     }
     @required_costs_known = unknown_categories.empty?
-    @total_amount = required_costs_known ? sum_known_amounts(cost_breakdown.values) : nil
+    @total_amount = required_costs_known ? sum_known_amounts(known_costs) : nil
   end
 
   def default_provider_costs
     {
-      llm: unknown_provider_cost("LLM"),
+      llm: llm_cost,
       stock: {
         amount: "0.00",
         currency: "USD",
@@ -123,6 +125,10 @@ class AiGenerationEstimates::CreateService < ApplicationService
       },
       tts_fallback: unknown_provider_cost("TTS fallback")
     }
+  end
+
+  def llm_cost
+    unknown_provider_cost("LLM")
   end
 
   def tts_fallback_cost_record

@@ -38,7 +38,7 @@
           <div class="card-body gap-4">
             <div class="space-y-1">
               <h2 class="card-title">Kịch bản nháp</h2>
-              <p class="text-sm text-base-content/70">Đọc và chỉnh sửa nội dung trước khi yêu cầu MPT tạo gợi ý cảnh.</p>
+              <p class="text-sm text-base-content/70">Đọc và chỉnh sửa nội dung trước khi dùng tài khoản AI đang chọn để tạo gợi ý cảnh.</p>
             </div>
             <%= form_with scope: :ai_generation,
                           url: video_project_ai_generation_path(@video_project, @ai_generation),
@@ -132,7 +132,11 @@
           <dl class="divide-y divide-base-300">
             <% [["MuAPI", "muapi"], ["LLM", "llm"], ["Stock", "stock"], ["TTS fallback", "tts_fallback"], ["Khoản chưa rõ", "unknown"]].each do |cost_label, cost_key| %>
               <% cost = cost_breakdown.fetch(cost_key, {}) %>
-              <% cost_amount = cost["amount"].present? ? "#{cost["amount"]} #{cost["currency"]}" : "Chưa có báo giá" %>
+              <% if cost["amount"].present? %>
+                <% cost_amount = "#{cost["amount"]} #{cost["currency"]}" %>
+              <% else %>
+                <% cost_amount = "Chưa có báo giá" %>
+              <% end %>
               <div class="space-y-1 py-3 first:pt-0 last:pb-0">
                 <dt class="text-sm font-medium"><%= cost_label %></dt>
                 <dd class="text-sm"><%= cost_amount %></dd>

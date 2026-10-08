@@ -1,11 +1,6 @@
 shared:
   oauth_state_ttl_seconds: 600
   token_refresh_buffer_seconds: 60
-  errors:
-    openai_usage_limit:
-      - subscription_sharing_usage_limit_exceeded
-      - usage_limit_reached
-  host_id: <%= ENV.fetch("OPENAI_AGENT_HOST_ID", "") %>
   statuses:
     ai_provider_connection:
       default: pending_verification
@@ -17,33 +12,31 @@ shared:
         revoked: revoked
         failed: failed
   providers:
-    openai:
-      enabled: true
-      authorization_endpoint: https://auth.openai.com/api/accounts/authorize
-      token_endpoint: https://auth.openai.com/api/accounts/oauth/token
-      openid_configuration_endpoint: https://auth.openai.com/.well-known/openid-configuration
-      api_base_url: https://api.openai.com/v1
-      client_id: dynamic_agent_client
-      redirect_uri: <%= ENV.fetch("OPENAI_CALLBACK_URI", "http://127.0.0.1:3000/ai/auth/callback") %>
-      allowed_redirect_uris:
-        - http://127.0.0.1:3000/ai/auth/callback
-      pkce_enabled: true
-      agent_name_hint: AffiHub
-      resource: https://api.openai.com/v1
-      model_visibility: list
-      required_scopes:
-        - chatgpt.tokens.use.direct
-      scopes:
-        - openid
-        - profile
-        - email
-        - offline_access
-        - resource.invoke
-        - chatgpt.tokens.use.direct
-      connect_timeout_seconds: 10
-      read_timeout_seconds: 30
     codex:
       enabled: true
+      display_order: 1
+      option_key: codex
+      display_name: Codex
+      model_selection_enabled: false
+      configuration_requirements:
+        shared: []
+        provider: [ client_id ]
+      client_id_validation_mode: fixed
+      oauth_client_requires_client_id: true
+      identity_client_requires_client_id: true
+      list_models_after_callback: false
+      callback_status_with_scopes: pending_verification
+      callback_status_without_scopes: scope_missing
+      callback_status_on_model_list_error: pending_verification
+      capabilities:
+        inference_enabled: false
+        script_generation: false
+        scene_prompt_generation: false
+      clients:
+        oauth: Codex::Client
+        identity: Codex::Client
+      authorization_extra_parameters:
+        codex_cli_simplified_flow: "true"
       authorization_endpoint: https://auth.openai.com/oauth/authorize
       token_endpoint: https://auth.openai.com/oauth/token
       openid_configuration_endpoint: https://auth.openai.com/.well-known/openid-configuration
@@ -57,15 +50,42 @@ shared:
         - email
         - offline_access
       required_scopes: []
-      extra_params:
-        codex_cli_simplified_flow: "true"
       pkce_enabled: true
       nonce_enabled: false
       connect_timeout_seconds: 10
       read_timeout_seconds: 30
-      inference_enabled: false
     gemini:
       enabled: true
+      display_order: 2
+      option_key: gemini
+      display_name: Gemini API
+      model_selection_enabled: true
+      configuration_requirements:
+        shared: []
+        provider: [ client_id, client_secret, project_id ]
+      client_id_validation_mode: configured
+      oauth_client_requires_client_id: false
+      identity_client_requires_client_id: false
+      list_models_after_callback: true
+      callback_status_with_scopes: pending_verification
+      callback_status_without_scopes: scope_missing
+      callback_status_on_model_list_error: pending_verification
+      capabilities:
+        inference_enabled: false
+        script_generation: false
+        scene_prompt_generation: false
+      clients:
+        oauth: Gemini::Client
+        identity: Gemini::Client
+        token: Gemini::Client
+        revocation: Gemini::Client
+      refresh_token_arguments: []
+      revocation_enabled: true
+      revocation_arguments: []
+      authorization_extra_parameters:
+        access_type: offline
+        include_granted_scopes: "true"
+        prompt: consent
       authorization_endpoint: https://accounts.google.com/o/oauth2/v2/auth
       token_endpoint: https://oauth2.googleapis.com/token
       revocation_endpoint: https://oauth2.googleapis.com/revoke
@@ -74,6 +94,7 @@ shared:
       allowed_redirect_uris:
         - http://localhost:3000/ai/auth/callback
       pkce_enabled: true
+      nonce_enabled: true
       client_id: <%= ENV.fetch("GEMINI_OAUTH_CLIENT_ID", "") %>
       client_secret: <%= ENV.fetch("GEMINI_OAUTH_CLIENT_SECRET", "") %>
       project_id: <%= ENV.fetch("GEMINI_CLOUD_PROJECT_ID", "") %>
@@ -87,16 +108,20 @@ shared:
       user_project_header: x-goog-user-project
       connect_timeout_seconds: 10
       read_timeout_seconds: 30
-      inference_enabled: false
     antigravity:
       enabled: false
+      display_order: 3
+      option_key: antigravity
+      display_name: Antigravity
+      model_selection_enabled: false
+      capabilities:
+        inference_enabled: false
+        script_generation: false
+        scene_prompt_generation: false
       scopes: []
 
 test:
-  host_id: affihub-test-host
   providers:
-    openai:
-      client_id: dynamic_agent_client
     codex:
       client_id: affihub-test-codex-client
     gemini:

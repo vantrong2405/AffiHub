@@ -4,20 +4,27 @@ require "rails_helper"
 
 RSpec.describe "AI video generation pages", type: :request do
   let(:video_project) { create(:video_project) }
+  let(:ai_provider_connection) do
+    create(
+      :ai_provider_connection,
+      provider: "codex",
+      status: :pending_verification,
+      available_models: [],
+      selected_model: nil
+    )
+  end
   let(:script_inputs) do
     {
       topic: "Summer skincare",
       language: "vi",
       tone: "friendly",
-      target_duration: 30
+      target_duration: 30,
+      ai_provider_connection_id: ai_provider_connection.id
     }
   end
-  let(:script_request) do
-    stub_request(:post, %r{/api/v1/scripts\z})
-      .to_return(
-        status: 200,
-        body: { status: 200, data: { video_script: "A short summer skincare story." } }.to_json
-      )
+  let(:mpt_script_request) do
+    stub_request(:post, "http://mpt.test/api/v1/scripts")
+      .to_return(status: 200, body: { status: 200, data: { video_script: "must not be used" } }.to_json)
   end
 
   describe "GET /video_projects/:video_project_id/ai_generations/new" do
@@ -57,17 +64,18 @@ RSpec.describe "AI video generation pages", type: :request do
   end
 
   describe "POST /video_projects/:video_project_id/ai_generations" do
-    before { script_request }
+    before do
+      mpt_script_request
+    end
 
-    it "persists the generated script before redirecting to review" do
+    it "returns an unprocessable response while Codex inference is unverified" do
       expect do
         post video_project_ai_generations_path(video_project), params: { ai_generation: script_inputs }
-      end.to change(AiGeneration, :count).by(1)
+      end.not_to change(AiGeneration, :count)
 
-      ai_generation = video_project.ai_generations.sole
-      expect(response).to redirect_to(edit_video_project_ai_generation_path(video_project, ai_generation))
-      expect(ai_generation.status).to eq("script_ready")
-      expect(ai_generation.input_snapshot.fetch("video_script")).to eq("A short summer skincare story.")
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(response.body).to match(Regexp.escape("Nhà cung cấp này chưa hỗ trợ tạo nội dung."))
+      expect(mpt_script_request).not_to have_been_requested
     end
 
     context "when the topic is blank" do
@@ -79,23 +87,7 @@ RSpec.describe "AI video generation pages", type: :request do
         end.not_to change(AiGeneration, :count)
 
         expect(response).to have_http_status(:unprocessable_content)
-        expect(script_request).not_to have_been_requested
-      end
-    end
-
-    context "when MoneyPrinterTurbo rejects script generation" do
-      let(:script_request) do
-        stub_request(:post, %r{/api/v1/scripts\z})
-          .to_return(status: 503, body: { error: "unavailable" }.to_json)
-      end
-
-      it "returns an unprocessable response without saving a generation" do
-        expect do
-          post video_project_ai_generations_path(video_project), params: { ai_generation: script_inputs }
-        end.not_to change(AiGeneration, :count)
-
-        expect(response).to have_http_status(:unprocessable_content)
-        expect(script_request).to have_been_requested.once
+        expect(mpt_script_request).not_to have_been_requested
       end
     end
   end
@@ -159,7 +151,7 @@ RSpec.describe "AI video generation pages", type: :request do
 
       expect(response).to redirect_to(video_project_ai_generation_path(video_project, ai_generation))
       expect(ai_generation.reload).to have_attributes(status: "processing", task_id: "mpt-task-123")
-      expect(ai_generation.consent_snapshot).to include(
+      expect(ai_generation.consent_snapshot.slice("confirmed", "amount", "currency")).to eq(
         "confirmed" => true,
         "amount" => "0.50",
         "currency" => "USD"
@@ -214,7 +206,7 @@ RSpec.describe "AI video generation pages", type: :request do
       expect(ai_generation.reload.status).to eq("outcome_unknown")
       expect(outbound_attempt.reload.status).to eq("outcome_unknown")
       expect(outbound_attempt.manual_evidence).to eq(evidence)
-      expect(outbound_attempt.workflow_run.workflow_audit_events.sole.details).to include(
+      expect(outbound_attempt.workflow_run.workflow_audit_events.sole.details.slice("decision", "evidence")).to eq(
         "decision" => "unknown",
         "evidence" => evidence
       )
@@ -238,7 +230,7 @@ RSpec.describe "AI video generation pages", type: :request do
         expect(response).to redirect_to(video_project_ai_generation_path(video_project, ai_generation))
         expect(outbound_attempt.reload.status).to eq("manual_outcome_not_occurred")
         expect(outbound_attempt.workflow_run.reload.status).to eq("queued")
-        expect(outbound_attempt.workflow_run.workflow_audit_events.sole.details).to include(
+        expect(outbound_attempt.workflow_run.workflow_audit_events.sole.details.slice("decision", "risk_confirmed")).to eq(
           "decision" => "not_occurred",
           "risk_confirmed" => true
         )
@@ -265,13 +257,22 @@ RSpec.describe "AI video generation pages", type: :request do
 
         expect(response).to redirect_to(video_project_ai_generation_path(video_project, ai_generation))
         expect(outbound_attempt.reload.status).to eq("manual_outcome_confirmed")
-        expect(outbound_attempt.provider_reference).to include("manual_reference" => provider_reference)
+        expect(outbound_attempt.provider_reference.slice("manual_reference")).to eq("manual_reference" => provider_reference)
         expect(ai_generation.reload.status).to eq("outcome_unknown")
       end
     end
   end
 
   describe "PATCH /video_projects/:video_project_id/ai_generations/:id" do
+    let(:ai_provider_connection) do
+      create(
+        :ai_provider_connection,
+        provider: "codex",
+        status: :pending_verification,
+        available_models: [],
+        selected_model: nil
+      )
+    end
     let(:ai_generation) do
       create(
         :ai_generation,
@@ -279,6 +280,9 @@ RSpec.describe "AI video generation pages", type: :request do
         status: :script_ready,
         input_snapshot: {
           video_subject: "Summer skincare",
+          ai_provider_connection_id: ai_provider_connection.id,
+          llm_provider: "codex",
+          llm_model: nil,
           video_script: "A short summer skincare story.",
           scene_count: 2,
           scene_duration: 6,
@@ -288,11 +292,8 @@ RSpec.describe "AI video generation pages", type: :request do
       )
     end
     let(:terms_request) do
-      stub_request(:post, %r{/api/v1/terms\z})
-        .to_return(
-          status: 200,
-          body: { status: 200, data: { video_terms: [ "sunny bathroom", "skincare bottle" ] } }.to_json
-        )
+      stub_request(:post, "http://mpt.test/api/v1/terms")
+        .to_return(status: 200, body: { status: 200, data: { video_terms: [ "must not be used" ] } }.to_json)
     end
     let(:update_params) do
       {
@@ -302,18 +303,22 @@ RSpec.describe "AI video generation pages", type: :request do
       }
     end
 
-    before { terms_request }
+    before do
+      terms_request
+    end
 
-    it "saves the approved script and scene prompts" do
+    it "returns an unprocessable response while Codex inference is unverified" do
+      expect(Codex::Client).not_to receive(:new)
+
       patch video_project_ai_generation_path(video_project, ai_generation),
         params: { ai_generation: update_params }
 
-      expect(response).to redirect_to(edit_video_project_ai_generation_path(video_project, ai_generation))
-      expect(ai_generation.reload.status).to eq("prompts_ready")
-      expect(ai_generation.input_snapshot.fetch("scenes").map { |scene| scene.fetch("prompt") }).to eq(
-        [ "sunny bathroom", "skincare bottle" ]
-      )
-      expect(terms_request).to have_been_requested.once
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(ai_generation.reload.status).to eq("script_ready")
+      expect(ai_generation.input_snapshot.fetch("script_approved")).to eq(true)
+      expect(ai_generation.input_snapshot.fetch("scenes")).to eq([])
+      expect(response.body).to match(Regexp.escape("Nhà cung cấp này chưa hỗ trợ tạo nội dung."))
+      expect(terms_request).not_to have_been_requested
     end
 
     context "when the script is not approved" do
@@ -389,7 +394,7 @@ RSpec.describe "AI video generation pages", type: :request do
 
         expect(response).to redirect_to(edit_video_project_ai_generation_path(video_project, ai_generation))
         expect(ai_generation.reload.estimate_snapshot.dig("cost_breakdown", "muapi", "amount")).to eq("0.5")
-        expect(ai_generation.estimate_snapshot.fetch("required_costs_known")).to be(false)
+        expect(ai_generation.estimate_snapshot.fetch("required_costs_known")).to eq(false)
         expect(first_estimate_request).to have_been_requested.once
         expect(second_estimate_request).to have_been_requested.once
       end

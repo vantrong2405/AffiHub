@@ -15,6 +15,7 @@ class AiProviderConnections::AccessTokenService < ApplicationService
   # @return [Boolean] whether a usable access token was returned
   def call
     return false unless step_load_connection
+    return false unless step_load_provider_configuration
     return false unless step_validate_connection
 
     step_load_access_token
@@ -30,14 +31,22 @@ class AiProviderConnections::AccessTokenService < ApplicationService
     step_fail!("Không tìm thấy kết nối tài khoản AI.")
   end
 
+  def step_load_provider_configuration
+    configuration = Rails.application.config_for(:ai_providers).deep_symbolize_keys
+    @configuration = configuration
+    @provider_configuration = configuration.fetch(:providers).fetch(@ai_provider_connection.provider.to_sym)
+    true
+  rescue KeyError
+    step_fail!("Không thể tải cấu hình token của tài khoản AI.")
+  end
+
   def step_validate_connection
-    if @ai_provider_connection.provider == "gemini" && @ai_provider_connection.scope_missing?
-      return step_fail!("Tài khoản AI chưa có quyền dùng model.")
-    end
-    if @ai_provider_connection.provider == "gemini" && !@ai_provider_connection.ready?
-      return step_fail!("Gemini API đang chờ xác minh trước khi sử dụng.")
-    end
-    return step_fail!("Nhà cung cấp này chưa hỗ trợ tạo nội dung.") unless %w[openai gemini].include?(@ai_provider_connection.provider)
+    return step_fail!("Tài khoản AI chưa có quyền dùng model.") if @ai_provider_connection.scope_missing?
+    return step_fail!("Nhà cung cấp này chưa hỗ trợ tạo nội dung.") unless @provider_configuration.dig(:capabilities, :inference_enabled)
+
+    supports_generation = @provider_configuration.dig(:capabilities, :script_generation) ||
+                          @provider_configuration.dig(:capabilities, :scene_prompt_generation)
+    return step_fail!("Nhà cung cấp này chưa hỗ trợ tạo nội dung.") unless supports_generation
     return step_fail!("Kết nối AI chưa sẵn sàng sử dụng.") unless @ai_provider_connection.ready?
     return step_fail!("Tài khoản AI chưa chọn model hợp lệ.") if @ai_provider_connection.selected_model.blank?
 
@@ -45,15 +54,9 @@ class AiProviderConnections::AccessTokenService < ApplicationService
   end
 
   def step_load_access_token
-    configuration = Rails.application.config_for(:ai_providers).deep_symbolize_keys
-    provider_configuration = configuration.fetch(:providers).fetch(@ai_provider_connection.provider.to_sym)
-    if @ai_provider_connection.provider == "gemini" && !provider_configuration.fetch(:inference_enabled)
-      return step_fail!("Gemini API đang chờ xác minh trước khi sử dụng.")
-    end
-
     @ai_provider_connection.with_lock do
-      if step_token_expiring?(configuration.fetch(:token_refresh_buffer_seconds))
-        step_refresh_access_token(provider_configuration)
+      if step_token_expiring?(@configuration.fetch(:token_refresh_buffer_seconds))
+        step_refresh_access_token
       else
         @access_token = @ai_provider_connection.access_token
         step_succeed!
@@ -69,24 +72,18 @@ class AiProviderConnections::AccessTokenService < ApplicationService
     expiry.present? && expiry <= Time.current + buffer_seconds.seconds
   end
 
-  def step_refresh_access_token(provider_configuration)
+  def step_refresh_access_token
     if @ai_provider_connection.refresh_token.blank?
       return step_mark_reauthorization_required
     end
 
-    client = if @ai_provider_connection.provider == "gemini"
-      Gemini::Client.new(configuration: provider_configuration)
-    else
-      OpenAi::Client.new(configuration: provider_configuration)
+    client_class = @provider_configuration.fetch(:clients).fetch(:token).constantize
+    client = client_class.new(configuration: @provider_configuration)
+    refresh_arguments = { refresh_token: @ai_provider_connection.refresh_token }
+    @provider_configuration.fetch(:refresh_token_arguments, []).each do |argument|
+      refresh_arguments[argument.to_sym] = @ai_provider_connection.provider_client_id
     end
-    response = if @ai_provider_connection.provider == "gemini"
-      client.refresh_token(refresh_token: @ai_provider_connection.refresh_token)
-    else
-      client.refresh_token(
-        refresh_token: @ai_provider_connection.refresh_token,
-        client_id: @ai_provider_connection.provider_client_id
-      )
-    end
+    response = client.refresh_token(**refresh_arguments)
     return step_fail!("Provider không trả access token mới.") if response["access_token"].blank?
 
     @ai_provider_connection.assign_attributes(
@@ -95,7 +92,7 @@ class AiProviderConnections::AccessTokenService < ApplicationService
       access_token_expires_at: step_token_expiry(response["expires_in"]),
       scopes: response["scope"].present? ? response["scope"].split.uniq : @ai_provider_connection.scopes
     )
-    if (provider_configuration.fetch(:required_scopes) - @ai_provider_connection.scopes).any?
+    if (@provider_configuration.fetch(:required_scopes) - @ai_provider_connection.scopes).any?
       @ai_provider_connection.status = :scope_missing
       @ai_provider_connection.save!
       return step_fail!("Tài khoản AI không còn quyền sử dụng model.")
@@ -104,7 +101,7 @@ class AiProviderConnections::AccessTokenService < ApplicationService
     @ai_provider_connection.save!
     @access_token = @ai_provider_connection.access_token
     step_succeed!
-  rescue OpenAi::Client::Error, Gemini::Client::Error => error
+  rescue AiProviderClientError => error
     return step_mark_reauthorization_required if error.code == "invalid_grant"
 
     step_fail!("Không thể làm mới token của tài khoản AI.")

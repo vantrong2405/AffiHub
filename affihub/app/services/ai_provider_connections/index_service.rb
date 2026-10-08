@@ -1,12 +1,5 @@
 class AiProviderConnections::IndexService < ApplicationService
-  PROVIDER_OPTIONS = [
-    { key: "chatgpt", provider: "openai", label: "ChatGPT", enabled: true, note: "Tiếp tục bằng tài khoản ChatGPT." },
-    { key: "codex", provider: "codex", label: "Codex", enabled: true, note: "Xác thực riêng; quyền tạo nội dung chưa được xác minh." },
-    { key: "gemini", label: "Gemini API", enabled: true, note: "Chờ xác minh quyền và hạn mức API." },
-    { key: "antigravity", label: "Antigravity", enabled: false, note: "Chưa có quyền tích hợp cho AffiHub." }
-  ].freeze
-
-  attr_reader :ai_provider_connections, :provider_options
+  attr_reader :ai_provider_connections, :provider_options, :provider_presentations
 
   # Initializes the provider-account list read action.
   #
@@ -37,32 +30,43 @@ class AiProviderConnections::IndexService < ApplicationService
 
   def step_load_provider_options
     @configuration = Rails.application.config_for(:ai_providers).deep_symbolize_keys
-    @provider_options = PROVIDER_OPTIONS.map do |provider_option|
-      step_provider_option(provider_option)
+    provider_configurations = @configuration.fetch(:providers)
+    @provider_presentations = provider_configurations.transform_values do |provider_configuration|
+      provider_configuration.slice(:display_name)
     end
+    @provider_options = provider_configurations
+      .sort_by { |_provider, provider_configuration| provider_configuration.fetch(:display_order) }
+      .map { |provider, provider_configuration| step_provider_option(provider, provider_configuration) }
     true
   rescue KeyError, URI::InvalidURIError
     step_fail!("Không thể tải cấu hình kết nối tài khoản AI.")
   end
 
-  def step_provider_option(provider_option)
-    provider_key = provider_option.fetch(:provider, provider_option.fetch(:key))
-    provider_configuration = @configuration.fetch(:providers).fetch(provider_key.to_sym)
+  def step_provider_option(provider, provider_configuration)
+    provider_key = provider.to_s
     callback_origin = step_callback_origin(provider_configuration)
-    provider_option.merge(
-      enabled: provider_option.fetch(:enabled) && step_provider_configured?(provider_key, provider_configuration),
+    {
+      key: provider_configuration.fetch(:option_key).to_s,
+      provider: provider_key,
+      label: provider_configuration.fetch(:display_name),
+      enabled: step_provider_configured?(provider_configuration),
       origin_matches: callback_origin.present? && step_same_origin?(callback_origin, @current_origin),
       required_origin: callback_origin
-    )
+    }
   end
 
-  def step_provider_configured?(provider_key, provider_configuration)
+  def step_provider_configured?(provider_configuration)
     return false unless provider_configuration.fetch(:enabled)
-    return @configuration.fetch(:host_id).present? if provider_key == "openai"
-    return provider_configuration.fetch(:client_id).present? if provider_key == "codex"
-    return [ :client_id, :client_secret, :project_id ].all? { |key| provider_configuration.fetch(key).present? } if provider_key == "gemini"
 
-    false
+    requirements = provider_configuration.fetch(:configuration_requirements, {})
+    missing_shared_setting = requirements.fetch(:shared, []).any? do |key|
+      @configuration.fetch(key.to_sym).blank?
+    end
+    missing_provider_setting = requirements.fetch(:provider, []).any? do |key|
+      provider_configuration.fetch(key.to_sym).blank?
+    end
+
+    !missing_shared_setting && !missing_provider_setting
   end
 
   def step_callback_origin(provider_configuration)

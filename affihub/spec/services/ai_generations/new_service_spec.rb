@@ -23,5 +23,23 @@ RSpec.describe AiGenerations::NewService, type: :service do
         generation_profile.slice(:model_id, :resolution, :scene_count, :scene_duration)
       )
     end
+
+    it "returns no accounts while inference capabilities remain disabled" do
+      ready_connection = create(:ai_provider_connection, status: :ready)
+      create(:ai_provider_connection, status: :ready, selected_model: nil)
+      create(:ai_provider_connection, status: :pending_verification)
+      create(
+        :ai_provider_connection,
+        provider: "gemini",
+        provider_client_id: "gemini-web-client",
+        status: :pending_verification
+      )
+
+      service.call
+
+      expect(ready_connection.provider).to eq("gemini")
+      expect(service.ai_provider_connections).to eq([])
+      expect(service.create_form.ai_provider_connection_id).to eq(nil)
+    end
   end
 end

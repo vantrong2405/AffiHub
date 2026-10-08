@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class AiGenerations::NewService < ApplicationService
-  attr_reader :video_project, :create_form
+  attr_reader :video_project, :create_form, :ai_provider_connections
 
   # Initializes a project-scoped AI generation form.
   #
@@ -17,6 +17,7 @@ class AiGenerations::NewService < ApplicationService
   # @return [Boolean] whether the form data was loaded
   def call
     step_load_video_project
+    step_load_ai_provider_connections
     step_build_create_form
     step_succeed!
     success?
@@ -29,6 +30,12 @@ class AiGenerations::NewService < ApplicationService
   end
 
   def step_build_create_form
-    @create_form = AiGenerations::CreateForm.new
+    @create_form = AiGenerations::CreateForm.new(
+      ai_provider_connection_id: ai_provider_connections.first&.id
+    )
+  end
+
+  def step_load_ai_provider_connections
+    @ai_provider_connections = AiProviderConnection.ready_for_script_generation
   end
 end

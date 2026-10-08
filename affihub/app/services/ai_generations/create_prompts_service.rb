@@ -60,6 +60,8 @@ class AiGenerations::CreatePromptsService < ApplicationService
   def step_create_scene_prompts
     service = AiGenerations::CreateScenePromptsService.new(
       video_project: video_project,
+      ai_provider_connection_id: @input_snapshot.fetch(:ai_provider_connection_id),
+      model_id: @input_snapshot.fetch(:llm_model),
       video_subject: @input_snapshot.fetch(:video_subject),
       video_script: @video_script,
       script_approved: @script_approved,
@@ -69,6 +71,8 @@ class AiGenerations::CreatePromptsService < ApplicationService
 
     @scene_prompts = service.scene_prompts
     true
+  rescue KeyError
+    step_fail!("Kết nối AI đã lưu không hợp lệ. Hãy tạo lại kịch bản.")
   end
 
   def step_save_scene_prompts

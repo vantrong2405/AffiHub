@@ -1,15 +1,7 @@
-class Codex::Client
-  class Error < StandardError
-    attr_reader :code
+require "jwt"
 
-    # Initializes a provider error without exposing response data or credentials.
-    #
-    # @param code [String] a safe provider error category
-    # @return [Codex::Client::Error] the sanitized API error
-    def initialize(code)
-      @code = code
-      super(code)
-    end
+class Codex::Client
+  class Error < AiProviderClientError
   end
 
   # Initializes the Codex OAuth client with provider settings.
@@ -17,7 +9,7 @@ class Codex::Client
   # @param configuration [Hash, nil] provider settings or configured Codex OAuth settings
   # @return [Codex::Client] the configured client
   def initialize(configuration: nil)
-    @configuration = configuration || Rails.application.config_for(:ai_providers).deep_symbolize_keys.fetch(:providers).fetch(:codex)
+    @configuration = configuration || AiProviderConfiguration.for_client(client_class_name: self.class.name)
   end
 
   # Exchanges an authorization code using the saved PKCE verifier.
@@ -29,11 +21,15 @@ class Codex::Client
   # @return [Hash] the OAuth token response
   def exchange_code(code:, client_id:, code_verifier:, redirect_uri:)
     request(
-      grant_type: "authorization_code",
-      client_id:,
-      code:,
-      redirect_uri:,
-      code_verifier:
+      method: :post,
+      endpoint: @configuration.fetch(:token_endpoint),
+      body: {
+        grant_type: "authorization_code",
+        client_id:,
+        code:,
+        redirect_uri:,
+        code_verifier:
+      }
     )
   end
 
@@ -44,20 +40,62 @@ class Codex::Client
   # @return [Hash] the OAuth token response
   def refresh_token(refresh_token:, client_id:)
     request(
-      grant_type: "refresh_token",
-      client_id:,
-      refresh_token:
+      method: :post,
+      endpoint: @configuration.fetch(:token_endpoint),
+      body: {
+        grant_type: "refresh_token",
+        client_id:,
+        refresh_token:
+      }
     )
+  end
+
+  # Verifies a Codex ID token against OpenAI's published OIDC keys and claims.
+  #
+  # @param id_token [String] the ID token returned by the Codex OAuth flow
+  # @param client_id [String] the configured Codex OAuth client ID
+  # @return [Hash] the verified ID-token claims
+  def verify_id_token(id_token:, client_id:)
+    metadata = request(
+      method: :get,
+      endpoint: @configuration.fetch(:openid_configuration_endpoint)
+    )
+    issuer = metadata.fetch("issuer")
+    raise Error, "invalid_openid_issuer" unless issuer == "https://auth.openai.com"
+
+    jwks_uri = URI(metadata.fetch("jwks_uri"))
+    unless jwks_uri.is_a?(URI::HTTPS) && jwks_uri.host == "auth.openai.com" && jwks_uri.userinfo.nil?
+      raise Error, "invalid_jwks_uri"
+    end
+
+    jwks = JWT::JWK::Set.new(request(method: :get, endpoint: jwks_uri.to_s))
+    claims, = JWT.decode(
+      id_token,
+      nil,
+      true,
+      algorithms: [ "RS256" ],
+      jwks:,
+      iss: issuer,
+      verify_iss: true,
+      aud: client_id,
+      verify_aud: true
+    )
+    claims.stringify_keys
+  rescue KeyError, URI::InvalidURIError, JWT::DecodeError, JWT::JWKError
+    raise Error, "invalid_id_token"
   end
 
   private
 
-  def request(body)
-    uri = URI(@configuration.fetch(:token_endpoint))
-    http_request = Net::HTTP::Post.new(uri)
+  def request(method:, endpoint:, body: nil)
+    uri = URI(endpoint)
+    request_class = Net::HTTP.const_get(method.to_s.capitalize)
+    http_request = request_class.new(uri)
     http_request["Accept"] = "application/json"
-    http_request["Content-Type"] = "application/x-www-form-urlencoded"
-    http_request.body = URI.encode_www_form(body)
+    if body
+      http_request["Content-Type"] = "application/x-www-form-urlencoded"
+      http_request.body = URI.encode_www_form(body)
+    end
 
     response = Net::HTTP.start(
       uri.host,

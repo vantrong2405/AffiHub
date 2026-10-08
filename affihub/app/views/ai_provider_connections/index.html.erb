@@ -17,6 +17,8 @@
 
     <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       <% @provider_options.each do |provider_option| %>
+        <% provider_presentation = @provider_presentations.fetch(provider_option.fetch(:provider).to_sym) %>
+        <% provider_copy = ai_provider_copy(provider: provider_option.fetch(:provider), display_name: provider_option.fetch(:label)) %>
         <article class="card border border-base-300 bg-base-100 shadow-sm">
           <div class="card-body gap-4">
             <div class="flex items-start justify-between gap-2">
@@ -27,19 +29,12 @@
                 <span class="badge badge-neutral badge-outline">Chưa khả dụng</span>
               <% end %>
             </div>
-            <p class="min-h-12 text-sm text-base-content/70"><%= provider_option.fetch(:note) %></p>
+            <p class="min-h-12 text-sm text-base-content/70"><%= provider_copy.fetch(:option_note) %></p>
 
             <% if provider_option.fetch(:enabled) && provider_option.fetch(:origin_matches) %>
-              <% provider_key = provider_option.fetch(:provider, provider_option.fetch(:key)) %>
-              <%= button_to "Tiếp tục với ChatGPT", ai_provider_connections_path,
-                            params: { provider: provider_key },
-                            class: "btn btn-primary w-full" if provider_key == "openai" %>
-              <%= button_to "Kết nối Codex", ai_provider_connections_path,
-                            params: { provider: provider_key },
-                            class: "btn btn-primary w-full" if provider_key == "codex" %>
-              <%= button_to "Kết nối Gemini", ai_provider_connections_path,
-                            params: { provider: provider_key },
-                            class: "btn btn-primary w-full" if provider_key == "gemini" %>
+              <%= button_to provider_copy.fetch(:connect_button_label), ai_provider_connections_path,
+                            params: { provider: provider_option.fetch(:provider) },
+                            class: "btn btn-primary w-full" %>
             <% elsif provider_option.fetch(:enabled) %>
               <% required_origin = provider_option.fetch(:required_origin) %>
               <%= link_to "Mở AffiHub",
@@ -58,39 +53,30 @@
   <section class="space-y-4" aria-labelledby="connected-ai-accounts-heading">
     <div>
       <h2 id="connected-ai-accounts-heading" class="text-xl font-semibold">Tài khoản đã kết nối</h2>
-      <p class="mt-1 text-sm text-base-content/60">ChatGPT và Codex là hai kết nối riêng. Codex chỉ xác minh đăng nhập; Gemini chờ kiểm tra quyền API và hạn mức.</p>
+      <p class="mt-1 text-sm text-base-content/60">Mỗi nhà cung cấp có trạng thái quyền và hạn mức riêng. Thông tin kết nối được lưu riêng cho từng tài khoản.</p>
     </div>
 
     <% if @ai_provider_connections.any? %>
       <div class="grid gap-4 md:grid-cols-2">
         <% @ai_provider_connections.each do |ai_provider_connection| %>
+          <% provider_presentation = @provider_presentations.fetch(ai_provider_connection.provider.to_sym) %>
+          <% provider_copy = ai_provider_copy(provider: ai_provider_connection.provider, display_name: provider_presentation.fetch(:display_name)) %>
+          <% account_summary_key = ai_provider_connection.scope_missing? ? :scope_missing : :connected %>
           <article class="card border border-base-300 bg-base-100 shadow-sm">
             <div class="card-body gap-4">
               <div class="flex items-start justify-between gap-3">
                 <div class="min-w-0 space-y-1">
                   <h3 class="card-title break-words text-base"><%= ai_provider_connection.display_name.presence || ai_provider_connection.account_email %></h3>
                   <p class="break-all text-sm text-base-content/60">
-                    <%= { "openai" => "ChatGPT", "codex" => "Codex", "gemini" => "Gemini API" }.fetch(ai_provider_connection.provider) %>
+                    <%= provider_presentation.fetch(:display_name) %>
                     <% if ai_provider_connection.account_email.present? %> · <%= ai_provider_connection.account_email %><% end %>
                   </p>
                 </div>
                 <%= workflow_status_badge(ai_provider_connection.status, resource: "ai_provider_connection") %>
               </div>
-              <p class="text-sm text-base-content/70">
-                <% if ai_provider_connection.provider == "gemini" && ai_provider_connection.scope_missing? %>
-                  Tài khoản chưa cấp scope Gemini API cần thiết.
-                <% elsif ai_provider_connection.provider == "gemini" %>
-                  Inference, quota và giá của project vẫn đang chờ xác minh.
-                <% elsif ai_provider_connection.provider == "codex" %>
-                  Đã xác thực tài khoản; quyền model và quota chưa được xác minh.
-                <% elsif ai_provider_connection.scope_missing? %>
-                  Tài khoản chưa cấp quyền ChatGPT plan usage.
-                <% else %>
-                  Quyền và danh sách model áp dụng cho tài khoản này.
-                <% end %>
-              </p>
+              <p class="text-sm text-base-content/70"><%= provider_copy.fetch(:account_summary).fetch(account_summary_key) %></p>
               <div class="card-actions justify-end">
-                <%= link_to(ai_provider_connection.provider == "codex" ? "Xem xác thực" : "Quản lý model",
+                <%= link_to(provider_copy.fetch(:account_action_label),
                             ai_provider_connection_path(ai_provider_connection), class: "btn btn-outline btn-sm") %>
               </div>
             </div>
@@ -101,7 +87,7 @@
       <div class="card border border-dashed border-base-300 bg-base-100">
         <div class="card-body items-start">
           <h3 class="card-title">Chưa có tài khoản AI nào</h3>
-          <p class="text-base-content/70">Chọn ChatGPT, Codex hoặc Gemini ở phía trên để kết nối. Antigravity hiện chưa được hỗ trợ.</p>
+          <p class="text-base-content/70">Chọn một nhà cung cấp khả dụng ở phía trên để kết nối tài khoản.</p>
         </div>
       </div>
     <% end %>

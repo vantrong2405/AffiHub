@@ -1,9 +1,11 @@
 require "rails_helper"
+require "jwt"
 
 RSpec.describe Codex::Client, type: :service do
   let(:configuration) do
     {
       token_endpoint: "https://auth.openai.com/oauth/token",
+      openid_configuration_endpoint: "https://auth.openai.com/.well-known/openid-configuration",
       connect_timeout_seconds: 5,
       read_timeout_seconds: 10
     }
@@ -11,7 +13,7 @@ RSpec.describe Codex::Client, type: :service do
   let(:client) { described_class.new(configuration:) }
 
   describe "#exchange_code" do
-    it "exchanges the authorization code with the Codex client ID and PKCE verifier" do
+    it "returns exchanged credentials for the Codex client ID and PKCE verifier" do
       token_request = stub_request(:post, "https://auth.openai.com/oauth/token")
         .with(
           headers: { "Content-Type" => "application/x-www-form-urlencoded" },
@@ -32,13 +34,13 @@ RSpec.describe Codex::Client, type: :service do
         redirect_uri: "http://localhost:1455/auth/callback"
       )
 
-      expect(response).to include("access_token" => "codex-access-token", "id_token" => "codex-id-token")
+      expect(response).to eq("access_token" => "codex-access-token", "id_token" => "codex-id-token")
       expect(token_request).to have_been_requested.once
     end
   end
 
   describe "#refresh_token" do
-    it "refreshes the Codex token with form-encoded OAuth credentials" do
+    it "returns refreshed Codex credentials from form-encoded OAuth" do
       token_request = stub_request(:post, "https://auth.openai.com/oauth/token")
         .with(
           body: {
@@ -51,8 +53,43 @@ RSpec.describe Codex::Client, type: :service do
 
       response = client.refresh_token(refresh_token: "codex-refresh-token", client_id: "codex-cli-client")
 
-      expect(response).to include("access_token" => "rotated-codex-token", "expires_in" => 3600)
+      expect(response).to eq("access_token" => "rotated-codex-token", "expires_in" => 3600)
       expect(token_request).to have_been_requested.once
+    end
+  end
+
+  describe "#verify_id_token" do
+    it "returns the verified Codex identity after checking issuer, audience, signature, and expiry" do
+      signing_key = OpenSSL::PKey::RSA.generate(2048)
+      public_jwk = JWT::JWK.new(signing_key.public_key, kid: "codex-test-key").export
+      expires_at = 5.minutes.from_now.to_i
+      id_token = JWT.encode(
+        {
+          iss: "https://auth.openai.com",
+          aud: "codex-cli-client",
+          sub: "codex-subject",
+          exp: expires_at
+        },
+        signing_key,
+        "RS256",
+        { kid: "codex-test-key" }
+      )
+      stub_request(:get, "https://auth.openai.com/.well-known/openid-configuration")
+        .to_return(
+          status: 200,
+          body: { issuer: "https://auth.openai.com", jwks_uri: "https://auth.openai.com/jwks" }.to_json
+        )
+      stub_request(:get, "https://auth.openai.com/jwks")
+        .to_return(status: 200, body: { keys: [ public_jwk ] }.to_json)
+
+      identity = client.verify_id_token(id_token:, client_id: "codex-cli-client")
+
+      expect(identity).to eq(
+        "iss" => "https://auth.openai.com",
+        "aud" => "codex-cli-client",
+        "sub" => "codex-subject",
+        "exp" => expires_at
+      )
     end
   end
 

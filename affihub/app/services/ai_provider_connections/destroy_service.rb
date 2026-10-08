@@ -35,19 +35,26 @@ class AiProviderConnections::DestroyService < ApplicationService
   def step_revoke_provider_session
     refresh_token = @ai_provider_connection.refresh_token
     return if refresh_token.blank?
+    return unless step_load_provider_configuration
+    return unless @provider_configuration.fetch(:revocation_enabled, false)
 
-    @remote_revocation_confirmed = if @ai_provider_connection.provider == "openai"
-      OpenAi::Client.new.revoke_token(
-        refresh_token:,
-        client_id: @ai_provider_connection.provider_client_id
-      )
-    elsif @ai_provider_connection.provider == "gemini"
-      Gemini::Client.new.revoke_token(refresh_token:)
-    else
-      false
+    client_class = @provider_configuration.fetch(:clients).fetch(:revocation).constantize
+    client = client_class.new(configuration: @provider_configuration)
+    revocation_arguments = { refresh_token: }
+    @provider_configuration.fetch(:revocation_arguments, []).each do |argument|
+      revocation_arguments[argument.to_sym] = @ai_provider_connection.provider_client_id
     end
-  rescue OpenAi::Client::Error, Gemini::Client::Error
+    @remote_revocation_confirmed = client.revoke_token(**revocation_arguments)
+  rescue AiProviderClientError, KeyError
     @remote_revocation_confirmed = false
+  end
+
+  def step_load_provider_configuration
+    configuration = Rails.application.config_for(:ai_providers).deep_symbolize_keys
+    @provider_configuration = configuration.fetch(:providers).fetch(@ai_provider_connection.provider.to_sym)
+    true
+  rescue KeyError
+    false
   end
 
   def step_remove_local_connection

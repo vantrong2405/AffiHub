@@ -8,7 +8,8 @@ RSpec.describe AiGenerations::CreateForm, type: :form do
       topic: "Summer skincare",
       language: "vi",
       tone: "friendly",
-      target_duration: 30
+      target_duration: 30,
+      ai_provider_connection_id: 1
     }
   end
   subject(:form) { described_class.new(form_attributes) }
@@ -16,6 +17,14 @@ RSpec.describe AiGenerations::CreateForm, type: :form do
   describe "validations" do
     it "returns valid when all required inputs are present" do
       expect(form).to be_valid
+    end
+
+    context "when an AI provider connection is missing" do
+      let(:form_attributes) { super().except(:ai_provider_connection_id) }
+
+      it "returns invalid" do
+        expect(form).not_to be_valid
+      end
     end
 
     context "when topic is blank" do

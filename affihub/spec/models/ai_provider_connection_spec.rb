@@ -8,10 +8,10 @@ RSpec.describe AiProviderConnection, type: :model do
   end
 
   describe "provider" do
-    it "accepts the OpenAI provider" do
+    it "rejects the removed OpenAI provider" do
       connection = build(:ai_provider_connection, provider: "openai")
 
-      expect(connection).to be_valid
+      expect(connection).not_to be_valid
     end
 
     it "accepts the Gemini provider" do
@@ -32,7 +32,7 @@ RSpec.describe AiProviderConnection, type: :model do
       connection = build(:ai_provider_connection, selected_model: "unlisted-model")
 
       expect(connection).not_to be_valid
-      expect(connection.errors[:selected_model]).to include("không thuộc danh sách model của kết nối")
+      expect(connection.errors[:selected_model]).to eq([ "không thuộc danh sách model của kết nối" ])
     end
   end
 
@@ -40,18 +40,18 @@ RSpec.describe AiProviderConnection, type: :model do
     it "encrypts access, refresh, and ID tokens at rest" do
       connection = create(
         :ai_provider_connection,
-        access_token: "openai-access-secret",
-        refresh_token: "openai-refresh-secret",
-        id_token: "openai-id-secret"
+        access_token: "codex-access-secret",
+        refresh_token: "codex-refresh-secret",
+        id_token: "codex-id-secret"
       )
       persisted_connection = described_class.find(connection.id)
 
-      expect(persisted_connection.access_token).to eq("openai-access-secret")
-      expect(persisted_connection.refresh_token).to eq("openai-refresh-secret")
-      expect(persisted_connection.id_token).to eq("openai-id-secret")
-      expect(persisted_connection.read_attribute_before_type_cast(:access_token)).not_to include("openai-access-secret")
-      expect(persisted_connection.read_attribute_before_type_cast(:refresh_token)).not_to include("openai-refresh-secret")
-      expect(persisted_connection.read_attribute_before_type_cast(:id_token)).not_to include("openai-id-secret")
+      expect(persisted_connection.access_token).to eq("codex-access-secret")
+      expect(persisted_connection.refresh_token).to eq("codex-refresh-secret")
+      expect(persisted_connection.id_token).to eq("codex-id-secret")
+      expect(persisted_connection.read_attribute_before_type_cast(:access_token)).not_to match(Regexp.escape("codex-access-secret"))
+      expect(persisted_connection.read_attribute_before_type_cast(:refresh_token)).not_to match(Regexp.escape("codex-refresh-secret"))
+      expect(persisted_connection.read_attribute_before_type_cast(:id_token)).not_to match(Regexp.escape("codex-id-secret"))
     end
 
     it "encrypts Gemini account credentials at rest" do
@@ -74,9 +74,9 @@ RSpec.describe AiProviderConnection, type: :model do
         refresh_token: "gemini-private-refresh-token",
         id_token: "gemini-private-id-token"
       )
-      expect(persisted_connection.read_attribute_before_type_cast(:access_token)).not_to include("gemini-private-access-token")
-      expect(persisted_connection.read_attribute_before_type_cast(:refresh_token)).not_to include("gemini-private-refresh-token")
-      expect(persisted_connection.read_attribute_before_type_cast(:id_token)).not_to include("gemini-private-id-token")
+      expect(persisted_connection.read_attribute_before_type_cast(:access_token)).not_to match(Regexp.escape("gemini-private-access-token"))
+      expect(persisted_connection.read_attribute_before_type_cast(:refresh_token)).not_to match(Regexp.escape("gemini-private-refresh-token"))
+      expect(persisted_connection.read_attribute_before_type_cast(:id_token)).not_to match(Regexp.escape("gemini-private-id-token"))
     end
   end
 
@@ -91,7 +91,7 @@ RSpec.describe AiProviderConnection, type: :model do
       )
 
       expect(duplicate).not_to be_valid
-      expect(duplicate.errors[:provider_subject]).to include("đã được sử dụng")
+      expect(duplicate.errors[:provider_subject]).to eq([ "đã được sử dụng" ])
     end
   end
 end

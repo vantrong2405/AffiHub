@@ -11,6 +11,7 @@ class AiGenerationsController < MainController
     service.call
     @video_project = service.video_project
     @create_form = service.create_form
+    @ai_provider_connections = service.ai_provider_connections
   end
 
   # Generates and saves a draft script for review.
@@ -23,6 +24,7 @@ class AiGenerationsController < MainController
     )
     service.call
     @video_project = service.video_project
+    @ai_provider_connections = service.ai_provider_connections
     raise ActiveRecord::RecordNotFound unless @video_project
 
     @create_form = service.input_form || AiGenerations::CreateForm.new(ai_generation_params)
@@ -82,7 +84,13 @@ class AiGenerationsController < MainController
   end
 
   def ai_generation_params
-    params.require(:ai_generation).permit(:topic, :language, :tone, :target_duration)
+    params.require(:ai_generation).permit(
+      :topic,
+      :language,
+      :tone,
+      :target_duration,
+      :ai_provider_connection_id
+    )
   end
 
   def ai_generation_update_params
