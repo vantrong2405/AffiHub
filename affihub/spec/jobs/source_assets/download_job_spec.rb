@@ -87,6 +87,25 @@ RSpec.describe SourceAssets::DownloadJob, type: :job do
       end
     end
 
+    context "when yt-dlp downloads the source successfully" do
+      it "attaches the downloaded file and queues media inspection" do
+        downloader = instance_double(YtDlp::Client)
+        allow(YtDlp::Client).to receive(:new).and_return(downloader)
+        allow(downloader).to receive(:download) do |url:, output_path:|
+          File.write(output_path.sub("%(ext)s", "mp4"), "downloaded video")
+        end
+
+        described_class.perform_now(source_asset.id)
+
+        expect(source_asset.reload.status).to eq("pending")
+        expect(source_asset.file).to be_attached
+        expect(ActiveJob::Base.queue_adapter.enqueued_jobs.map { |job| job[:job] })
+          .to eq([ SourceAssets::InspectJob ])
+        expect(downloader).to have_received(:download)
+          .with(url: source_asset.source_url, output_path: a_string_including("%(ext)s"))
+      end
+    end
+
     context "when yt-dlp cannot retrieve the selected video" do
       it "marks the source failed and explains the local import fallback" do
         described_class.perform_now(source_asset.id)
