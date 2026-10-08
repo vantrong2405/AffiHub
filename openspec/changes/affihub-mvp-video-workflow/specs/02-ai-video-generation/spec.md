@@ -7,7 +7,7 @@ Cho phép người dùng tạo nội dung video qua pipeline AI đã chọn, duy
 ## ADDED Requirements
 
 ### Requirement: Kết nối LLM bằng đăng nhập tài khoản được cấp quyền
-AffiHub MUST hiển thị bốn lựa chọn AI: ChatGPT, Codex, Gemini, Antigravity; MUST dùng đăng nhập tài khoản thay cho ô API key LLM. ChatGPT/Codex MUST dùng chung Sign in with ChatGPT khi ứng dụng/tài khoản đủ điều kiện ChatGPT plan usage; Codex là lựa chọn model/khả năng, không phải OAuth provider riêng. Gemini MUST dùng Google OAuth chính thức cho Gemini API của project AffiHub, không dùng phiên Gemini CLI. Antigravity MUST hiển thị chưa khả dụng và không khởi tạo OAuth khi chưa có contract Google cho bên thứ ba. Credential được phép MUST mã hóa và tách khỏi credential MPT/MuAPI/stock/TTS phía máy chủ. Thiếu kết nối đủ quyền MUST chỉ chặn tạo script/scene LLM; import/edit/render/export local vẫn hoạt động.
+AffiHub MUST hiển thị bốn lựa chọn AI: ChatGPT, Codex, Gemini, Antigravity; MUST dùng đăng nhập tài khoản thay cho ô API key LLM. ChatGPT MUST dùng OpenAI Sign in with ChatGPT chính thức. Codex MUST là connection riêng, không khởi chạy SIWC/ChatGPT consent; flow xác thực tham khảo provider Codex của 9Router tại commit `a99cf57239ff778b61e434c2786009d5ed1c412c`, dùng Authorization Code + PKCE S256, state một lần, scope `openid profile email offline_access`, `CODEX_OAUTH_CLIENT_ID` từ environment và callback loopback cố định. OAuth Codex quan sát từ 9Router không phải contract công khai; connection sau callback MUST ở `pending_verification`, không được gọi inference/quota/private backend hoặc suy ra entitlement. Gemini MUST dùng Google OAuth chính thức cho Gemini API của project AffiHub, không dùng phiên Gemini CLI. Antigravity MUST hiển thị chưa khả dụng và không khởi tạo OAuth khi chưa có contract Google cho bên thứ ba. Credential được phép MUST mã hóa và tách khỏi credential MPT/MuAPI/stock/TTS phía máy chủ. Thiếu kết nối đã xác minh quyền MUST chỉ chặn tạo script/scene LLM; import/edit/render/export local vẫn hoạt động.
 
 Connection MUST lưu các model do API đã xác thực trả về. `AiProviderConnections#update` MUST chỉ đổi selected model sang model đang có trong danh sách của chính connection; model không có quyền hoặc không thuộc danh sách MUST giữ nguyên lựa chọn cũ.
 
@@ -22,6 +22,14 @@ Connection MUST lưu các model do API đã xác thực trả về. `AiProviderC
 #### Scenario: Chỉ đăng nhập danh tính
 - **WHEN** callback có danh tính hợp lệ nhưng không có scope dùng ChatGPT plan cho inference
 - **THEN** AffiHub báo thiếu quyền dùng AI và không gọi LLM hoặc đánh dấu connection sẵn sàng tạo script
+
+#### Scenario: Codex xác thực riêng qua callback loopback
+- **WHEN** người dùng chọn Codex và hoàn tất OAuth Authorization Code + PKCE S256 với state hợp lệ tại callback `http://localhost:1455/auth/callback`
+- **THEN** AffiHub lưu token đã mã hóa vào connection `codex` ở trạng thái `pending_verification`, không mở ChatGPT plan consent và không gọi model/quota endpoint
+
+#### Scenario: Codex OAuth callback hợp lệ nhưng inference contract chưa được xác minh
+- **WHEN** Codex token exchange thành công nhưng chưa có contract inference công khai được kiểm chứng cho AffiHub
+- **THEN** AffiHub giữ trạng thái `pending_verification`, không gọi `chatgpt.com/backend-api/codex/*`, không giả lập Codex CLI header và không báo model/quota sẵn sàng
 
 #### Scenario: State, PKCE hoặc callback URI không hợp lệ
 - **WHEN** OAuth state/PKCE hoặc callback URI không hợp lệ, đã dùng, hết hạn hay thuộc phiên khác
@@ -71,7 +79,7 @@ AffiHub MUST dùng Google OAuth chính thức cho Gemini API của Google Cloud 
 - **THEN** AffiHub hiển thị “Chưa khả dụng”, không có hành động bắt đầu OAuth, không dùng token/endpoint từ 9Router hoặc phiên Antigravity
 
 ### Requirement: Gọi LLM bằng giao thức được quyền đăng nhập hỗ trợ
-Với ChatGPT/Codex dùng ChatGPT plan usage, AffiHub MUST gọi Responses API bằng OAuth token đã được cấp quyền cho tài khoản/model được chọn, dùng `store: false` và `stream: true`, và MUST chỉ coi `response.completed` là thành công. Với Gemini, AffiHub MUST dùng Gemini API OAuth đã được xác minh cho project/quota tương ứng. AffiHub MUST NOT truyền các token này vào endpoint MPT/OpenAI-compatible chưa được xác minh hỗ trợ contract đó. Trước khi thay đường LLM của MPT, MUST xác minh các điểm MPT gọi LLM và bảo toàn các bước script/scene/video hiện có.
+Với ChatGPT, AffiHub MUST gọi Responses API bằng OAuth token SIWC đã được cấp quyền cho tài khoản/model được chọn, dùng `store: false` và `stream: true`, và MUST chỉ coi `response.completed` là thành công. Codex MUST NOT được dùng cho inference cho tới khi có contract OpenAI công khai được xác minh và người dùng đã cấp quyền tương ứng; AffiHub MUST NOT gọi endpoint Codex private từ 9Router. Với Gemini, AffiHub MUST dùng Gemini API OAuth đã được xác minh cho project/quota tương ứng. AffiHub MUST NOT truyền các token này vào endpoint MPT/OpenAI-compatible chưa được xác minh hỗ trợ contract đó. Trước khi thay đường LLM của MPT, MUST xác minh các điểm MPT gọi LLM và bảo toàn các bước script/scene/video hiện có.
 
 #### Scenario: Responses API hoàn tất script
 - **WHEN** connection có quyền và model được cấp, người dùng yêu cầu tạo script
