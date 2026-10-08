@@ -22,7 +22,12 @@ RSpec.describe SourceAssets::CreateFromYoutubeResultService, type: :service do
       )
     end
 
-    before { ActiveJob::Base.queue_adapter.enqueued_jobs.clear }
+    before do
+      ActiveJob::Base.queue_adapter.enqueued_jobs.clear
+      allow(Resolv).to receive(:getaddresses)
+        .with("www.youtube.com")
+        .and_return([ "142.251.35.4" ])
+    end
 
     it "creates a source from the selected result and queues its download" do
       expect { service.call }.to change(SourceAsset, :count).by(1)
