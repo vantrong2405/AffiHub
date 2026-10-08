@@ -100,6 +100,21 @@ AffiHub MUST chỉ dùng API chính thức để tìm metadata video và gắn n
 - **WHEN** metadata YouTube không được refresh trước 30 ngày kể từ lúc nhận
 - **THEN** AffiHub xóa dữ liệu API-derived đã hết hạn và không hiển thị nó như dữ liệu mới
 
+### Requirement: Persist project-scoped discovery searches
+AffiHub MUST persist each YouTube search as a `SourceDiscovery` owned by its `VideoProject`, with ordered result associations to `YoutubeDiscoveryMetadata`. A selected result MUST belong to the submitted search and current project before it can create a `SourceAsset`. Search result associations and non-authorized API-derived search records MUST be deleted before the 30-day retention limit.
+
+#### Scenario: Mở lại kết quả của một lần tìm
+- **WHEN** người dùng gửi tìm kiếm keyword hoặc regional/category chart thành công
+- **THEN** AffiHub lưu phiên tìm thuộc project cùng danh sách kết quả có thứ tự, rồi hiển thị đúng danh sách đó trên `show`
+
+#### Scenario: Chọn metadata ngoài phiên tìm hiện tại
+- **WHEN** người dùng gửi metadata ID không thuộc phiên tìm đã gửi hoặc phiên đó thuộc project khác
+- **THEN** AffiHub từ chối tạo `SourceAsset` và không enqueue download
+
+#### Scenario: Tìm kiếm API thất bại
+- **WHEN** YouTube API trả quota/rate/network error
+- **THEN** AffiHub hiển thị lỗi an toàn, không lưu kết quả dở dang và vẫn cho nhập URL cụ thể hoặc file local
+
 ### Requirement: Giới hạn số lần bắt đầu tải
 AffiHub MUST áp dụng tối đa 10 lần bắt đầu tải trong cửa sổ trượt 60 phút cho mỗi cài đặt local, tính chung URL, discovery và lần retry có gọi downloader.
 
