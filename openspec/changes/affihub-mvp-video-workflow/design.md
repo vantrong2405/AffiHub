@@ -11,6 +11,7 @@ Xem `proposal.md` để biết lý do/phạm vi và các spec `01`–`10` để 
 - Dùng chung một model video source → edit → immutable render → destination publication, giữ mỗi connector và integration có thể lỗi độc lập.
 - Đảm bảo mọi side effect bên ngoài có trạng thái lưu bền, claim/idempotency và đường đối soát trước retry.
 - Giữ credential, media local và lịch đăng trong topology một máy do chủ dự án vận hành.
+- Cho người dùng kết nối LLM bằng đăng nhập tài khoản được nhà cung cấp cho phép, chọn model có quyền và dùng AI mà không nhập API key LLM trong giao diện.
 
 **Non-Goals:**
 
@@ -101,6 +102,7 @@ resources :social_connections, only: %i[index show new create destroy] do
   resources :social_destinations, only: %i[index show create update destroy]
 end
 
+resources :ai_provider_connections, only: %i[index show create destroy]
 resources :google_connections, only: %i[index show new create edit update destroy]
 resources :auto_reply_rules, only: %i[index show new create edit update destroy]
 resources :auto_reply_logs, only: %i[index show]
@@ -108,6 +110,10 @@ resources :auto_reply_logs, only: %i[index show]
 get "/auth/:provider/callback",
     to: "connection_callbacks#show",
     as: :connection_callback
+
+get "/ai/auth/callback",
+    to: "ai_provider_callbacks#show",
+    as: :ai_provider_callback
 ```
 
 Tên controller/file khớp với route resource theo Rails naming: `VideoProjectsController` tại `app/controllers/video_projects_controller.rb`, `SourceAssetsController` tại `app/controllers/source_assets_controller.rb`, và tương tự cho từng resource. Action ghi dữ liệu gọi Service cùng resource/action, chẳng hạn `SourceAssets::CreateService`, `RenderVersions::CreateService`, `PreflightReports::CreateService` và `Publications::CreateService`. Read action lấy dữ liệu qua Service; controller chỉ gán kết quả cho view và trả HTTP response.
@@ -128,6 +134,7 @@ Rails tự tìm view theo controller/action; ví dụ `VideoProjectsController#i
 | `SchedulesController` | `app/views/schedules/index.html.erb`, `app/views/schedules/show.html.erb`, `app/views/schedules/new.html.erb`, `app/views/schedules/edit.html.erb`, `app/views/schedules/_form.html.erb` |
 | `SocialConnectionsController` | `app/views/social_connections/index.html.erb`, `app/views/social_connections/show.html.erb`, `app/views/social_connections/new.html.erb` |
 | `SocialDestinationsController` | `app/views/social_destinations/index.html.erb`, `app/views/social_destinations/show.html.erb` |
+| `AiProviderConnectionsController` | `app/views/ai_provider_connections/index.html.erb`, `app/views/ai_provider_connections/show.html.erb` |
 | `GoogleConnectionsController` | `app/views/google_connections/index.html.erb`, `app/views/google_connections/show.html.erb`, `app/views/google_connections/new.html.erb`, `app/views/google_connections/edit.html.erb` |
 | `AutoReplyRulesController` | `app/views/auto_reply_rules/index.html.erb`, `app/views/auto_reply_rules/show.html.erb`, `app/views/auto_reply_rules/new.html.erb`, `app/views/auto_reply_rules/edit.html.erb`, `app/views/auto_reply_rules/_form.html.erb` |
 | `AutoReplyLogsController` | `app/views/auto_reply_logs/index.html.erb`, `app/views/auto_reply_logs/show.html.erb` |
@@ -151,6 +158,7 @@ Trên màn hình hẹp, các vùng xếp theo thứ tự preview → trạng th�
 | Danh sách/tạo project | `VideoProjects#index`, `new`, `create`, `edit`, `update`, `destroy` | `video_projects/index.html.erb`, `new.html.erb`, `edit.html.erb`, `_form.html.erb` | Liệt kê theo tên/trạng thái; tạo hoặc đổi tên project; chỉ xóa project chưa có source/render và giữ lỗi validation trên form. |
 | Project workspace | `VideoProjects#show` | `video_projects/show.html.erb` | Hiển thị tiến độ, source/version hiện có; dẫn tới tạo `SourceAsset` hoặc `SourceDiscovery`. |
 | Tạo video AI | `AiGenerations#new`, `create`, `edit`, `update` | `ai_generations/new.html.erb`, `edit.html.erb`, `_form.html.erb` | Wizard text-to-video theo thứ tự chủ đề/thông số → duyệt script → duyệt từng scene prompt → báo giá/ngân sách/consent. Lưu input và estimate trong `AiGeneration` để tiếp tục an toàn; mọi thay đổi script/prompt phải xóa estimate cũ. |
+| Kết nối LLM | `AiProviderConnections#index`, `create`, `show`, `destroy`; callback giao thức `AiProviderCallbacks#show` | `ai_provider_connections/index.html.erb`, `show.html.erb` | Bốn lựa chọn ChatGPT, Codex, Gemini, Antigravity. ChatGPT/Codex dùng chung OpenAI connection; Gemini dùng Gemini API OAuth; Antigravity ghi chưa khả dụng và không có OAuth. Xem tài khoản/model, quyền, hạn mức và ngắt kết nối; không có ô API key LLM. |
 | Theo dõi video AI | `AiGenerations#show` | `ai_generations/show.html.erb` | Hiển thị trạng thái thật của MPT, output, provider/cost TTS fallback và kết quả đối soát. `OutcomeUnknown` không có retry thường; chỉ đưa các lựa chọn reconcile có bằng chứng/audit. Project workspace liệt kê generation gần nhất và trạng thái. |
 | Import file hoặc URL | `SourceAssets#new`, `create`, `show` | `source_assets/new.html.erb`, `_form.html.erb`, `show.html.erb` | Hai lựa chọn trong cùng biểu mẫu; `create` enqueue kiểm tra nền; `show` hiển thị provenance, metadata và trạng thái xử lý. |
 | Tìm video | `SourceDiscoveries#new`, `create`, `show` | `source_discoveries/new.html.erb`, `show.html.erb` | Dùng endpoint chính thức để tìm metadata, hiển thị nguồn/kết quả và attribution. Khi người dùng chọn kết quả, gửi URL cùng metadata discovery tới `SourceAssets#create`; worker dùng `yt-dlp` best-effort để tải media, kể cả YouTube. Nếu tải lỗi, hiển thị lý do và hướng dẫn import file. Không dùng `yt-dlp` để tìm kiếm hoặc scrape feed. |
@@ -164,7 +172,7 @@ Preflight report gắn với chính xác một `RenderVersion` và tập destina
 
 Các màn hình dùng cùng shell tiếng Việt và component daisyUI (`card`, `badge`, `alert`, `button`, `input`, `textarea`, `file-input`, `tabs`, `steps`, `skeleton`, `progress`). Loading dùng skeleton hoặc trạng thái job thực tế; empty state có hành động tiếp theo trong resource đã khai báo; lỗi giữ dữ liệu biểu mẫu và chỉ retry thao tác an toàn. Trên mobile, điều hướng thu vào `drawer`, stepper cuộn ngang, danh sách thành card, caption/destination xếp dọc và CTA chính rộng toàn màn hình. Cấu hình nền tảng/giới hạn đọc từ YAML qua `Rails.application.config_for` chỉ hiển thị dạng thông tin, không có control sửa trong các màn hình MVP.
 
-Wizard video AI dùng bố cục một bước đang làm trong vùng chính và card báo giá/ngân sách cạnh bên trên desktop; mobile xếp card báo giá sau nội dung bước và CTA rộng toàn màn hình. DaisyUI `steps`, `card`, `input`, `textarea`, `select`, `checkbox`, `alert`, `badge`, `progress` và `btn` là component nền; chỉ dùng Tailwind utility cho layout/spacing, không định nghĩa lại component hoặc base style tương đương. Nhãn phân biệt rõ luồng AI text-to-video với stock montage. Trước consent, hiển thị riêng MuAPI, LLM, stock và TTS fallback (VieNeu-TTS mặc định, Azure Speech khi fallback), kèm amount/currency/provider/source/thời điểm báo giá hoặc trạng thái `Chưa có báo giá`. Không ước đoán giá. Thiếu một khoản bắt buộc, quote hết hạn/không khớp narration hoặc tổng tiền vượt ngân sách thì nêu lý do và chặn submit cả trên UI lẫn Service. Script và từng scene prompt phải được người dùng duyệt; thay đổi input liên quan làm estimate không còn hợp lệ và yêu cầu báo giá lại. Màn hình `OutcomeUnknown` nêu kết quả còn chưa rõ, bằng chứng cần nhập và ba lựa chọn `occurred`, `not_occurred`, `unknown`; không trình bày `ManualOutcomeConfirmed` như generation đã hoàn tất.
+Wizard video AI dùng bố cục một bước đang làm trong vùng chính và card báo giá/ngân sách cạnh bên trên desktop; mobile xếp card báo giá sau nội dung bước và CTA rộng toàn màn hình. DaisyUI `steps`, `card`, `input`, `textarea`, `select`, `checkbox`, `alert`, `badge`, `progress` và `btn` là component nền; chỉ dùng Tailwind utility cho layout/spacing, không định nghĩa lại component hoặc base style tương đương. Nhãn phân biệt rõ luồng AI text-to-video với stock montage. Trước thao tác tạo script, hiển thị kết nối LLM, tài khoản/model đã chọn và quyền dùng AI; nếu chưa kết nối hoặc hết hạn mức thì dẫn tới `AiProviderConnections#index`. Trước consent, hiển thị riêng MuAPI, LLM, stock và TTS fallback (VieNeu-TTS mặc định, Azure Speech khi fallback), kèm amount/currency/provider/source/thời điểm báo giá hoặc trạng thái `Chưa có báo giá`; LLM theo gói ChatGPT được ghi rõ là dùng hạn mức gói và không có báo giá tiền từng lượt, không gán số tiền 0. Không ước đoán giá. Thiếu khoản dịch vụ tính theo lượt bắt buộc, quote hết hạn/không khớp narration hoặc tổng tiền vượt ngân sách thì nêu lý do và chặn submit cả trên UI lẫn Service. Script và từng scene prompt phải được người dùng duyệt; thay đổi input liên quan làm estimate không còn hợp lệ và yêu cầu báo giá lại. Màn hình `OutcomeUnknown` nêu kết quả còn chưa rõ, bằng chứng cần nhập và ba lựa chọn `occurred`, `not_occurred`, `unknown`; không trình bày `ManualOutcomeConfirmed` như generation đã hoàn tất.
 
 ### 11. Cấu hình status và migration khởi tạo sạch
 
@@ -190,9 +198,22 @@ OAuth `state` là giá trị ngẫu nhiên 32 byte; session lưu SHA-256 digest,
 
 `Meta::Client` dùng version Graph API từ YAML cho OAuth token exchange, profile, Page listing, upload-session start, binary upload, finish/publish và status lookup. Acknowledgement của start/upload/finish không đủ để đặt `Published`; service publication sau này chỉ lưu trạng thái cuối, provider ID, permalink và thời điểm sau khi poll xác nhận. Smoke test cần Page/app-role Meta thật; test WebMock không được mô tả là xác minh API live.
 
+### 14. Đăng nhập tài khoản LLM cho AI generation
+
+`AiProviderConnection` là kết nối LLM của người dùng trên máy local, tách khỏi `SocialConnection` dùng để đăng bài. Endpoint OAuth, callback URI, scope, timeout, provider gate và status/default đặt trong `affihub/config/ai_providers.yml`, đọc bằng `Rails.application.config_for(:ai_providers)`; token lưu mã hóa trong Rails DB, không trả vào HTML/log. `AiProviderConnectionsController` chỉ gọi Service; `AiProviderCallbacksController#show` là ngoại lệ callback giao thức. Ngắt kết nối xóa/thu hồi credential theo khả năng provider và khóa bước gọi LLM tiếp theo, không xóa project hoặc nguồn/render đã tạo.
+
+Nhãn ChatGPT là “Tiếp tục với ChatGPT”. Codex xuất hiện như lựa chọn riêng trong UI nhưng dùng chính OpenAI connection đó và chỉ cho chọn model/khả năng Codex nếu account được cấp; không có OAuth Codex thứ hai, không đọc phiên/token Codex CLI. Với ứng dụng/tài khoản được OpenAI cấp ChatGPT plan usage, Rails khởi tạo OAuth public client qua callback loopback `127.0.0.1`, state ngẫu nhiên dùng một lần/gắn phiên, nonce và PKCE S256; kiểm chứng ID token, issued client ID, scope `chatgpt.tokens.use.direct` và quyền dùng model. Danh mục model không tự chứng minh entitlement; request inference hoàn tất mới là bằng chứng dùng được. LLM Client do AffiHub sở hữu gọi Responses API được cấp quyền với `store: false`, `stream: true` và chỉ nhận `response.completed` là thành công. Nếu app/account chưa đủ điều kiện, chặn riêng bước LLM; không dùng API key LLM nhập tay.
+
+Gemini là Google OAuth cho **Gemini API** của Google Cloud project AffiHub, tách khỏi Gemini CLI OAuth và kết nối Drive/YouTube. Trước khi bật `create`/callback Gemini, phải chứng minh web OAuth scope/consent, quota/billing, token refresh và một request inference thật qua Generative Language API; không dùng `cloudcode-pa.googleapis.com/v1internal` hoặc client credential của 9Router. Nếu gate chưa đạt, hiển thị “Chờ cấu hình/xác minh Gemini API” và chặn riêng bước LLM. Khoản phí Gemini API tính theo project phải có nguồn giá/estimate đủ tin cậy; không mặc định dùng hạn mức thuê bao Gemini CLI.
+
+Antigravity là lựa chọn UI “Chưa khả dụng”: điều khoản Google hiện cấm phần mềm bên thứ ba truy cập dịch vụ bằng Antigravity OAuth. `AiProviderConnections#create` không khởi tạo OAuth cho lựa chọn này và callback từ nguồn đó bị từ chối. Chỉ đánh giá lại khi Google công bố contract hoặc cấp quyền tích hợp phù hợp cho AffiHub. Repo [9Router](https://github.com/decolua/9router) commit `a99cf57239ff778b61e434c2786009d5ed1c412c` được tham khảo về provider adapter/state/PKCE, không phải nguồn cấp quyền; chi tiết ở `affihub/docs/reference-analysis/ai-account-login.md`.
+
+MPT v1.3.8 hiện dùng LLM provider/config API key cho `/scripts` và `/terms`, trong khi ChatGPT plan usage chỉ cho phép Responses API. Trước implementation, spike phải liệt kê mọi điểm MPT gọi LLM trong `/scripts`, `/terms`, `/videos`; giữ kết quả script/scene và video pipeline hiện có bằng một adapter chính thức được kiểm chứng hoặc chuyển riêng stage LLM sang Rails Client, còn MPT xử lý video. Không đưa OAuth access token vào MPT Chat Completions endpoint theo suy đoán. Chi phí LLM theo gói được trình bày là hạn mức gói, không phải số tiền 0 hoặc quote per-call; MuAPI/stock/TTS tính theo lượt vẫn qua cost gate và consent hiện có.
+
 ## Risks / Trade-offs
 
 - [API review hoặc quyền public thay đổi/được duyệt chậm] → Hiển thị trạng thái connector và nghiệm thu kỹ thuật riêng với public readiness; không đặt deadline bên ngoài làm điều kiện code hoàn tất.
+- [Quyền ChatGPT plan usage hoặc Gemini API OAuth chưa được xác minh; Antigravity chưa có contract cho bên thứ ba] → Giữ gate riêng trên màn kết nối LLM; không giả định đăng nhập danh tính cho phép inference và không dùng credential CLI/API key nhập tay để đi vòng.
 - [`yt-dlp` extractor hỏng hoặc source từ chối tải] → Pin và cập nhật version có chủ ý, giới hạn request, hiện lỗi và fallback file local; không retry khi bị rate-limit/block.
 - [Máy local tắt khi tới lịch] → Không hứa chạy khi máy ngủ; đánh dấu lịch bị lỡ và yêu cầu user chọn lịch lại hoặc đăng tay.
 - [Timeout sau external side effect] → Giữ `OutcomeUnknown`, reconcile trước retry, dùng idempotency key/claim guard và lưu `ManualOutcomeConfirmed` riêng.
