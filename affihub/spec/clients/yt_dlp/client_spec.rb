@@ -11,26 +11,18 @@ RSpec.describe YtDlp::Client, type: :client do
     let(:proxy_url) { "http://127.0.0.1:8899" }
     let(:url) { "https://www.youtube.com/watch?v=video-123" }
     let(:original_path) { ENV.fetch("PATH") }
-    let(:original_arguments_path) { ENV["YT_DLP_ARGUMENTS_PATH"] }
-
     before do
       executable = File.join(directory, "yt-dlp")
       File.write(executable, <<~SCRIPT)
-        #!/bin/sh
-        printf '%s\\n' "$@" > "$YT_DLP_ARGUMENTS_PATH"
+        #!/usr/bin/env ruby
+        File.write(#{arguments_path.dump}, ARGV.join("\\n"))
       SCRIPT
       FileUtils.chmod(0o755, executable)
       ENV["PATH"] = "#{directory}:#{original_path}"
-      ENV["YT_DLP_ARGUMENTS_PATH"] = arguments_path
     end
 
     after do
       ENV["PATH"] = original_path
-      if original_arguments_path
-        ENV["YT_DLP_ARGUMENTS_PATH"] = original_arguments_path
-      else
-        ENV.delete("YT_DLP_ARGUMENTS_PATH")
-      end
       FileUtils.remove_entry(directory)
     end
 
