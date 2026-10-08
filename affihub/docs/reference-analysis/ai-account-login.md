@@ -50,6 +50,13 @@ Hạn mức ChatGPT plan không phải báo giá tiền từng lượt và khôn
 - Client ID/secret của ứng dụng được lưu trong `affihub/.env` (file local bị Git ignore, quyền `0600`); user access/refresh token và mật khẩu không nằm trong file này. Billing chưa liên kết.
 - Gemini OAuth quickstart xác nhận bearer-token cho `GET /v1/models` cùng `x-goog-user-project`, và ví dụ Python đưa OAuth credentials vào Google Gen AI SDK. Tuy nhiên quickstart tự giới hạn là cấu hình đơn giản cho môi trường thử nghiệm; API reference `models.generateContent` hiện minh họa API key và không có request REST OAuth tương ứng. Cần smoke test thực tế bằng OAuth Web client cho `generateContent`, kiểm tra scope/refresh/quota/billing, trước khi bật Gemini hoặc đánh dấu đường inference đã xác minh.
 - Tài liệu OpenAI hiện xác nhận dynamic registration cho app local/OSS không cần static client ID hay client secret. Chưa hoàn tất callback thật, chưa biết account có cấp scope/model ChatGPT plan usage hay không; chưa ghi nhận runtime inference.
-- OpenAI docs không công bố Codex OAuth riêng cho app bên thứ ba. 9Router commit đã pin mô phỏng Codex CLI OAuth và dùng private backend inference; AffiHub chưa thực hiện callback Codex, không dùng backend inference đó và không coi việc nhận token là quyền model.
+- OpenAI docs không công bố Codex OAuth riêng cho app bên thứ ba. 9Router commit đã pin mô phỏng Codex CLI OAuth và dùng private backend inference; AffiHub chỉ dùng callback/token exchange để xác minh đăng nhập, không dùng backend inference đó và không coi việc nhận token là quyền model.
 - Trước khi nhận được yêu cầu chuyển sang Codex, đã bấm đồng ý trên consent ChatGPT cá nhân nhưng callback SIWC bị state mismatch; AffiHub không lưu OpenAI connection và không gửi prompt/inference. Không xem lần đó là smoke Codex.
 - Session cookie của Rails không dùng chung giữa `localhost` và `127.0.0.1`. OpenAI callback yêu cầu loopback `127.0.0.1`; OAuth Web client Gemini hiện cấu hình `localhost`. Trang kết nối chỉ khởi tạo từng OAuth flow trên đúng host của callback và cung cấp liên kết đổi host; controller/service vẫn kiểm tra origin trước khi bắt đầu.
+
+## Kết quả smoke Codex auth-only ngày 2026-10-08
+
+- Chọn Codex trong AffiHub, mở consent Codex tại OpenAI và chọn workspace `Personal account`; callback `http://localhost:1455/auth/callback` hoàn tất token exchange và xác minh ID token.
+- Rails lưu một connection riêng `provider=codex`, trạng thái `pending_verification`, bốn scope đăng nhập, không có model list. Access/refresh/ID token đã mã hóa trong database local.
+- Không gửi prompt, không gọi model list, quota hoặc private Codex backend. Kết quả chỉ xác nhận callback và lưu token; không chứng minh entitlement, quyền inference, quota hay contract OpenAI cho ứng dụng bên thứ ba.
+- Authorization URL gửi `codex_cli_simplified_flow=true` theo reference; bỏ `originator=codex_cli_rs` vì AffiHub không giả danh Codex CLI.
