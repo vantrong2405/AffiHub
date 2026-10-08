@@ -77,7 +77,9 @@
                 <%= workflow_status_badge(ai_provider_connection.status, resource: "ai_provider_connection") %>
               </div>
               <p class="text-sm text-base-content/70">
-                <% if ai_provider_connection.provider == "gemini" %>
+                <% if ai_provider_connection.provider == "gemini" && ai_provider_connection.scope_missing? %>
+                  Tài khoản chưa cấp scope Gemini API cần thiết.
+                <% elsif ai_provider_connection.provider == "gemini" %>
                   Inference, quota và giá của project vẫn đang chờ xác minh.
                 <% elsif ai_provider_connection.provider == "codex" %>
                   Đã xác thực tài khoản; quyền model và quota chưa được xác minh.

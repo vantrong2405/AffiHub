@@ -28,7 +28,11 @@
     <div class="alert alert-warning" role="status">
       <div>
         <h2 class="font-semibold">Tài khoản chưa cấp quyền dùng model</h2>
-        <p class="text-sm">Đăng nhập hợp lệ chưa chứng minh tài khoản được phép gọi Responses API theo gói ChatGPT.</p>
+        <% if @ai_provider_connection.provider == "gemini" %>
+          <p class="text-sm">Tài khoản Google chưa cấp scope Gemini API cần thiết. Đăng nhập lại và cấp quyền trước khi dùng model.</p>
+        <% else %>
+          <p class="text-sm">Đăng nhập hợp lệ chưa chứng minh tài khoản được phép gọi Responses API theo gói ChatGPT.</p>
+        <% end %>
       </div>
     </div>
   <% elsif @ai_provider_connection.reauth_required? %>

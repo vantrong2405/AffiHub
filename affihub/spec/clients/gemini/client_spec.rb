@@ -137,6 +137,20 @@ RSpec.describe Gemini::Client, type: :service do
       expect(response.fetch("access_token")).to eq("rotated-gemini-token")
       expect(refresh_request).to have_been_requested.once
     end
+
+    it "exposes only the safe invalid-grant code when a refresh token is revoked" do
+      stub_request(:post, "https://oauth2.googleapis.com/token")
+        .to_return(
+          status: 400,
+          body: { error: "invalid_grant", error_description: "private Google token detail" }.to_json
+        )
+
+      expect do
+        client.refresh_token(refresh_token: "revoked-gemini-refresh-token")
+      end.to raise_error(described_class::Error, "invalid_grant") { |error|
+        expect(error.message).not_to include("private Google token detail")
+      }
+    end
   end
 
   describe "#revoke_token" do

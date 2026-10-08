@@ -52,6 +52,34 @@ RSpec.describe AiProviderConnections::UpdateService, type: :service do
       expect(service.errors.full_messages).to include("Model này không có trong danh sách của kết nối.")
     end
 
+    it "rejects a Gemini model that exists only in another Google account's catalog" do
+      selected_connection = create(
+        :ai_provider_connection,
+        provider: "gemini",
+        provider_subject: "google-model-owner-a",
+        provider_client_id: "gemini-web-client",
+        available_models: [ { "slug" => "models/gemini-flash-a", "display_name" => "Gemini Flash A" } ],
+        selected_model: "models/gemini-flash-a"
+      )
+      other_connection = create(
+        :ai_provider_connection,
+        provider: "gemini",
+        provider_subject: "google-model-owner-b",
+        provider_client_id: "gemini-web-client",
+        available_models: [ { "slug" => "models/gemini-pro-b", "display_name" => "Gemini Pro B" } ],
+        selected_model: "models/gemini-pro-b"
+      )
+      service = described_class.new(
+        ai_provider_connection_id: selected_connection.id,
+        selected_model: other_connection.selected_model
+      )
+
+      expect(service.call).to be(false)
+      expect(selected_connection.reload.selected_model).to eq("models/gemini-flash-a")
+      expect(other_connection.reload.selected_model).to eq("models/gemini-pro-b")
+      expect(service.errors.full_messages).to include("Model này không có trong danh sách của kết nối.")
+    end
+
     it "rejects a model absent from this connection and preserves the current selection" do
       service = described_class.new(
         ai_provider_connection_id: ai_provider_connection.id,

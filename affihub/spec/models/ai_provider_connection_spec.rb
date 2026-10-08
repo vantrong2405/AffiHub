@@ -53,6 +53,31 @@ RSpec.describe AiProviderConnection, type: :model do
       expect(persisted_connection.read_attribute_before_type_cast(:refresh_token)).not_to include("openai-refresh-secret")
       expect(persisted_connection.read_attribute_before_type_cast(:id_token)).not_to include("openai-id-secret")
     end
+
+    it "encrypts Gemini account credentials at rest" do
+      connection = create(
+        :ai_provider_connection,
+        provider: "gemini",
+        provider_client_id: "gemini-web-client",
+        access_token: "gemini-private-access-token",
+        refresh_token: "gemini-private-refresh-token",
+        id_token: "gemini-private-id-token",
+        scopes: [ "https://www.googleapis.com/auth/generative-language.retriever" ],
+        available_models: [],
+        selected_model: nil,
+        status: :pending_verification
+      )
+      persisted_connection = described_class.find(connection.id)
+
+      expect(persisted_connection).to have_attributes(
+        access_token: "gemini-private-access-token",
+        refresh_token: "gemini-private-refresh-token",
+        id_token: "gemini-private-id-token"
+      )
+      expect(persisted_connection.read_attribute_before_type_cast(:access_token)).not_to include("gemini-private-access-token")
+      expect(persisted_connection.read_attribute_before_type_cast(:refresh_token)).not_to include("gemini-private-refresh-token")
+      expect(persisted_connection.read_attribute_before_type_cast(:id_token)).not_to include("gemini-private-id-token")
+    end
   end
 
   describe "provider identity" do

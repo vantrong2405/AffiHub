@@ -121,7 +121,10 @@ class Gemini::Client
       open_timeout: @configuration.fetch(:connect_timeout_seconds),
       read_timeout: @configuration.fetch(:read_timeout_seconds)
     ) { |http| http.request(http_request) }
-    raise Error, "http_#{response.code}" unless response.is_a?(Net::HTTPSuccess)
+    unless response.is_a?(Net::HTTPSuccess)
+      error_code = provider_error_code(response.body)
+      raise Error, error_code || "http_#{response.code}"
+    end
 
     JSON.parse(response.body.presence || "{}")
   rescue JSON::ParserError
@@ -130,5 +133,16 @@ class Gemini::Client
     raise Error, "network_request_failed"
   rescue URI::InvalidURIError
     raise Error, "invalid_endpoint"
+  end
+
+  def provider_error_code(response_body)
+    payload = JSON.parse(response_body.presence || "{}")
+    error_code = payload["error"]
+    error_code = error_code["status"] if error_code.is_a?(Hash)
+    return error_code if %w[invalid_grant invalid_client invalid_scope access_denied].include?(error_code)
+
+    nil
+  rescue JSON::ParserError
+    nil
   end
 end

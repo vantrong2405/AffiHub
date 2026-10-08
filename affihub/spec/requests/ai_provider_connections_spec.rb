@@ -64,5 +64,33 @@ RSpec.describe "AI provider connection pages", type: :request do
       expect(response).to redirect_to(ai_provider_connections_path)
       expect(flash[:alert]).to eq("OAuth state đã hết hạn, đã dùng hoặc thuộc phiên khác.")
     end
+
+    it "explains when Google did not grant the Gemini API scope" do
+      connection = create(
+        :ai_provider_connection,
+        provider: "gemini",
+        provider_subject: "google-user-without-api-scope",
+        provider_client_id: "gemini-web-client",
+        scopes: %w[openid email profile],
+        available_models: [],
+        selected_model: nil,
+        status: :scope_missing
+      )
+      service = instance_double(
+        AiProviderCallbacks::ShowService,
+        success?: true,
+        errors: ActiveModel::Errors.new(connection),
+        ai_provider_connection: connection
+      )
+      allow(service).to receive(:call).and_return(true)
+      allow(AiProviderCallbacks::ShowService).to receive(:new).and_return(service)
+
+      get ai_provider_callback_path
+
+      expect(response).to redirect_to(ai_provider_connection_path(connection))
+      expect(flash[:notice]).to eq(
+        "Đã đăng nhập Google nhưng chưa cấp scope Gemini API cần thiết. Hãy cấp quyền rồi kết nối lại."
+      )
+    end
   end
 end

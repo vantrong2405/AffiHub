@@ -13,7 +13,11 @@ class AiProviderCallbacksController < MainController
 
     connection = service.ai_provider_connection
     notice = if connection.provider == "gemini"
-      "Đã kết nối Gemini API. Tài khoản đang chờ xác minh quyền và hạn mức trước khi tạo nội dung."
+      if connection.scope_missing?
+        "Đã đăng nhập Google nhưng chưa cấp scope Gemini API cần thiết. Hãy cấp quyền rồi kết nối lại."
+      else
+        "Đã kết nối Gemini API. Tài khoản đang chờ xác minh quyền và hạn mức trước khi tạo nội dung."
+      end
     elsif connection.provider == "codex"
       "Đã xác thực tài khoản Codex. Quyền tạo nội dung chưa được xác minh; AffiHub chưa gửi yêu cầu model."
     elsif connection.scope_missing?

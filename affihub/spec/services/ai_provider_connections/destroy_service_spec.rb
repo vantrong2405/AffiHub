@@ -51,5 +51,32 @@ RSpec.describe AiProviderConnections::DestroyService, type: :service do
         expect(AiProviderConnection.exists?(connection_id)).to be(false)
       end
     end
+
+    context "when disconnecting a Gemini connection" do
+      let(:ai_provider_connection) do
+        create(
+          :ai_provider_connection,
+          provider: "gemini",
+          provider_client_id: "gemini-web-client",
+          status: :pending_verification,
+          available_models: [],
+          selected_model: nil
+        )
+      end
+      let(:gemini_client) { instance_double(Gemini::Client, revoke_token: true) }
+
+      before do
+        allow(Gemini::Client).to receive(:new).and_return(gemini_client)
+      end
+
+      it "revokes the Google credential and removes the local connection" do
+        connection_id = ai_provider_connection.id
+        service = described_class.new(ai_provider_connection_id: connection_id)
+
+        expect(service.call).to be(true)
+        expect(AiProviderConnection.exists?(connection_id)).to be(false)
+        expect(gemini_client).to have_received(:revoke_token).with(refresh_token: "provider-refresh-token")
+      end
+    end
   end
 end

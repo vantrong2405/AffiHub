@@ -111,5 +111,26 @@ RSpec.describe AiGenerations::CreateEstimateService, type: :service do
         expect(second_estimate_request).not_to have_been_requested
       end
     end
+
+    context "when Gemini is selected without verified project pricing" do
+      let(:input_snapshot) do
+        super().merge(llm_provider: "gemini", llm_model: "models/gemini-3.8-flash")
+      end
+
+      it "keeps the Gemini cost unknown and does not report a zero-cost total" do
+        service.call
+
+        estimate = ai_generation.reload.estimate_snapshot.deep_symbolize_keys
+
+        expect(estimate.dig(:cost_breakdown, :llm)).to include(
+          amount: nil,
+          provider: "LLM",
+          source: "unknown"
+        )
+        expect(estimate.dig(:cost_breakdown, :unknown, :source)).to include("llm")
+        expect(estimate.fetch(:required_costs_known)).to be(false)
+        expect(estimate.fetch(:total_amount)).to be_nil
+      end
+    end
   end
 end

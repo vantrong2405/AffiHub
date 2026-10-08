@@ -196,7 +196,7 @@ class AiProviderCallbacks::ShowService < ApplicationService
       return
     end
 
-    @status = if @provider == "openai" && (@required_scopes - @granted_scopes).any?
+    @status = if (@required_scopes - @granted_scopes).any?
       "scope_missing"
     elsif @provider == "gemini"
       "pending_verification"

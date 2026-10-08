@@ -327,6 +327,23 @@ RSpec.describe AiProviderCallbacks::ShowService, type: :service do
       expect(connection.refresh_token).to eq("gemini-refresh-secret")
     end
 
+    it "does not list Gemini models when OAuth did not grant the required API scope" do
+      allow(gemini_client).to receive(:exchange_code).and_return(
+        gemini_token_response.merge("scope" => "openid email profile")
+      )
+
+      expect(service.call).to be(true)
+
+      connection = AiProviderConnection.find_by!(provider: "gemini", provider_subject: "google-user-456")
+
+      expect(connection).to have_attributes(
+        status: "scope_missing",
+        scopes: %w[openid email profile],
+        available_models: []
+      )
+      expect(gemini_client).not_to have_received(:list_models)
+    end
+
     it "does not persist a Gemini token when the ID token nonce is invalid" do
       allow(gemini_client).to receive(:verify_id_token).and_return(gemini_identity.merge("nonce" => "wrong-nonce"))
 
@@ -369,6 +386,37 @@ RSpec.describe AiProviderCallbacks::ShowService, type: :service do
       expect(service.call).to be(true)
       expect(replay_service.call).to be(false)
       expect(gemini_client).to have_received(:exchange_code).once
+    end
+
+    it "does not replace the selected Google account when reauthorization returns another identity" do
+      saved_connection = create(
+        :ai_provider_connection,
+        provider: "gemini",
+        provider_subject: "google-user-456",
+        provider_client_id: "gemini-web-client",
+        status: :pending_verification,
+        available_models: gemini_models,
+        selected_model: "models/gemini-3.8-flash",
+        access_token: "saved-gemini-access-token"
+      )
+      attempt = gemini_session.fetch("ai_provider_oauth_attempts").fetch(Digest::SHA256.hexdigest(gemini_state))
+      attempt["connection_id"] = saved_connection.id
+      allow(gemini_client).to receive(:verify_id_token).and_return(
+        gemini_identity.merge("sub" => "another-google-user")
+      )
+      reauthorization_service = described_class.new(
+        params: { "state" => gemini_state, "code" => "google-authorization-code" },
+        session: gemini_session,
+        callback_url: gemini_callback_uri
+      )
+
+      expect(reauthorization_service.call).to be(false)
+      expect(saved_connection.reload).to have_attributes(
+        provider_subject: "google-user-456",
+        access_token: "saved-gemini-access-token"
+      )
+      expect(AiProviderConnection.count).to eq(1)
+      expect(gemini_client).not_to have_received(:list_models)
     end
   end
 
