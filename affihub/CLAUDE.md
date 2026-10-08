@@ -33,6 +33,7 @@ This workspace also uses **OpenSpec** for spec-driven change proposals, tracked 
 
 - **Specs, proposals, design docs, tasks, commit/PR descriptions, chat/explanations to the user:** Vietnamese. Keep technical terms (class/model/method names, file paths, repo names, API field names) in English inside Vietnamese text.
 - **Code: Ruby, RSpec, views, config, comments in code:** English, always.
+- **Customer-facing copy:** write ordinary Vietnamese notices, errors, and help text directly in the Ruby or ERB file that uses them. Keep YAML/`Rails.application.config_for` for configurable provider values, statuses/defaults, limits, and rules; do not add `messages` mappings for ordinary copy.
 
 ## Ruby readability conventions
 
@@ -91,8 +92,11 @@ interactions that have behavior beyond visual styling.
   Start with `returns`, `raises`, `redirects`, `enqueues`, or another accurate verb as appropriate;
   do not force every description to start with `returns`.
 - Keep expected values close to the example that asserts them. Compare an exact deterministic result
-  with `eq`; use containment or collection matchers when the contract is partial membership, and make
-  ordering explicit when order matters. Do not use a partial matcher as a shortcut for an exact result.
+  with `eq`. In new or changed specs, do not use RSpec's `include`, `hash_including`, or
+  `a_string_including` matchers; compare the full result with `eq`, or select the contract fields with
+  `slice` and compare that projection with `eq`. Use `match_array` only when collection order is
+  explicitly unspecified. Begin return-value examples with `returns ...`; use accurate verbs such as
+  `raises`, `rejects`, `persists`, or `enqueues` for other outcomes.
 - Prefer real application collaborators and FactoryBot records when testing integrated behavior.
   Stubbing an application service at a request/controller boundary is acceptable when the example is
   specifically testing how that boundary handles the service result; cover the service behavior in its
