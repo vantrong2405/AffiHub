@@ -19,7 +19,8 @@ RSpec.describe SourceAssets::DownloadEgressProxy, type: :service do
       allow(Resolv).to receive(:getaddresses).with("www.youtube.com").and_return([ "142.251.35.4" ])
       upstream_handler
       upstream_socket = TCPSocket.new("127.0.0.1", upstream_server.addr[1])
-      allow(Socket).to receive(:tcp).with("142.251.35.4", 443, anything).and_return(upstream_socket)
+      allow(Socket).to receive(:tcp).with("142.251.35.4", 443, nil, connect_timeout: 5)
+        .and_return(upstream_socket)
       uri = URI.parse(proxy_url)
       @proxy_client = TCPSocket.new(uri.host, uri.port)
       @proxy_client.write("CONNECT www.youtube.com:443 HTTP/1.1\r\nHost: www.youtube.com:443\r\n\r\n")
@@ -38,7 +39,7 @@ RSpec.describe SourceAssets::DownloadEgressProxy, type: :service do
       @proxy_client.write("hello")
 
       expect(@proxy_client.read(5)).to eq("hello")
-      expect(Socket).to have_received(:tcp).with("142.251.35.4", 443, anything)
+      expect(Socket).to have_received(:tcp).with("142.251.35.4", 443, nil, connect_timeout: 5)
     end
   end
 
@@ -57,7 +58,7 @@ RSpec.describe SourceAssets::DownloadEgressProxy, type: :service do
     it "connects to a resolved public IP for an allowlisted HTTPS host" do
       proxy.open_upstream(url:)
 
-      expect(Socket).to have_received(:tcp).with("142.251.35.4", 443, anything)
+      expect(Socket).to have_received(:tcp).with("142.251.35.4", 443, nil, connect_timeout: 5)
     end
 
     context "when the request uses HTTP" do
@@ -193,6 +194,39 @@ RSpec.describe SourceAssets::DownloadEgressProxy, type: :service do
       end
     end
 
+    context "when DNS resolves to the IPv6 NAT64 prefix" do
+      let(:addresses) { [ "64:ff9b::a9fe:a9fe" ] }
+
+      it "rejects a translated private destination without opening an upstream connection" do
+        expect { proxy.open_upstream(url:) }
+          .to raise_error(described_class::BlockedDestination)
+
+        expect(Socket).not_to have_received(:tcp)
+      end
+    end
+
+    context "when DNS resolves to an IPv6 documentation address from 3fff::/20" do
+      let(:addresses) { [ "3fff::1" ] }
+
+      it "rejects the reserved address without opening an upstream connection" do
+        expect { proxy.open_upstream(url:) }
+          .to raise_error(described_class::BlockedDestination)
+
+        expect(Socket).not_to have_received(:tcp)
+      end
+    end
+
+    context "when DNS resolves to a non-global IPv6 special-purpose address" do
+      let(:addresses) { [ "100:0:0:1::1" ] }
+
+      it "rejects the address without opening an upstream connection" do
+        expect { proxy.open_upstream(url:) }
+          .to raise_error(described_class::BlockedDestination)
+
+        expect(Socket).not_to have_received(:tcp)
+      end
+    end
+
     context "when DNS resolves to a cloud metadata address" do
       let(:addresses) { [ "169.254.169.254" ] }
 
@@ -259,7 +293,8 @@ RSpec.describe SourceAssets::DownloadEgressProxy, type: :service do
         proxy.open_upstream(url:)
 
         expect(Resolv).to have_received(:getaddresses).with("www.youtube.com").once
-        expect(Socket).to have_received(:tcp).with("142.251.35.4", 443, anything).once
+        expect(Socket).to have_received(:tcp)
+          .with("142.251.35.4", 443, nil, connect_timeout: 5).once
       end
     end
   end
