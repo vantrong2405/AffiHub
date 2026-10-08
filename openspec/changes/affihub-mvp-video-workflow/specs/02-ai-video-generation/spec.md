@@ -9,6 +9,8 @@ Cho phép người dùng tạo nội dung video qua pipeline AI đã chọn, duy
 ### Requirement: Kết nối LLM bằng đăng nhập tài khoản được cấp quyền
 AffiHub MUST hiển thị bốn lựa chọn AI: ChatGPT, Codex, Gemini, Antigravity; MUST dùng đăng nhập tài khoản thay cho ô API key LLM. ChatGPT/Codex MUST dùng chung Sign in with ChatGPT khi ứng dụng/tài khoản đủ điều kiện ChatGPT plan usage; Codex là lựa chọn model/khả năng, không phải OAuth provider riêng. Gemini MUST dùng Google OAuth chính thức cho Gemini API của project AffiHub, không dùng phiên Gemini CLI. Antigravity MUST hiển thị chưa khả dụng và không khởi tạo OAuth khi chưa có contract Google cho bên thứ ba. Credential được phép MUST mã hóa và tách khỏi credential MPT/MuAPI/stock/TTS phía máy chủ. Thiếu kết nối đủ quyền MUST chỉ chặn tạo script/scene LLM; import/edit/render/export local vẫn hoạt động.
 
+Connection MUST lưu các model do API đã xác thực trả về. `AiProviderConnections#update` MUST chỉ đổi selected model sang model đang có trong danh sách của chính connection; model không có quyền hoặc không thuộc danh sách MUST giữ nguyên lựa chọn cũ.
+
 #### Scenario: Kết nối ChatGPT được cấp quyền dùng AI
 - **WHEN** ứng dụng và tài khoản đủ điều kiện, người dùng hoàn tất OAuth và chấp thuận scope dùng ChatGPT plan
 - **THEN** AffiHub kiểm chứng ID token, scope được cấp, lưu connection/token mã hóa và cho người dùng chọn model thuộc tài khoản đó mà không yêu cầu OpenAI API key
@@ -28,6 +30,14 @@ AffiHub MUST hiển thị bốn lựa chọn AI: ChatGPT, Codex, Gemini, Antigra
 #### Scenario: Ngắt kết nối LLM
 - **WHEN** người dùng ngắt kết nối tài khoản LLM đang dùng
 - **THEN** AffiHub vô hiệu credential và khóa yêu cầu LLM mới, còn project/source/render đã lưu vẫn truy cập được
+
+#### Scenario: Chọn model thuộc connection
+- **WHEN** người dùng lưu một model do API đã xác thực trả về cho connection đó
+- **THEN** AffiHub lưu model làm lựa chọn hiện tại và snapshot provider/model vào generation mới
+
+#### Scenario: Chọn model không được cấp
+- **WHEN** người dùng gửi model không thuộc danh sách của connection
+- **THEN** AffiHub từ chối cập nhật, giữ lựa chọn cũ và không gọi LLM
 
 ### Requirement: Gemini API OAuth và gate Antigravity
 AffiHub MUST chỉ bật Gemini sau khi có Google Cloud project/OAuth client dành cho AffiHub, scope/consent phù hợp, quota/billing được xác minh và request Gemini API thật thành công. AffiHub MUST NOT dùng token Gemini CLI hoặc endpoint Cloud Code Assist nội bộ. AffiHub MUST NOT khởi tạo Antigravity OAuth khi Google chưa có contract cho tích hợp bên thứ ba của AffiHub.

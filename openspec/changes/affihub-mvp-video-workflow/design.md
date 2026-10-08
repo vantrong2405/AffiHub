@@ -102,7 +102,7 @@ resources :social_connections, only: %i[index show new create destroy] do
   resources :social_destinations, only: %i[index show create update destroy]
 end
 
-resources :ai_provider_connections, only: %i[index show create destroy]
+resources :ai_provider_connections, only: %i[index show create update destroy]
 resources :google_connections, only: %i[index show new create edit update destroy]
 resources :auto_reply_rules, only: %i[index show new create edit update destroy]
 resources :auto_reply_logs, only: %i[index show]
@@ -158,7 +158,7 @@ Trên màn hình hẹp, các vùng xếp theo thứ tự preview → trạng th�
 | Danh sách/tạo project | `VideoProjects#index`, `new`, `create`, `edit`, `update`, `destroy` | `video_projects/index.html.erb`, `new.html.erb`, `edit.html.erb`, `_form.html.erb` | Liệt kê theo tên/trạng thái; tạo hoặc đổi tên project; chỉ xóa project chưa có source/render và giữ lỗi validation trên form. |
 | Project workspace | `VideoProjects#show` | `video_projects/show.html.erb` | Hiển thị tiến độ, source/version hiện có; dẫn tới tạo `SourceAsset` hoặc `SourceDiscovery`. |
 | Tạo video AI | `AiGenerations#new`, `create`, `edit`, `update` | `ai_generations/new.html.erb`, `edit.html.erb`, `_form.html.erb` | Wizard text-to-video theo thứ tự chủ đề/thông số → duyệt script → duyệt từng scene prompt → báo giá/ngân sách/consent. Lưu input và estimate trong `AiGeneration` để tiếp tục an toàn; mọi thay đổi script/prompt phải xóa estimate cũ. |
-| Kết nối LLM | `AiProviderConnections#index`, `create`, `show`, `destroy`; callback giao thức `AiProviderCallbacks#show` | `ai_provider_connections/index.html.erb`, `show.html.erb` | Bốn lựa chọn ChatGPT, Codex, Gemini, Antigravity. ChatGPT/Codex dùng chung OpenAI connection; Gemini dùng Gemini API OAuth; Antigravity ghi chưa khả dụng và không có OAuth. Xem tài khoản/model, quyền, hạn mức và ngắt kết nối; không có ô API key LLM. |
+| Kết nối LLM | `AiProviderConnections#index`, `create`, `show`, `update`, `destroy`; callback giao thức `AiProviderCallbacks#show` | `ai_provider_connections/index.html.erb`, `show.html.erb` | Bốn lựa chọn ChatGPT, Codex, Gemini, Antigravity. ChatGPT/Codex dùng chung OpenAI connection; Gemini dùng Gemini API OAuth; Antigravity ghi chưa khả dụng và không có OAuth. Xem tài khoản/model, quyền, hạn mức và ngắt kết nối; `update` chỉ lưu model có trong danh sách provider trả cho connection đó; không có ô API key LLM. |
 | Theo dõi video AI | `AiGenerations#show` | `ai_generations/show.html.erb` | Hiển thị trạng thái thật của MPT, output, provider/cost TTS fallback và kết quả đối soát. `OutcomeUnknown` không có retry thường; chỉ đưa các lựa chọn reconcile có bằng chứng/audit. Project workspace liệt kê generation gần nhất và trạng thái. |
 | Import file hoặc URL | `SourceAssets#new`, `create`, `show` | `source_assets/new.html.erb`, `_form.html.erb`, `show.html.erb` | Hai lựa chọn trong cùng biểu mẫu; `create` enqueue kiểm tra nền; `show` hiển thị provenance, metadata và trạng thái xử lý. |
 | Tìm video | `SourceDiscoveries#new`, `create`, `show` | `source_discoveries/new.html.erb`, `show.html.erb` | Dùng endpoint chính thức để tìm metadata, hiển thị nguồn/kết quả và attribution. Khi người dùng chọn kết quả, gửi URL cùng metadata discovery tới `SourceAssets#create`; worker dùng `yt-dlp` best-effort để tải media, kể cả YouTube. Nếu tải lỗi, hiển thị lý do và hướng dẫn import file. Không dùng `yt-dlp` để tìm kiếm hoặc scrape feed. |
