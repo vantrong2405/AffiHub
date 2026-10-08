@@ -24,14 +24,11 @@ class SourceAssetsController < MainController
   def create
     project_service = SourceAssets::NewService.new(video_project_id: params[:video_project_id])
     project_service.call
-    service = SourceAssets::CreateService.new(
-      video_project: project_service.video_project,
-      file: source_asset_params[:file]
-    )
+    service = step_create_service(project_service.video_project)
     service.call
     @video_project = service.video_project
 
-    render_service(service, failure: :new, notice: "Đã nhận file. Đang kiểm tra video.") do
+    render_service(service, failure: :new, notice: step_success_notice(service)) do
       video_project_source_asset_path(service.video_project, service.source_asset)
     end
   end
@@ -51,7 +48,38 @@ class SourceAssetsController < MainController
 
   private
 
+  def step_create_service(video_project)
+    return SourceAssets::CreateService.new(video_project:, file: source_asset_params[:file]) if source_asset_params[:file].present?
+
+    if source_asset_params[:youtube_discovery_metadata_id].present?
+      return SourceAssets::CreateFromYoutubeResultService.new(
+        video_project:,
+        source_discovery_id: source_asset_params[:source_discovery_id],
+        discovery_metadata_id: source_asset_params[:youtube_discovery_metadata_id],
+        rights_confirmed: source_asset_params[:rights_confirmed]
+      )
+    end
+
+    SourceAssets::CreateFromUrlService.new(
+      video_project:,
+      url: source_asset_params[:url],
+      rights_confirmed: source_asset_params[:rights_confirmed]
+    )
+  end
+
   def source_asset_params
-    params.require(:source_asset).permit(:file)
+    params.require(:source_asset).permit(
+      :file,
+      :url,
+      :rights_confirmed,
+      :source_discovery_id,
+      :youtube_discovery_metadata_id
+    )
+  end
+
+  def step_success_notice(service)
+    return "Đã nhận yêu cầu tải video. Worker sẽ xử lý trong nền." if service.source_asset&.source_type == "url_download"
+
+    "Đã nhận file. Đang kiểm tra video."
   end
 end

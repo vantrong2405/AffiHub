@@ -44,16 +44,17 @@ module Youtube
     # @param region_code [String] ISO country code used for the chart
     # @param video_category_id [String] YouTube video category identifier
     # @return [Array<Hash>] normalized video metadata and attribution URLs
-    def popular_videos(region_code:, video_category_id:)
+    def popular_videos(region_code:, video_category_id: nil)
+      params = {
+        part: "snippet",
+        chart: "mostPopular",
+        regionCode: region_code,
+        maxResults: CONFIGURATION.fetch(:max_results)
+      }
+      params[:videoCategoryId] = video_category_id if video_category_id.present?
       response = request(
         endpoint: CONFIGURATION.fetch(:videos_endpoint),
-        params: {
-          part: "snippet",
-          chart: "mostPopular",
-          regionCode: region_code,
-          videoCategoryId: video_category_id,
-          maxResults: CONFIGURATION.fetch(:max_results)
-        }
+        params:
       )
       step_map_videos(response.fetch("items", []), search_results: false)
     end

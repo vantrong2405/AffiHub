@@ -7,6 +7,7 @@ class Youtube::ExpireDiscoveryMetadataJob < ApplicationJob
   #
   # @return [Integer] the number of expired metadata rows deleted
   def perform
+    SourceDiscovery.where(searched_at: ..step_expiry_cutoff).delete_all
     YoutubeDiscoveryMetadata.where(fetched_at: ..step_expiry_cutoff).delete_all
   end
 

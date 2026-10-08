@@ -12,7 +12,7 @@ module WorkflowStatusHelper
       "badge-error"
     when "processing", "running", "submitting"
       "badge-info"
-    when "pending", "queued", "draft", "prepared", "manual_outcome_not_occurred"
+    when "pending", "waiting_for_download_slot", "queued", "draft", "prepared", "manual_outcome_not_occurred"
       "badge-warning"
     else
       "badge-neutral"

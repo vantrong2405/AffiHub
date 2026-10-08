@@ -6,6 +6,26 @@ shared:
   videos_endpoint: videos
   default_region_code: VN
   max_results: 25
+  discovery:
+    max_query_characters: 100
+    search_types:
+      keyword: keyword
+      regional_popular: regional_popular
+    regions:
+      VN: Việt Nam
+      US: Hoa Kỳ
+      JP: Nhật Bản
+      KR: Hàn Quốc
+    video_categories:
+      "10": Âm nhạc
+      "17": Thể thao
+      "20": Trò chơi
+      "22": Con người và Blog
+      "23": Hài
+      "24": Giải trí
+      "26": Hướng dẫn và Phong cách
+      "27": Giáo dục
+      "28": Khoa học và Công nghệ
   open_timeout_seconds: 10
   read_timeout_seconds: 30
   metadata_ttl_days: 30

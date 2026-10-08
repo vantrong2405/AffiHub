@@ -1,14 +1,11 @@
 <%= form_with url: video_project_source_assets_path(@video_project), scope: :source_asset, multipart: true, class: "card border border-base-300 bg-base-100" do |form| %>
-  <div class="card-body gap-5">
+  <div class="card-body gap-4 p-4 sm:p-5">
     <div class="form-control w-full">
       <%= form.label :file, "File video", class: "label font-medium" %>
-      <%= form.file_field :file, accept: "video/mp4,video/quicktime,.mp4,.mov", required: true, class: "file-input file-input-bordered w-full" %>
+      <%= form.file_field :file, accept: "video/mp4,video/quicktime,.mp4,.mov", required: true, class: "file-input file-input-bordered h-11 min-h-11 w-full md:h-10 md:min-h-10" %>
       <p class="mt-2 text-sm text-base-content/60">Định dạng được xác minh lại trên server trước khi lưu.</p>
     </div>
 
-    <div class="card-actions flex-col-reverse justify-end sm:flex-row">
-      <%= link_to "Hủy", video_project_path(@video_project), class: "btn btn-ghost w-full sm:w-auto" %>
-      <%= form.submit "Tải file và kiểm tra", class: "btn btn-primary w-full sm:w-auto" %>
-    </div>
+    <%= form.submit "Tải file và kiểm tra", class: "btn btn-primary h-11 min-h-11 w-full md:h-10 md:min-h-10", data: { turbo_submits_with: "Đang tải file…" } %>
   </div>
 <% end %>

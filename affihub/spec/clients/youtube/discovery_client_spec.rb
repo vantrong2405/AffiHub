@@ -75,5 +75,16 @@ RSpec.describe Youtube::DiscoveryClient, type: :client do
         }
       ])
     end
+
+    it "does not send a category filter when all categories are selected" do
+      request = stub_request(:get, "https://www.googleapis.com/youtube/v3/videos")
+        .with(query: hash_excluding("videoCategoryId"))
+        .to_return(status: 200, body: { items: [] }.to_json)
+
+      result = described_class.new.popular_videos(region_code: "VN")
+
+      expect(request).to have_been_made.once
+      expect(result).to eq([])
+    end
   end
 end

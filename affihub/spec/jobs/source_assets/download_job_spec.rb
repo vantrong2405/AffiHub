@@ -40,11 +40,11 @@ RSpec.describe SourceAssets::DownloadJob, type: :job do
         create_list(:source_download_slot, 10, started_at: 30.minutes.ago)
       end
 
-      it "keeps the source pending and schedules it for the next available slot" do
+      it "marks the source as waiting for its slot and schedules it for the next available slot" do
         described_class.perform_now(source_asset.id)
         queued_job = ActiveJob::Base.queue_adapter.enqueued_jobs.sole
 
-        expect(source_asset.reload.status).to eq("pending")
+        expect(source_asset.reload.status).to eq("waiting_for_download_slot")
         expect(queued_job[:job]).to eq(described_class)
         expect(queued_job[:args]).to eq([ source_asset.id ])
         expect(Time.at(queued_job[:at]))

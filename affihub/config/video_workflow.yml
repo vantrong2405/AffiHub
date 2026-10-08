@@ -108,6 +108,7 @@ shared:
       default: pending
       values:
         pending: pending
+        waiting_for_download_slot: waiting_for_download_slot
         processing: processing
         ready: ready
         failed: failed

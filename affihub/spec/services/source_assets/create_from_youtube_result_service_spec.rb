@@ -14,9 +14,18 @@ RSpec.describe SourceAssets::CreateFromYoutubeResultService, type: :service do
         fetched_at: 1.hour.ago
       )
     end
+    let(:source_discovery) { create(:source_discovery, video_project:) }
+    let!(:source_discovery_result) do
+      create(
+        :source_discovery_result,
+        source_discovery:,
+        youtube_discovery_metadata: discovery_metadata
+      )
+    end
     let(:service) do
       described_class.new(
         video_project:,
+        source_discovery_id: source_discovery.id,
         discovery_metadata_id: discovery_metadata.id,
         rights_confirmed: true
       )
@@ -63,6 +72,7 @@ RSpec.describe SourceAssets::CreateFromYoutubeResultService, type: :service do
       let(:service) do
         described_class.new(
           video_project:,
+          source_discovery_id: source_discovery.id,
           discovery_metadata_id: discovery_metadata.id,
           rights_confirmed: "0"
         )

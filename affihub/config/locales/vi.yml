@@ -38,6 +38,7 @@ vi:
         failed: Cần xử lý
       source_asset:
         pending: Đang chờ
+        waiting_for_download_slot: Chờ lượt tải
         processing: Đang kiểm tra
         ready: Sẵn sàng chỉnh sửa
         failed: Không đọc được

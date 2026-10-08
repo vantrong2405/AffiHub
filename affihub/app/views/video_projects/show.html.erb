@@ -20,7 +20,7 @@
     </div>
   </div>
 
-  <div class="grid gap-4 md:grid-cols-2">
+  <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
     <article class="card border border-primary/20 bg-primary/5">
       <div class="card-body justify-between gap-4 sm:flex-row sm:items-center">
         <div class="space-y-1">
@@ -44,10 +44,10 @@
     <article class="card border border-base-300 bg-base-100">
       <div class="card-body justify-between gap-4 sm:flex-row sm:items-center">
         <div class="space-y-1">
-          <h2 class="card-title">Đã có video?</h2>
-          <p class="text-sm text-base-content/70">Nhập file MP4 hoặc MOV để kiểm tra metadata trong nền.</p>
+          <h2 class="card-title">Thêm nguồn video</h2>
+          <p class="text-sm text-base-content/70">Nhập file MP4/MOV, URL cụ thể hoặc tìm metadata YouTube.</p>
         </div>
-        <%= link_to "Nhập video", new_video_project_source_asset_path(@video_project), class: "btn btn-outline w-full sm:w-auto" %>
+        <%= link_to "Chọn nguồn", new_video_project_source_asset_path(@video_project), class: "btn btn-outline w-full sm:w-auto" %>
       </div>
     </article>
   </div>
@@ -58,7 +58,7 @@
         <h2 id="ai-generations-heading" class="text-xl font-bold">Lịch sử video AI</h2>
         <p class="text-sm text-base-content/60">Các lần tạo video AI text-to-video thuộc project này.</p>
       </div>
-      <div class="grid gap-4 md:grid-cols-2">
+      <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
         <% @ai_generations.each do |ai_generation| %>
           <article class="card border border-base-300 bg-base-100">
             <div class="card-body gap-3">
@@ -98,30 +98,26 @@
     </div>
 
     <% if @source_assets.any? %>
-      <div class="grid gap-4 md:grid-cols-2">
+      <ul class="divide-y divide-base-300 rounded-box border border-base-300 bg-base-100">
         <% @source_assets.each do |source_asset| %>
-          <article class="card border border-base-300 bg-base-100 shadow-sm">
-            <div class="card-body gap-4">
-              <div class="flex items-start justify-between gap-3">
-                <div class="min-w-0 space-y-1">
-                  <h3 class="card-title text-base"><%= source_asset.file.attached? ? source_asset.file.filename : "Video import" %></h3>
-                  <p class="text-sm text-base-content/60"><%= l(source_asset.created_at, format: :short) %></p>
-                </div>
-                <%= workflow_status_badge(source_asset.status, resource: "source_asset") %>
-              </div>
-              <div class="card-actions justify-end">
-                <%= link_to "Chi tiết", video_project_source_asset_path(@video_project, source_asset), class: "btn btn-outline btn-sm" %>
-                <% if source_asset.ready? %>
-                  <%= link_to "Biên tập", new_video_project_render_version_path(@video_project, source_asset_id: source_asset.id), class: "btn btn-primary btn-sm" %>
-                <% end %>
-              </div>
+          <li class="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+            <div class="min-w-0 space-y-1">
+              <h3 class="break-all font-semibold"><%= source_asset.file.attached? ? source_asset.file.filename : source_asset.source_url.presence || "Video import" %></h3>
+              <p class="text-sm text-base-content/60"><%= l(source_asset.created_at, format: :short) %></p>
             </div>
-          </article>
+            <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <%= workflow_status_badge(source_asset.status, resource: "source_asset") %>
+              <%= link_to "Chi tiết", video_project_source_asset_path(@video_project, source_asset), class: "btn btn-outline btn-sm w-full sm:w-auto" %>
+              <% if source_asset.ready? %>
+                <%= link_to "Biên tập", new_video_project_render_version_path(@video_project, source_asset_id: source_asset.id), class: "btn btn-primary btn-sm w-full sm:w-auto" %>
+              <% end %>
+            </div>
+          </li>
         <% end %>
-      </div>
+      </ul>
     <% else %>
       <div class="rounded-box border border-dashed border-base-300 bg-base-100 p-6 text-sm text-base-content/70">
-        Chưa có source. Nhập file MP4 hoặc MOV để bắt đầu.
+        Chưa có video nguồn. Nhập file MP4/MOV, dán URL hoặc tìm metadata YouTube.
       </div>
     <% end %>
   </section>
@@ -132,7 +128,7 @@
       <p class="text-sm text-base-content/60">Mỗi lần render tạo một version riêng.</p>
     </div>
     <% if @render_versions.any? %>
-      <div class="grid gap-4 md:grid-cols-2">
+      <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
         <% @render_versions.each do |render_version| %>
           <article class="card border border-base-300 bg-base-100">
             <div class="card-body flex-row items-center justify-between gap-3">

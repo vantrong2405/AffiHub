@@ -39,7 +39,8 @@ class SourceAssets::DownloadJob < ApplicationJob
 
     claimed = false
     @source_asset.with_lock do
-      if @source_asset.pending? && @source_asset.source_type == "url_download"
+      if (@source_asset.pending? || @source_asset.waiting_for_download_slot?) &&
+          @source_asset.source_type == "url_download"
         @source_asset.update!(status: :processing, download_error_code: nil, download_error: nil)
         claimed = true
       end
@@ -51,7 +52,11 @@ class SourceAssets::DownloadJob < ApplicationJob
     reservation = SourceAssets::ReserveDownloadSlotService.new
     return true if reservation.call
 
-    @source_asset.update!(status: :pending)
+    @source_asset.update!(
+      status: :waiting_for_download_slot,
+      download_error_code: "download_slot_limit",
+      download_error: "Đã chạm giới hạn lượt tải. AffiHub sẽ thử lại khi có lượt trống."
+    )
     self.class.set(wait_until: reservation.next_available_at).perform_later(@source_asset.id)
     false
   end

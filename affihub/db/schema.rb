@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_08_110000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_08_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -201,6 +201,31 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_08_110000) do
     t.index ["video_project_id"], name: "index_source_assets_on_video_project_id"
   end
 
+  create_table "source_discoveries", force: :cascade do |t|
+    t.bigint "video_project_id", null: false
+    t.string "search_type", null: false
+    t.string "search_query"
+    t.string "region_code", null: false
+    t.string "video_category_id"
+    t.datetime "searched_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["video_project_id", "searched_at"], name: "index_source_discoveries_on_video_project_id_and_searched_at"
+    t.index ["video_project_id"], name: "index_source_discoveries_on_video_project_id"
+  end
+
+  create_table "source_discovery_results", force: :cascade do |t|
+    t.bigint "source_discovery_id", null: false
+    t.bigint "youtube_discovery_metadata_id", null: false
+    t.integer "position", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["source_discovery_id", "position"], name: "idx_on_source_discovery_id_position_f02ae32b56", unique: true
+    t.index ["source_discovery_id", "youtube_discovery_metadata_id"], name: "index_source_discovery_results_on_search_and_metadata", unique: true
+    t.index ["source_discovery_id"], name: "index_source_discovery_results_on_source_discovery_id"
+    t.index ["youtube_discovery_metadata_id"], name: "idx_on_youtube_discovery_metadata_id_b486f46dc8"
+  end
+
   create_table "source_download_gates", force: :cascade do |t|
     t.string "key", null: false
     t.datetime "created_at", null: false
@@ -290,6 +315,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_08_110000) do
   add_foreign_key "render_versions", "video_projects"
   add_foreign_key "social_destinations", "social_connections"
   add_foreign_key "source_assets", "video_projects"
+  add_foreign_key "source_discoveries", "video_projects"
+  add_foreign_key "source_discovery_results", "source_discoveries", on_delete: :cascade
+  add_foreign_key "source_discovery_results", "youtube_discovery_metadata", column: "youtube_discovery_metadata_id", on_delete: :cascade
   add_foreign_key "workflow_audit_events", "outbound_attempts"
   add_foreign_key "workflow_audit_events", "workflow_runs"
 end

@@ -7,6 +7,7 @@ class VideoProject < ApplicationRecord
   enum :status, STATUS_CONFIGURATION.fetch(:values), default: STATUS_CONFIGURATION.fetch(:default).to_sym
 
   has_many :source_assets, inverse_of: :video_project, dependent: :restrict_with_error
+  has_many :source_discoveries, inverse_of: :video_project, dependent: :destroy
   has_many :ai_generations, inverse_of: :video_project, dependent: :restrict_with_error
   has_many :project_media_assets, inverse_of: :video_project, dependent: :restrict_with_error
   has_many :render_versions, inverse_of: :video_project, dependent: :restrict_with_error
