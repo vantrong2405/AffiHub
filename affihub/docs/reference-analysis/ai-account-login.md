@@ -12,6 +12,7 @@ Ngày đối chiếu: 2026-10-08. Phạm vi: bốn lựa chọn người dùng y
 
 - [OpenAI Sign in with ChatGPT](https://developers.openai.com/siwc/quickstart), [OAuth sign-in](https://developers.openai.com/siwc/token-sharing-open-source/sign-in), [models/inference](https://developers.openai.com/siwc/token-sharing-open-source/models-and-inference): quyền danh tính và quyền dùng gói là riêng; ứng dụng/tài khoản phải đủ điều kiện ChatGPT plan usage. OAuth dùng state, nonce, PKCE S256, callback loopback, ID token/scope validation. Inference được cấp quyền đi qua Responses API; thành công khi có `response.completed`.
 - [OpenAI Codex app-server](https://developers.openai.com/siwc/token-sharing-open-source/codex-app-server): Codex dùng cùng OAuth token Sign in with ChatGPT khi được cấp quyền. **Codex là lựa chọn UI/model, không phải OAuth provider thứ hai.** Không đọc file phiên Codex CLI.
+- [OpenAI request a client ID](https://developers.openai.com/siwc/request-client-id): ứng dụng thương mại/private cần đi qua [interest form](https://openai.com/form/sign-in-with-chatgpt-interest/) và chờ xét duyệt; chỉ client nguồn mở đủ điều kiện mới dùng trực tiếp dynamic registration theo hướng dẫn OSS. AffiHub hiện chưa chứng minh thuộc nhóm được cấp quyền, nên không khởi tạo đăng nhập thật từ trang tài liệu.
 - [Google Gemini API OAuth](https://ai.google.dev/gemini-api/docs/oauth): có đường OAuth chính thức cho Gemini API qua Google Cloud project, Generative Language API, OAuth consent/client và credential người dùng. Quickstart là môi trường thử nghiệm; cần kiểm chứng web-app OAuth scope, consent verification, quota/billing và inference thật cho AffiHub trước khi mở. Đường này tách khỏi đăng nhập Gemini CLI và kết nối Google Drive/YouTube.
 - [Gemini CLI terms/privacy](https://geminicli.com/docs/resources/tos-privacy/): không dùng OAuth của Gemini CLI trong ứng dụng bên thứ ba để tiêu thụ quyền/hạn mức CLI.
 - [Google Antigravity terms](https://www.antigravity.google/terms): điều 6 cấm phần mềm bên thứ ba truy cập dịch vụ bằng Antigravity OAuth và nêu nguy cơ đình chỉ tài khoản. **Lựa chọn Antigravity hiện chưa khả dụng**; chỉ đánh giá lại khi Google công bố contract cho AffiHub hoặc cấp quyền phù hợp. Không dùng luồng nội bộ từ 9Router.
@@ -35,3 +36,9 @@ Hạn mức ChatGPT plan không phải báo giá tiền từng lượt và khôn
 2. Gemini: tạo Google Cloud project/OAuth client dành cho AffiHub, xác minh scope/consent production, quota/billing, callback và một request Gemini API thật; không dùng credential Gemini CLI.
 3. MPT: kiểm tra source đã pin ở `/scripts`, `/terms`, `/videos`; xác định adapter hoặc tách stage LLM sang Rails mà vẫn giữ video pipeline. Kiểm tra refresh, thu hồi, đổi tài khoản, hết hạn mức và redaction.
 4. Antigravity: giữ gate đóng cho tới khi có contract hoặc chấp thuận chính thức phù hợp cho AffiHub; bản thân 9Router không chứng minh quyền này.
+
+## Trạng thái cấu hình tài khoản ngày 2026-10-08
+
+- Đã tạo Google Cloud project riêng `AffiHub MVP`, project ID `affihub-mvp`, và bật `generativelanguage.googleapis.com`. Chưa tạo OAuth client, chưa kiểm chứng scope/consent/inference, chưa liên kết billing.
+- Google Auth Platform đang ở bước chấp nhận Google API Services User Data Policy; chủ tài khoản cần đồng ý trước khi tiếp tục tạo consent screen/client. Không có mật khẩu hoặc OAuth token nào được đưa vào `affihub/.env`.
+- Đã mở tài liệu OpenAI và interest form. Chưa gửi form, chưa được cấp client ID hoặc quyền ChatGPT plan usage.
