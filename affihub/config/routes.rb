@@ -27,6 +27,7 @@ Rails.application.routes.draw do
     resources :social_destinations, only: %i[index show create update destroy]
   end
 
+  resources :ai_provider_connections, only: %i[index show create update destroy]
   resources :google_connections, only: %i[index show new create edit update destroy]
   resources :auto_reply_rules, only: %i[index show new create edit update destroy]
   resources :auto_reply_logs, only: %i[index show]
@@ -34,6 +35,12 @@ Rails.application.routes.draw do
   get "/auth/:provider/callback",
       to: "connection_callbacks#show",
       as: :connection_callback
+
+  get "/ai/auth/callback",
+      to: "ai_provider_callbacks#show",
+      as: :ai_provider_callback
+
+  get "/auth/callback", to: "ai_provider_callbacks#show"
 
   post "/internal/mpt/tts_fallback",
        to: "internal/mpt/tts_fallbacks#create",

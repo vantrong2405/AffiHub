@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_08_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_08_120001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -78,6 +78,27 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_08_120000) do
     t.index ["source_asset_id"], name: "index_ai_generations_on_source_asset_id"
     t.index ["task_id"], name: "index_ai_generations_on_task_id", unique: true, where: "(task_id IS NOT NULL)"
     t.index ["video_project_id"], name: "index_ai_generations_on_video_project_id"
+  end
+
+  create_table "ai_provider_connections", force: :cascade do |t|
+    t.string "provider", null: false
+    t.string "provider_subject", null: false
+    t.string "provider_client_id", null: false
+    t.string "account_email"
+    t.string "display_name"
+    t.text "access_token", null: false
+    t.text "refresh_token"
+    t.text "id_token"
+    t.datetime "access_token_expires_at"
+    t.jsonb "scopes", default: [], null: false
+    t.jsonb "available_models", default: [], null: false
+    t.string "selected_model"
+    t.datetime "last_verified_at"
+    t.string "status", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["provider", "provider_client_id", "provider_subject"], name: "index_ai_provider_connections_on_provider_client_and_subject", unique: true
+    t.index ["provider", "status"], name: "index_ai_provider_connections_on_provider_and_status"
   end
 
   create_table "outbound_attempts", force: :cascade do |t|

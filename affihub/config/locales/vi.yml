@@ -67,6 +67,13 @@ vi:
         reauth_required: Cần kết nối lại
         revoked: Đã thu hồi
         unavailable: Không khả dụng
+      ai_provider_connection:
+        pending_verification: Chờ xác minh
+        ready: Sẵn sàng sử dụng
+        scope_missing: Thiếu quyền sử dụng model
+        reauth_required: Cần đăng nhập lại
+        revoked: Đã thu hồi
+        failed: Kết nối lỗi
       publication:
         draft: Bản nháp
         approved: Đã xác nhận

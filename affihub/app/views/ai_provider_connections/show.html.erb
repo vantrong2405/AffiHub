@@ -1,0 +1,129 @@
+<% content_for :title, "Tài khoản AI | AffiHub" %>
+
+<section class="mx-auto max-w-4xl space-y-6">
+  <div class="space-y-2">
+    <%= link_to "← Danh sách tài khoản AI", ai_provider_connections_path, class: "link link-hover text-sm" %>
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <div class="min-w-0">
+        <p class="text-sm text-base-content/60"><%= { "openai" => "ChatGPT", "codex" => "Codex", "gemini" => "Gemini API" }.fetch(@ai_provider_connection.provider) %></p>
+        <h1 class="break-words text-3xl font-bold"><%= @ai_provider_connection.display_name.presence || @ai_provider_connection.account_email %></h1>
+        <p class="break-all text-sm text-base-content/60"><%= @ai_provider_connection.account_email %></p>
+      </div>
+      <%= workflow_status_badge(@ai_provider_connection.status, resource: "ai_provider_connection") %>
+    </div>
+  </div>
+
+  <% if @ai_provider_connection.status == "pending_verification" %>
+    <div class="alert alert-warning" role="status">
+      <div>
+        <h2 class="font-semibold">Kết nối đã lưu, inference chưa được bật</h2>
+        <% if @ai_provider_connection.provider == "codex" %>
+          <p class="text-sm">Codex mới xác nhận đăng nhập. AffiHub chưa xác minh contract inference hoặc quota và không gửi yêu cầu model.</p>
+        <% else %>
+          <p class="text-sm">Cần xác minh quyền API, refresh token, quota/billing và nguồn giá trước khi AffiHub gửi yêu cầu tạo nội dung.</p>
+        <% end %>
+      </div>
+    </div>
+  <% elsif @ai_provider_connection.scope_missing? %>
+    <div class="alert alert-warning" role="status">
+      <div>
+        <h2 class="font-semibold">Tài khoản chưa cấp quyền dùng model</h2>
+        <p class="text-sm">Đăng nhập hợp lệ chưa chứng minh tài khoản được phép gọi Responses API theo gói ChatGPT.</p>
+      </div>
+    </div>
+  <% elsif @ai_provider_connection.reauth_required? %>
+    <div class="alert alert-error" role="alert">
+      <div>
+        <h2 class="font-semibold">Cần đăng nhập lại</h2>
+        <p class="text-sm">Token hiện tại không còn được provider chấp nhận.</p>
+      </div>
+    </div>
+  <% end %>
+
+  <div class="grid gap-4 sm:grid-cols-2">
+    <article class="card border border-base-300 bg-base-100 shadow-sm">
+      <div class="card-body gap-2">
+        <h2 class="card-title text-base">Quyền sử dụng</h2>
+        <% if @ai_provider_connection.provider == "openai" %>
+          <p class="text-sm"><%= @ai_provider_connection.scopes.include?("chatgpt.tokens.use.direct") ? "ChatGPT plan usage đã được cấp." : "ChatGPT plan usage chưa được cấp." %></p>
+          <p class="text-xs text-base-content/60">Hạn mức thuộc tài khoản ChatGPT; AffiHub không quy đổi thành giá 0 hoặc số lượt ước đoán.</p>
+        <% elsif @ai_provider_connection.provider == "codex" %>
+          <p class="text-sm">Đăng nhập Codex đã hoàn tất; quyền dùng model chưa được xác minh.</p>
+          <p class="text-xs text-base-content/60">Không có model list/quota hiển thị và chưa thể tạo nội dung bằng kết nối này.</p>
+        <% else %>
+          <p class="text-sm"><%= @ai_provider_connection.scopes.include?("https://www.googleapis.com/auth/generative-language.retriever") ? "OAuth Gemini API đã cấp quyền đọc model." : "OAuth chưa cấp quyền Gemini API cần thiết." %></p>
+          <p class="text-xs text-base-content/60">Quota, billing và inference chưa được xác minh cho Google Cloud project.</p>
+        <% end %>
+      </div>
+    </article>
+
+    <article class="card border border-base-300 bg-base-100 shadow-sm">
+      <div class="card-body gap-2">
+        <h2 class="card-title text-base">Token và dữ liệu tài khoản</h2>
+        <p class="text-sm">Access token, refresh token và ID token được mã hóa trong database local.</p>
+        <p class="text-xs text-base-content/60">Token không được đưa vào HTML, form hoặc log. Lần xác minh gần nhất: <%= @ai_provider_connection.last_verified_at ? l(@ai_provider_connection.last_verified_at, format: :short) : "Chưa có" %>.</p>
+      </div>
+    </article>
+  </div>
+
+  <% if @ai_provider_connection.provider == "codex" %>
+    <section class="card border border-base-300 bg-base-100 shadow-sm" aria-labelledby="provider-models-heading">
+      <div class="card-body gap-2">
+        <h2 id="provider-models-heading" class="card-title">Model Codex</h2>
+        <p class="text-sm text-base-content/70">Chưa tải model list vì AffiHub chỉ xác minh đăng nhập Codex và chưa bật inference.</p>
+      </div>
+    </section>
+  <% else %>
+    <section class="card border border-base-300 bg-base-100 shadow-sm" aria-labelledby="provider-models-heading">
+    <div class="card-body gap-4">
+      <div>
+        <h2 id="provider-models-heading" class="card-title">Model của tài khoản</h2>
+        <p class="text-sm text-base-content/60">Chỉ model do chính tài khoản provider trả về mới được lưu lựa chọn.</p>
+      </div>
+      <% if @ai_provider_connection.available_models.any? %>
+        <%= form_with model: @ai_provider_connection, url: ai_provider_connection_path(@ai_provider_connection), method: :patch, class: "flex flex-col gap-3 sm:flex-row sm:items-end" do |form| %>
+          <div class="form-control w-full">
+            <%= form.label :selected_model, "Model sử dụng", class: "label" %>
+            <%= form.select :selected_model,
+                            options_for_select(@ai_provider_connection.available_models.map { |model| [ model.fetch("display_name"), model.fetch("slug") ] }, @ai_provider_connection.selected_model),
+                            { include_blank: "Chọn model" },
+                            class: "select select-bordered w-full" %>
+          </div>
+          <%= form.submit "Lưu model", class: "btn btn-primary w-full sm:w-auto" %>
+        <% end %>
+      <% else %>
+        <div class="alert alert-info" role="status">
+          <p>Provider chưa trả model nào có thể chọn cho tài khoản này.</p>
+        </div>
+      <% end %>
+    </div>
+    </section>
+  <% end %>
+
+  <section class="card border border-base-300 bg-base-100 shadow-sm">
+    <div class="card-body gap-4">
+      <h2 class="card-title">Quản lý kết nối</h2>
+      <div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+        <% if @ai_provider_connection.scope_missing? || @ai_provider_connection.reauth_required? %>
+          <% if @callback_origin_matches %>
+            <%= button_to "Đăng nhập lại", ai_provider_connections_path,
+                          params: {
+                            provider: @ai_provider_connection.provider,
+                            ai_provider_connection_id: @ai_provider_connection.id
+                          },
+                          class: "btn btn-primary w-full sm:w-auto" %>
+          <% else %>
+            <%= link_to "Mở AffiHub",
+                        "#{@callback_origin}#{ai_provider_connection_path(@ai_provider_connection)}",
+                        class: "btn btn-primary w-full sm:w-auto" %>
+            <p class="text-sm text-base-content/60">Callback: <code class="break-all"><%= @callback_origin %></code></p>
+          <% end %>
+        <% end %>
+        <%= button_to "Ngắt kết nối", ai_provider_connection_path(@ai_provider_connection),
+                      method: :delete,
+                      class: "btn btn-error btn-outline w-full sm:w-auto",
+                      data: { turbo_confirm: "Ngắt kết nối sẽ xóa token khỏi database local. Tiếp tục?" } %>
+      </div>
+    </div>
+  </section>
+</section>

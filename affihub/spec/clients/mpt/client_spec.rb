@@ -104,6 +104,16 @@ RSpec.describe Mpt::Client, type: :service do
       ).to have_been_made.once
     end
 
+    it "does not send an OAuth bearer token to the MPT endpoint" do
+      response
+
+      expect(
+        a_request(:post, "http://mpt.test/api/v1/videos").with do |request|
+          request.headers.keys.none? { |header| header.casecmp("authorization").zero? }
+        end
+      ).to have_been_made.once
+    end
+
     context "when the correlation ID is missing" do
       let(:correlation_id) { nil }
 
