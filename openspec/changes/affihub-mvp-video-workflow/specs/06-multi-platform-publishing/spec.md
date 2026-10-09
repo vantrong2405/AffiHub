@@ -193,9 +193,16 @@ AffiHub MUST gọi API đọc `content_publishing_limit` trước publish Reels 
 - **WHEN** API báo Page/Instagram account đã đạt publishing limit hiện hành
 - **THEN** AffiHub chặn riêng Instagram Publication và hiển thị usage/cap trả về cùng cách khắc phục
 
-#### Scenario: YouTube public upload chưa được duyệt
-- **WHEN** Google API project chưa hoàn thành yêu cầu compliance cho upload public
-- **THEN** AffiHub không tuyên bố đích public đã sẵn sàng và hiển thị giới hạn review
+### Requirement: Giữ nguyên quyền riêng tư YouTube đã được người dùng chọn
+AffiHub MUST gửi đúng `privacyStatus` người dùng đã xác nhận trong request `videos.insert`, không âm thầm đổi lựa chọn. AffiHub MUST chỉ đánh dấu `Published` khi trạng thái cuối API trả về khớp lựa chọn đã xác nhận. Tài liệu `videos.insert` và `status.privacyStatus` hiện hành không áp đặt private-only cho API project chưa audit; audit là điều kiện xin quota vượt mức mặc định, không phải căn cứ để khóa `unlisted` hoặc `public` trong UI.
+
+#### Scenario: Người dùng chọn quyền riêng tư được cấu hình
+- **WHEN** người dùng xác nhận `private`, `unlisted` hoặc `public` đã được cấu hình cho YouTube
+- **THEN** AffiHub gửi cùng giá trị trong `videos.insert` và chỉ ghi `Published` sau khi API xác nhận upload đã xử lý xong với privacy status khớp lựa chọn
+
+#### Scenario: API trả privacy status khác lựa chọn đã xác nhận
+- **WHEN** trạng thái cuối YouTube trả về khác `privacyStatus` đã lưu trong consent snapshot
+- **THEN** AffiHub không ghi `Published`, giữ trạng thái lỗi có thể kiểm tra và không gửi lại upload tự động
 
 ### Requirement: Áp dụng giới hạn publish nội bộ
 AffiHub MUST cấp lượt publish nguyên tử và giới hạn tối đa 5 Publication mới trong cửa sổ trượt 24 giờ trên mỗi destination, gộp manual và scheduled.
