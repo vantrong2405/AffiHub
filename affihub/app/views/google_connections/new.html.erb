@@ -1,0 +1,29 @@
+<% content_for :title, google_connection_setup_page_title(@integration) %>
+
+<section class="mx-auto max-w-2xl space-y-6">
+  <div class="space-y-2">
+    <%= link_to "← Kết nối Google", google_connections_path, class: "link link-hover text-sm" %>
+    <h1 class="text-3xl font-bold">Thiết lập <%= google_integration_name(@integration) %></h1>
+    <p class="text-sm text-base-content/70">Bạn sẽ đăng nhập trực tiếp trên trang Google và xem các quyền trước khi đồng ý.</p>
+  </div>
+
+  <article class="card border border-base-300 bg-base-100">
+    <div class="card-body gap-4 p-4 sm:p-5">
+      <% if @oauth_configured %>
+        <div class="space-y-2">
+          <h2 class="font-semibold">Không yêu cầu thẻ thanh toán</h2>
+          <p class="text-sm text-base-content/70">AffiHub chỉ dùng API và quota tiêu chuẩn. Không bật Google Cloud Billing, không mua quota hoặc dung lượng. Nếu quota hoặc dung lượng hết, nhánh đồng bộ sẽ dừng và bản render local vẫn còn.</p>
+        </div>
+        <%= button_to "Tiếp tục đến Google",
+                      google_connections_path(integration: @integration),
+                      method: :post,
+                      class: "btn btn-primary w-full sm:w-auto" %>
+      <% else %>
+        <div role="alert" class="alert alert-warning">
+          <span>OAuth client chưa được cấu hình trong Rails credentials. Chưa thể mở trang đăng nhập Google.</span>
+        </div>
+        <%= link_to "Quay lại", google_connections_path, class: "btn btn-outline w-full sm:w-auto" %>
+      <% end %>
+    </div>
+  </article>
+</section>

@@ -126,3 +126,26 @@ AffiHub MUST hiển thị trạng thái riêng cho Drive, Sheets và thời hạ
 #### Scenario: OAuth hết hạn
 - **WHEN** Google refresh token không còn dùng được
 - **THEN** AffiHub đánh dấu integration cần kết nối lại và giữ nguyên dữ liệu local cùng trạng thái retry
+
+### Requirement: Chọn bảng tính bằng Google Picker
+Khi cấu hình Google Sheets, AffiHub MUST cho người dùng chọn một Google Spreadsheet bằng Google Picker, chỉ yêu cầu quyền OAuth theo từng file `drive.file`, và xác minh lựa chọn bằng kết nối máy chủ trước khi lưu cấu hình.
+
+#### Scenario: Picker dùng access token ngắn hạn riêng
+- **WHEN** người dùng mở Picker để chọn bảng tính
+- **THEN** web component dùng Google Identity Services để lấy token ngắn hạn với scope `drive.file`; access/refresh token đã lưu ở Rails không được render hoặc gửi cho trình duyệt, còn token Picker không được AffiHub lưu hay ghi log
+
+#### Scenario: Người dùng chọn một bảng tính
+- **WHEN** người dùng mở Picker và chọn một Google Spreadsheet
+- **THEN** AffiHub xác minh file thuộc loại Google Sheets và tài khoản kết nối truy cập được, sau đó hiển thị các tab để người dùng chọn trước khi lưu cấu hình
+
+#### Scenario: Người dùng đóng Picker mà không chọn file
+- **WHEN** người dùng hủy hoặc đóng Picker
+- **THEN** AffiHub giữ nguyên bảng tính và tab đã lưu, không thay đổi cấu hình
+
+#### Scenario: Picker trả về file không hợp lệ hoặc không truy cập được
+- **WHEN** mã file gửi lên không phải Google Spreadsheet hoặc Google không cho tài khoản kết nối đọc file
+- **THEN** AffiHub báo lỗi có thể xử lý, không lưu bảng tính/tab mới và giữ nguyên cấu hình cũ
+
+#### Scenario: Google Sheets yêu cầu quyền OAuth
+- **WHEN** người dùng kết nối hoặc kết nối lại Sheets
+- **THEN** AffiHub yêu cầu scope danh tính cơ bản và `drive.file`, không yêu cầu scope toàn bộ `spreadsheets`
