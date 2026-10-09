@@ -94,7 +94,7 @@
 
 ## 9. PublisherResolver, Scheduler và quota nội bộ
 
-- [ ] 9.1 Viết Porting Note cho claim/scheduling reference Postiz cùng contract Solid Queue hiện có; ghi SHA/file/ngày và chỉ dùng Postiz tham khảo kiến trúc. Kiểm chứng: note mô tả atomic claim, không sao chép/vendoring code AGPL.
+- [x] 9.1 Viết Porting Note cho claim/scheduling reference Postiz cùng contract Solid Queue hiện có; ghi SHA/file/ngày và chỉ dùng Postiz tham khảo kiến trúc. Kiểm chứng: note mô tả atomic claim, không sao chép/vendoring code AGPL.
 - [ ] 9.2 Viết RSpec cho `PublisherResolver` sau khi có đủ bốn publisher, Publication per destination/per occurrence, snapshot TikTok consent theo Schedule và recheck `creator_info` trước khi chạy, timezone local của máy làm mặc định và được lưu, pause/missed không catch-up, atomic claim/quota reservation gồm tranh chấp slot cuối, giới hạn 5 Publication/24h có thời điểm mở lượt kế tiếp, jitter và reconcile trước retry; xác nhận đỏ.
 - [ ] 9.3 Implement resolver và Scheduler sau bốn publisher cụ thể; transition claim và quota reservation nguyên tử, lease/fencing, cờ pause cùng quota window dùng chung cho manual/scheduled, giữ consent snapshot trên Schedule và yêu cầu xác nhận lại khi creator settings đã đổi. Kiểm chứng: RSpec xanh, hai claim đồng thời chỉ gửi một side effect và chỉ một request nhận slot cuối.
 - [ ] 9.4 Gọi `ui-ux` cho lịch, timezone, trạng thái pause và missed schedule. Kiểm chứng: request specs cho HTTP/persistence; system spec cho thao tác lịch khi ổn định; browser review timezone (mặc định timezone máy local), quota và trạng thái missed mà không chạy bù. Không viết view spec/style-only spec.
