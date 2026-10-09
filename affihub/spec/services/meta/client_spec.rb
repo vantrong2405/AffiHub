@@ -174,6 +174,116 @@ RSpec.describe Meta::Client, type: :service do
     end
   end
 
+  describe "#reply_to_comment with Facebook provider" do
+    it "returns the reply ID from the configured Page comment edge" do
+      request = stub_request(:post, "https://graph.facebook.com/v26.0/facebook-comment-1/comments")
+        .with(query: {
+          "message" => "Cảm ơn bạn đã quan tâm.",
+          "access_token" => "facebook-page-token"
+        })
+        .to_return(body: { id: "facebook-reply-1" }.to_json)
+
+      response = described_class.new(provider: :facebook).reply_to_comment(
+        comment_id: "facebook-comment-1",
+        page_access_token: "facebook-page-token",
+        message: "Cảm ơn bạn đã quan tâm."
+      )
+
+      expect(response).to eq("id" => "facebook-reply-1")
+      expect(request).to have_been_requested.once
+    end
+  end
+
+  describe "#reply_to_comment with Instagram provider" do
+    it "returns the reply ID from the configured Instagram comment edge" do
+      request = stub_request(:post, "https://graph.facebook.com/v26.0/instagram-comment-1/replies")
+        .with(query: {
+          "message" => "Cảm ơn bạn đã quan tâm.",
+          "access_token" => "instagram-page-token"
+        })
+        .to_return(body: { id: "instagram-reply-1" }.to_json)
+
+      response = described_class.new(provider: :instagram).reply_to_comment(
+        comment_id: "instagram-comment-1",
+        page_access_token: "instagram-page-token",
+        message: "Cảm ơn bạn đã quan tâm."
+      )
+
+      expect(response).to eq("id" => "instagram-reply-1")
+      expect(request).to have_been_requested.once
+    end
+  end
+
+  describe "#subscribe_to_comment_webhooks with Facebook provider" do
+    it "returns Meta's acknowledgement after subscribing the selected Page to feed comments" do
+      request = stub_request(:post, "https://graph.facebook.com/v26.0/facebook-page-1/subscribed_apps")
+        .with(query: {
+          "subscribed_fields" => "feed",
+          "access_token" => "facebook-page-token"
+        })
+        .to_return(body: { success: true }.to_json)
+
+      response = described_class.new(provider: :facebook).subscribe_to_comment_webhooks(
+        external_id: "facebook-page-1",
+        page_access_token: "facebook-page-token"
+      )
+
+      expect(response).to eq("success" => true)
+      expect(request).to have_been_requested.once
+    end
+  end
+
+  describe "#subscribe_to_comment_webhooks with Instagram provider" do
+    it "returns Meta's acknowledgement after subscribing the selected Instagram account to comments" do
+      request = stub_request(:post, "https://graph.facebook.com/v26.0/instagram-business-1/subscribed_apps")
+        .with(query: {
+          "subscribed_fields" => "comments",
+          "access_token" => "instagram-page-token"
+        })
+        .to_return(body: { success: true }.to_json)
+
+      response = described_class.new(provider: :instagram).subscribe_to_comment_webhooks(
+        external_id: "instagram-business-1",
+        page_access_token: "instagram-page-token"
+      )
+
+      expect(response).to eq("success" => true)
+      expect(request).to have_been_requested.once
+    end
+  end
+
+  describe "#unsubscribe_from_comment_webhooks with Facebook provider" do
+    it "returns Meta's acknowledgement after removing the selected Page subscription" do
+      request = stub_request(:delete, "https://graph.facebook.com/v26.0/facebook-page-1/subscribed_apps")
+        .with(query: { "access_token" => "facebook-page-token" })
+        .to_return(body: { success: true }.to_json)
+
+      response = described_class.new(provider: :facebook).unsubscribe_from_comment_webhooks(
+        external_id: "facebook-page-1",
+        page_access_token: "facebook-page-token"
+      )
+
+      expect(response).to eq("success" => true)
+      expect(request).to have_been_requested.once
+    end
+  end
+
+  describe "#unsubscribe_from_comment_webhooks with Instagram provider" do
+    it "returns Meta's acknowledgement after removing the selected Instagram account subscription" do
+      request = stub_request(:delete, "https://graph.facebook.com/v26.0/instagram-business-1/subscribed_apps")
+        .with(query: { "access_token" => "instagram-page-token" })
+        .to_return(body: { success: true }.to_json)
+
+      response = described_class.new(provider: :instagram).unsubscribe_from_comment_webhooks(
+        external_id: "instagram-business-1",
+        page_access_token: "instagram-page-token"
+      )
+
+      expect(response).to eq("success" => true)
+      expect(request).to have_been_requested.once
+    end
+  end
+
   describe "#instagram_media" do
     it "returns the provider media ID and permalink" do
       stub_request(:get, "https://graph.facebook.com/v26.0/instagram-media-1")
