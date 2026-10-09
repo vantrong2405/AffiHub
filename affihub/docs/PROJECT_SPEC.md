@@ -9,7 +9,7 @@ Tìm/crawl nội dung viral, import có sẵn, hoặc tạo video bằng AI
 → biên tập trên timeline
 → render và xem trước (hoặc bỏ qua xem trước nếu auto-publish bật)
 → đăng lên Facebook / TikTok / Instagram / YouTube (thủ công hoặc theo lịch tự động)
-→ tự trả lời bình luận/tin nhắn theo rule cấu hình (tùy chọn)
+→ tự trả lời comment công khai theo rule cấu hình (tùy chọn)
 → lưu file lên Google Drive và đồng bộ trạng thái vào Google Sheets
 ```
 
@@ -68,7 +68,7 @@ Mở AffiHub
          flow riêng của provider; Codex chỉ xác nhận callback/token và
          chưa dùng cho inference, Gemini cần xác minh quyền API;
          Antigravity hiển thị chưa khả dụng.
-       → (tùy chọn) cấu hình rule tự trả lời bình luận/tin nhắn theo nền tảng
+       → (tùy chọn) cấu hình rule tự trả lời comment công khai theo nền tảng
        → (tùy chọn) kết nối Google Drive/Sheets → chọn folder + spreadsheet/tab
        → Người vận hành cấu hình credential máy chủ cho MPT/MuAPI/stock/Azure
 ```
@@ -156,9 +156,11 @@ Một Facebook profile có thể quản lý nhiều Page; MVP cho kết nối nh
 **4.1.c Instagram**
 
 1. MVP chỉ nhận **Instagram Business account có Facebook Page liên kết**. Meta-published Instagram API collection mô tả publishing cho Business và Creator; Business-only là product gate của AffiHub, không phải giới hạn chung của API. Personal account không đủ điều kiện.
-2. Kết nối qua Meta Developer App bằng Facebook Login for Business, chọn Page từ `/me/accounts`, rồi lưu Page Access Token cùng `instagram_business_account` ID. Scope Facebook Login hiện đối chiếu từ Meta collection: `pages_show_list`, `pages_read_engagement`, `instagram_basic`, `instagram_content_publish`. Không dùng `instagram_business_basic`/`instagram_business_content_publish` của Instagram Login trong flow này. Xác minh lại permission dependencies, access level và App Review trên Meta docs/App Dashboard trước production.
+2. Kết nối qua Meta Developer App bằng Facebook Login for Business, chọn Page từ `/me/accounts`, rồi lưu Page Access Token cùng `instagram_business_account` ID. Scope Facebook Login cho publish gồm `pages_show_list`, `pages_read_engagement`, `instagram_basic`, `instagram_content_publish`. Không dùng `instagram_business_basic`/`instagram_business_content_publish` của Instagram Login trong flow này. Xác minh lại permission dependencies, access level và App Review trên Meta docs/App Dashboard trước production.
 3. Không hardcode publishing cap ngày. Gọi `content_publishing_limit` trước publish và dùng quota/usage mà endpoint hiện hành trả về; stories không nằm trong MVP. Canonical Meta docs và response schema cần được xác minh lại lúc implement/runtime.
 4. Tạo Reels container với `upload_type=resumable`, tải binary local trực tiếp tới URI `rupload.facebook.com`, poll tới `status_code=FINISHED`, rồi gọi `media_publish`. Không cần public `video_url`, CDN hay relay.
+
+5. Auto-reply comment cần quyền riêng ngoài luồng publish: Facebook Page reply cần `pages_manage_engagement` và Page task `MODERATE`; Page webhook field `feed` cần `pages_manage_metadata`/`pages_show_list`. Instagram reply/webhook cần `instagram_manage_comments`, `pages_manage_metadata`, `pages_read_engagement` và quyền Facebook Login liên quan. AffiHub dùng Meta Webhooks đã xác minh handshake/chữ ký; app phải ở Live mode, callback cần HTTPS công khai, và comments webhook cần access level/review tương ứng. Scope/API contract được ghi trong [Porting Note](reference-analysis/meta-comment-auto-reply.md); App Dashboard/access level vẫn là runtime gate.
 
 **4.1.d YouTube**
 
@@ -267,14 +269,14 @@ Luồng video local không cần credential mạng xã hội; người dùng imp
 
 **Tham khảo:** [Meta Reels Publishing API collection](https://www.postman.com/meta/facebook/documentation/r56bjfd/facebook-api), [Postiz Facebook provider](https://github.com/gitroomhq/postiz-app/blob/main/libraries/nestjs-libraries/src/integrations/social/facebook.provider.ts), [TikTok Content Posting API](https://developers.tiktok.com/doc/content-posting-api-get-started/), [Instagram Content Publishing](https://developers.facebook.com/docs/instagram-platform/content-publishing/), [YouTube videos.insert](https://developers.google.com/youtube/v3/docs/videos/insert). API version/quyền phải được kiểm chứng tại thời điểm implement, theo từng nền tảng.
 
-### 4.5.b Tự động trả lời bình luận/tin nhắn
+### 4.5.b Tự động trả lời comment công khai
 
 1. Người dùng cấu hình theo đích (Page/kênh/tài khoản): **1 câu trả lời mặc định cố định**, áp dụng cho MỌI bình luận mới (ví dụ "Chào bạn, chúc bạn một ngày tốt đẹp, nhớ ủng hộ mình nha!") — không cần match từ khoá, mặc định trả lời hết. Có thể thêm override theo từ khoá cụ thể (danh sách cặp từ khoá → câu trả lời riêng, khớp trước thì dùng câu riêng đó thay vì câu mặc định) nếu người dùng muốn, nhưng không bắt buộc cấu hình gì thêm ngoài câu mặc định để dùng được. Không dùng AI sinh câu trả lời tự do trong MVP — tránh chồng thêm rủi ro nội dung sai lệch/phản cảm lên rủi ro automation đã có.
-2. AutoResponder worker lắng nghe bình luận/tin nhắn mới qua webhook/poll chính thức của nền tảng (Facebook: Page comments/Messenger webhook; Instagram: Graph API comments/messaging — cả hai cần quyền riêng qua app review; TikTok hiện không có API public ổn định cho việc này, để ngoài MVP cho TikTok).
-3. Có override từ khoá khớp → gửi câu trả lời riêng đó. Không khớp override nào → gửi câu trả lời mặc định. Tắt tính năng cho đích đó → không trả lời bất kỳ bình luận nào.
-4. Ghi log mọi lần tự trả lời (thời điểm, bình luận/tin nhắn gốc, câu trả lời đã gửi — mặc định hay override) để người dùng xem lại và tắt tính năng nếu cần.
+2. AutoResponder nhận Facebook Page `feed` webhook và Instagram `comments` webhook chính thức; callback xác minh `hub.verify_token` và chữ ký `X-Hub-Signature-256`. Không bật Messenger, messaging event, DM, inbox hoặc TikTok.
+3. Nếu nhiều keyword rule đang bật cùng khớp thì chọn keyword dài nhất; nếu độ dài bằng nhau thì chọn rule tạo trước. Không khớp override nào thì dùng câu mặc định. Không gọi LLM để sinh câu trả lời.
+4. Ghi append-only log mọi lần tự trả lời (thời điểm, nguồn/event type, đích, rule snapshot, comment gốc, câu reply thực tế, trạng thái/lỗi và bằng chứng xử lý thủ công) để người dùng xem lại và tắt tính năng nếu cần.
 
-**Rủi ro:** tự động trả lời bình luận/tin nhắn là hành vi nền tảng có thể giám sát và giới hạn (đặc biệt Messenger có policy riêng về automated responses ngoài cửa sổ 24h với người dùng). Không có cơ chế né; bật tính năng này là chấp nhận rủi ro giới hạn/khoá tính năng nhắn tin của Page/tài khoản.
+**Rủi ro:** tự động trả lời comment là hành vi nền tảng có thể giám sát và giới hạn. Không có cơ chế né; bật tính năng này là chấp nhận rủi ro giới hạn/khóa tính năng của Page/tài khoản. Nhận webhook thật cần Meta App Live/review và callback HTTPS công khai; app local cần HTTPS tunnel do người vận hành tự cấu hình.
 
 ### 4.6 Google Drive và Sheets
 
@@ -350,7 +352,7 @@ Draft → Approved ──────────────┐
 ### 5.3 Tự động trả lời (AutoReply log)
 
 ```text
-Nhận bình luận/tin nhắn mới (webhook/poll)
+Nhận comment công khai mới qua Meta Webhooks
   → Tính năng có bật cho đích này không?
        ├─ Không → Skipped (tắt tính năng, không trả lời)
        └─ Có → Khớp override từ khoá?
@@ -391,7 +393,7 @@ Rails UI/API (tiếng Việt)
        │     MetaGraphPublisher, TikTokPublisher, InstagramPublisher,
        │     YoutubePublisher — mỗi cái: create → upload → process →
        │     publish → reconcile theo API riêng
-       ├─ AutoResponder worker: webhook/poll bình luận/tin nhắn → khớp
+       ├─ AutoResponder worker: Meta comment webhook → khớp
        │     rule → gửi trả lời → ghi AutoReplyLog
        ├─ Google sync workers: Drive resumable upload + Sheets upsert
        └─ Telegram bot: gửi cảnh báo (worker down, publish lỗi, dấu hiệu
@@ -428,7 +430,7 @@ Rails UI/API (tiếng Việt)
 - TTS tiếng Việt, subtitle, editor FFmpeg, preview và render MP4 dọc.
 - Cắt, crop/fit, nền mờ/nền khung, brightness, audio, text/overlay và gỡ logo cố định có preview/undo.
 - Kết nối nhiều profile/tài khoản trên Facebook, TikTok, Instagram, YouTube; chọn một hoặc nhiều đích và đăng — thủ công (duyệt tay) hoặc tự động theo lịch (auto-publish).
-- Tự động trả lời MỌI bình luận/tin nhắn mới bằng câu mặc định cố định, override từ khoá tuỳ chọn (Facebook, Instagram) — TikTok để ngoài MVP vì chưa có API public ổn định cho việc này.
+- Tự động trả lời MỌI comment công khai mới bằng câu mặc định cố định, override từ khoá tuỳ chọn (Facebook, Instagram) — TikTok để ngoài MVP vì chưa có API public ổn định cho việc này.
 - Kết nối Drive/Sheets và đồng bộ bất đồng bộ, có retry theo từng dịch vụ.
 - Telegram bot báo động lỗi/dấu hiệu bị giới hạn và cho dừng khẩn auto-publish/auto-reply qua lệnh từ chat_id allowlist.
 - Luồng video local không cần credential và một lần publish thật lên Page/kênh của tài khoản test để hoàn tất POC.
@@ -458,7 +460,7 @@ Rails UI/API (tiếng Việt)
 | YouTube publish | [YouTube Data API `videos.insert`](https://developers.google.com/youtube/v3/docs/videos/insert), [Postiz `youtube.provider.ts` pinned](https://github.com/gitroomhq/postiz-app/blob/86b3c3dd55d38fbed77fdbf82a21bfc1a169cac6/libraries/nestjs-libraries/src/integrations/social/youtube.provider.ts) | Resumable upload qua API chính thức; Postiz chỉ tham khảo provider boundary, không dùng làm API/error truth | Quota mặc định tách `search.list`, `videos.insert` và other API buckets; Console authoritative. API compliance audit giới hạn public riêng OAuth verification. |
 | Nội dung khám phá/trending | YouTube [`search.list`](https://developers.google.com/youtube/v3/docs/search/list) và [`videos.list(chart=mostPopular)`](https://developers.google.com/youtube/v3/docs/videos/list); Instagram Hashtag Search; TikTok Research API | MVP bật YouTube keyword search/chart với nhãn đúng; Instagram API cần Professional Account/Page và quyền phù hợp; TikTok Research API cần hồ sơ nghiên cứu đủ điều kiện/được duyệt | Không scrape discover/for-you; không bật Instagram/TikTok nếu chưa xác minh access tier; tuân thủ YouTube attribution, quota, retention 30 ngày và policy cấm API-client scraping |
 | Lịch đăng tự động (Scheduler) | [Postiz `apps/cron`](https://github.com/gitroomhq/postiz-app/tree/main/apps/cron), [`autopost.service.ts`](https://github.com/gitroomhq/postiz-app/blob/main/libraries/nestjs-libraries/src/database/prisma/autopost/autopost.service.ts) | Đối chiếu cách Postiz claim bài đến hạn + tránh double-fire; chuyển sang Solid Queue job + `update_all` atomic theo convention Rails của AffiHub, không copy code Postiz | Chỉ đọc logic tham khảo (Postiz AGPL-3.0, không vendor/link trực tiếp); tự viết lại bằng Ruby/Solid Queue |
-| Tự động trả lời bình luận | Postiz interface `comment()` trên mọi provider (ví dụ [`facebook.provider.ts`](https://github.com/gitroomhq/postiz-app/blob/main/libraries/nestjs-libraries/src/integrations/social/facebook.provider.ts), [`instagram.provider.ts`](https://github.com/gitroomhq/postiz-app/blob/main/libraries/nestjs-libraries/src/integrations/social/instagram.provider.ts)) | Đối chiếu cách Postiz gọi API trả lời comment theo từng provider, dùng làm contract cho `AutoResponder` | Chỉ đọc logic tham khảo (AGPL-3.0, không vendor); webhook/poll thật theo tài liệu Facebook/Instagram Graph API hiện hành, không suy từ Postiz |
+| Tự động trả lời comment công khai | [Meta Graph API object comments](https://developers.facebook.com/docs/graph-api/reference/object/comments/), [Meta Page Webhooks](https://developers.facebook.com/docs/graph-api/webhooks/reference/page/), [Meta Instagram comment replies](https://developers.facebook.com/docs/instagram-platform/instagram-graph-api/reference/ig-comment/replies/), [Instagram webhooks](https://developers.facebook.com/docs/graph-api/webhooks/reference/instagram/); Postiz provider files pinned at SHA `86b3c3dd55d38fbed77fdbf82a21bfc1a169cac6` | Request/payload/signature/scopes lấy từ tài liệu Meta; Postiz chỉ đối chiếu kiến trúc provider boundary | Chỉ comment công khai Facebook Page/Instagram Business qua Facebook Login; callback HTTPS + Meta app access/review là gate; không DM/Messenger/inbox/TikTok |
 | Drive/Sheets | [Google API Ruby Client](https://github.com/googleapis/google-api-ruby-client), [Drive uploads](https://developers.google.com/workspace/drive/api/guides/manage-uploads), [Sheets values](https://developers.google.com/workspace/sheets/api/guides/values) | Dùng client/API chính thức, resumable upload, update theo khóa | OAuth consent/scope, refresh expiry, Drive idempotency, Sheets concurrent upsert |
 | Giám sát/điều khiển | [Telegram Bot API](https://core.telegram.org/bots/api), [`telegram-bot-ruby` source reference `v2.7.0`](https://github.com/atipugin/telegram-bot-ruby/tree/v2.7.0); GitHub hiển thị license WTFPL, RubyGems 2.8.1 ghi No License | Gem bọc `sendMessage` và long polling; webhook cần callback server HTTPS do ứng dụng tự triển khai; không dùng Postiz làm contract cho bot operations | Allowlist `chat_id` phải kiểm tra trước command; token dùng Rails credentials và phải redact khỏi request URL/log; rà soát license và source đúng phiên bản trước khi khóa Gemfile |
 
@@ -499,7 +501,7 @@ Trước khi implement subsystem, tạo `docs/reference-analysis/<subsystem>.md`
 7. Thêm Download worker (`yt-dlp`) + Discovery worker (trending chính thức); ghép vào nhánh nguồn video, test cả thành công và lỗi/fallback; áp giới hạn tần suất job/giờ (mục 2).
 8. Spike TikTok/Instagram/YouTube publish: kết nối OAuth, thử đăng 1 video tối giản mỗi nền tảng, xác nhận review/audit cần gì thực tế. TikTok: xác nhận rõ giới hạn SELF_ONLY khi chưa audit (tính là pass MVP, mục 4.1.b).
 9. **Chỉ sau khi có đủ 4 publisher cụ thể (bước 6 + 8), mới trừu tượng hoá thành `PublisherResolver`** — tránh thiết kế interface chung khi mới thấy 1 case. Thêm Scheduler cho auto-publish: claim atomic, giới hạn tần suất + jitter (mục 2), test trường hợp trùng giờ với duyệt tay.
-10. Thêm AutoResponder cho Facebook/Instagram (chỉ bình luận, không DM — mục 4.5.b): webhook/poll, gửi câu mặc định/override, ghi log; không làm cho TikTok.
+10. Thêm AutoResponder cho Facebook/Instagram (chỉ comment công khai, không DM — mục 4.5.b): Meta Webhooks, gửi câu mặc định/override, ghi log; không làm cho TikTok.
 11. Thêm Drive/Sheets side jobs (trigger lúc duyệt, tạo subfolder riêng — mục 4.6); kiểm tra retry riêng, timeout reconciliation và khóa chống tạo hàng/file trùng.
 12. Thêm Telegram bot: cảnh báo + lệnh `/pause_*`/`/resume_*`/`/status`, allowlist chat_id; nối vào mọi điểm lỗi/cảnh báo đã có ở các bước trên (worker down, publish Failed/Unknown, token hết hạn).
 13. Ghép e2e: source (import/link/crawl/AI) → edit → render → preflight → review/auto-publish → publish đa nền tảng; xác minh Drive/Sheet, AutoResponder và Telegram đều hoạt động độc lập.
@@ -517,7 +519,7 @@ Trước khi implement subsystem, tạo `docs/reference-analysis/<subsystem>.md`
 - Kết nối được ít nhất: Facebook Page (app role/tester), TikTok (base review, đăng SELF_ONLY nếu chưa audit), Instagram (Business account), YouTube (OAuth kênh); mỗi nền tảng kiểm tra quyền trước khi cho publish.
 - Một video thật được đăng thành công (API xác nhận trạng thái cuối, không suy từ "job chạy xong") lên ít nhất 1 đích mỗi nền tảng đã kết nối; DB lưu trạng thái cuối, đích, render version, provider ID, permalink/video ID và thời điểm cho từng Publication.
 - Auto-publish: đặt lịch cho 1 Publication, Scheduler tự đăng đúng giờ không cần người bấm xác nhận; trạng thái cuối vẫn chỉ ghi khi nền tảng xác nhận.
-- Auto-reply: cấu hình câu trả lời mặc định cho ít nhất 1 đích Facebook hoặc Instagram, mọi bình luận/tin nhắn mới nhận được trả lời tự động, có log lại đầy đủ.
+- Auto-reply: cấu hình câu trả lời mặc định cho ít nhất 1 đích Facebook hoặc Instagram, mọi comment công khai mới nhận được trả lời tự động, có log lại đầy đủ.
 - Telegram bot: nhận được cảnh báo thật khi 1 Publication rơi vào `Failed`/`OutcomeUnknown` hoặc worker down; lệnh `/pause_auto_publish` và `/pause_auto_reply` có hiệu lực thật (Scheduler/AutoResponder dừng claim job mới ngay sau lệnh); chat_id ngoài allowlist bị từ chối.
 - `Published` chỉ xuất hiện khi nền tảng xác nhận trạng thái cuối, ở mọi nền tảng; trường hợp chưa rõ được đối soát trước retry.
 - Khi người dùng duyệt (bấm Đăng), Drive tự tạo 1 subfolder riêng cho video đó và upload MP4 theo `asset_export_key`; Sheets có một hàng cho mỗi render version/đích theo `sheet_row_key`, ghi cả tóm tắt/caption (`video_title`) và link subfolder; timeout/retry không tạo bản trùng trong các kịch bản đã xác định.
@@ -606,7 +608,7 @@ Audit tổng thể chỉ báo **Sẵn sàng cho các đích đã chọn** khi m�
 - **Tải video:** giới hạn hiện có là tối đa 10 lần bắt đầu tải trong cửa sổ trượt 60 phút cho mỗi cài đặt AffiHub local, tính gộp job link và discovery. Khi chạm ngưỡng, job mới ở trạng thái chờ giới hạn và tự đủ điều kiện chạy khi cửa sổ trượt cho phép; không mất yêu cầu và không ảnh hưởng import file. Lượt retry có gọi downloader cũng tính là một lần bắt đầu tải.
 - **Đăng bài:** giới hạn nội bộ hiện có là tối đa 5 Publication mới trong cửa sổ trượt 24 giờ cho mỗi Page/kênh đích, gộp đăng tay và theo lịch. Một Publication được tính một lần khi request publish đầu tiên được gửi; upload chunks, poll trạng thái, reconciliation và retry cùng một Publication ID không tạo thêm lượt. Publication mới do người dùng tạo là lượt mới. Publication ở `OutcomeUnknown` vẫn chiếm lượt và bị chặn retry cho tới khi được giải quyết. Hiển thị số lượt đã dùng và thời điểm mở lượt kế tiếp. Đây là giới hạn AffiHub, không phải hạn mức nền tảng cam kết.
 - **Jitter và múi giờ:** lịch không được đăng trước thời điểm người dùng chọn; jitter hiện tại là độ trễ ngẫu nhiên từ 5 đến 30 phút sau giờ hẹn. Mỗi lịch hiển thị múi giờ đang dùng; mặc định lấy múi giờ máy local khi tạo lịch và lưu thời điểm chuẩn hoá để xử lý nhất quán sau restart.
-- **Auto-reply:** trong MVP, “bình luận” nghĩa là comment công khai trên Facebook/Instagram. DM, Messenger và inbox không nằm trong điều kiện nghiệm thu MVP. Luồng comment dùng webhook/poll và API reply chính thức của từng connector.
+- **Auto-reply:** trong MVP, “bình luận” nghĩa là comment công khai trên Facebook/Instagram. DM, Messenger và inbox không nằm trong điều kiện nghiệm thu MVP. Luồng comment dùng Meta Webhooks và API reply chính thức; callback HTTPS công khai là điều kiện để nhận event thật.
 - **Google:** Drive/Sheets là tùy chọn. Các điều kiện upload/upsert chỉ áp dụng khi người dùng bật và kết nối Google; nếu chưa cấu hình, kết quả là “Bỏ qua — chưa bật”, không phải lỗi toàn MVP.
 - **Connector:** mỗi nền tảng được nghiệm thu riêng theo luồng OAuth, chọn đích và publish xác nhận cuối. Connector chưa được dùng không chặn import/edit/render/export local; không tính trạng thái local export là publish platform.
 - **Giá trị cho khách hàng:** spec hiện chưa có persona đã xác nhận, baseline thời gian/chi phí trước khi dùng, hay mục tiêu ROI do khách hàng cung cấp. Không tự điền số tiết kiệm hoặc cam kết năng suất. Trong pilot ghi cho từng video: nguồn, thời gian từ import đến export, thời gian render, số lần sửa thủ công, chi phí dịch vụ ngoài và trạng thái publish từng đích; chủ dự án dùng số liệu đó để chốt ngưỡng lợi ích trước khi coi hiệu quả kinh doanh là nghiệm thu.
@@ -620,7 +622,7 @@ Audit tổng thể chỉ báo **Sẵn sàng cho các đích đã chọn** khi m�
 - **MPT state:** trước khi dùng AI job trả phí, xác minh task state/queue của MPT còn tồn tại qua restart bằng cấu hình persistence đã chọn. Nếu upstream đang dùng state in-memory hoặc chưa thể đối soát sau restart, audit báo blocker cho độ tin cậy của nhánh AI; không tự gửi lại job chỉ vì không thấy task trong bộ nhớ.
 - **Timeout không có provider ID:** nếu request đã có thể tới nhà cung cấp nhưng AffiHub chưa nhận/lưu ID, giữ trạng thái `OutcomeUnknown`, thử đối soát bằng API/correlation dữ liệu được provider hỗ trợ; nếu không có lookup, giao diện cho người dùng mở đích kiểm tra và xác nhận một trong ba kết quả: “đã xảy ra” (lưu URL/reference và bằng chứng kiểm tra), “chắc chắn chưa xảy ra” (cho phép retry có audit log và xác nhận rủi ro), hoặc “vẫn chưa rõ” (tiếp tục chặn retry). Xác nhận thủ công được lưu thành `ManualOutcomeConfirmed`, không tự đổi thành `Published`; `Published` vẫn chỉ ghi khi API/nền tảng xác nhận cuối. Áp dụng tương tự khi auto-reply timeout; xác nhận thủ công không có bằng chứng API vẫn giữ trạng thái riêng và không gửi lại tự động.
 - **Worker bị dừng:** job đang chạy cần lease/heartbeat, fencing/claim token và sweeper. Worker phải gia hạn lease khi làm việc và xác minh vẫn sở hữu claim ngay trước mỗi side effect; worker cũ mất claim không được tiếp tục bước publish/upload/reply tiếp theo. Nếu request ngoài đã được gửi trước khi lease mất hiệu lực, worker mới phải đợi cửa sổ timeout rồi đối soát; không gửi song song chỉ vì lease hết hạn. Audit báo worker/lease quá hạn thay vì để job ở `Rendering`/`Uploading`/`Generating` vô thời hạn.
-- **Auto-reply dedupe:** tạo khóa idempotency duy nhất theo tài khoản đích và comment/event ID. Webhook/poll lặp không tạo reply thứ hai; nếu API gửi reply nhưng response timeout, giữ trạng thái chưa rõ và đối soát trước khi gửi lại.
+- **Auto-reply dedupe:** tạo khóa idempotency duy nhất theo tài khoản đích và comment ID. Meta webhook retry không tạo workflow/reply thứ hai; nếu API gửi reply nhưng response timeout, giữ trạng thái chưa rõ và đối soát trước khi gửi lại.
 - **Drive folder sau timeout:** folder cần khóa idempotency riêng theo video/project và được tìm lại bằng metadata trước khi tạo lại. Việc API tạo folder thành công nhưng response mất không được làm sinh folder thứ hai khi retry; lỗi Drive vẫn không gọi lại publisher.
 - **Repo tham khảo:** repo ngoài là nguồn đọc để port, không phải dependency runtime (ngoại trừ service upstream được chốt rõ như MPT). Với tài liệu/repo dùng branch di động như Postiz `main`, Porting Note phải ghi SHA/commit, ngày đọc và file đã đối chiếu để lần implement sau biết chính xác luồng tham khảo nào đã được review.
 - **Mô hình chạy MVP:** AffiHub cài và chạy trên một máy tính local do chủ dự án vận hành; lịch chạy khi máy thức, có mạng, app và worker hoạt động. Docker Compose dùng service DNS nội bộ như trên. OAuth callback local và platform file-upload sessions được smoke test trong triển khai. Instagram resumable upload và TikTok `FILE_UPLOAD` không cần media relay public. Nếu chuyển sang hosted, cần rà soát lưu trữ video/token, chi phí và SLA.

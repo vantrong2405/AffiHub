@@ -100,9 +100,10 @@
 
 ## 10. Auto-reply comment Facebook/Instagram
 
-- [x] 10.1 Viết Porting Note cho webhook/poll/reply Meta chính thức và comment interface Postiz; ghi rõ Postiz chỉ là kiến trúc tham khảo. Kiểm chứng: scope chỉ có public comments Facebook/Instagram; contract chưa đọc được từ tài liệu Meta được ghi rõ là chưa xác minh, không suy ra từ Postiz.
+- [x] 10.1 Viết Porting Note từ Meta Graph API comments, Facebook Page/Instagram webhooks và comment interface Postiz; ghi rõ Postiz chỉ tham khảo kiến trúc. Kiểm chứng: endpoint reply, webhook fields/payload, chữ ký, handshake, scopes và yêu cầu callback HTTPS được đối chiếu tài liệu Meta; runtime access/review vẫn là gate chưa smoke test.
 - [x] 10.2 Viết RSpec cho fixed default/keyword rule, event dedupe, timeout `OutcomeUnknown` với ba lựa chọn thủ công, pause trước claim và append-only log gồm source/event type, rule snapshot, nội dung gửi thực tế, kết quả/lỗi/bằng chứng; xác nhận đỏ.
-- [ ] 10.3 Implement AutoResponder và rule/log; API values trong YAML/`config_for`, Client gom network calls qua private request method, không gọi LLM. Kiểm chứng: RSpec xanh và replay cùng event không tạo reply thứ hai.
+- [ ] 10.2.1 Viết RSpec cho Meta reply request theo Facebook/Instagram, webhook handshake/signature/payload filter, comment subscription khi default rule bật và callback replay. Kiểm chứng: WebMock exact HTTP contract từ tài liệu Meta; các spec mới chạy đỏ trước implementation.
+- [ ] 10.3 Implement AutoResponder, rule/log và Meta webhook ingress; chỉ cấu hình vận hành cần tập trung và machine statuses/defaults/limits trong YAML/`config_for`, payload mapping và UI copy trong code, secret trong credentials; Client gom network calls qua private request method, không gọi LLM. Kiểm chứng: RSpec xanh, workflow claim/pause/audit đúng contract và replay cùng event không tạo reply thứ hai.
 - [ ] 10.4 Gọi `ui-ux` cho cấu hình câu mặc định/keyword, log trạng thái và xử lý `OutcomeUnknown`. Kiểm chứng: request specs cho HTTP/persistence; system spec cho thao tác cấu hình khi ổn định; browser review giới hạn tính năng và cách hiển thị trạng thái chưa rõ. Không viết view spec/style-only spec.
 
 ## 11. Google Drive và Sheets

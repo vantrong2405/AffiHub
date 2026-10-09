@@ -28,19 +28,39 @@ AffiHub MUST dùng một câu trả lời mặc định cố định cho destina
 - **WHEN** comment khớp một keyword rule đang bật
 - **THEN** AffiHub chọn đúng câu trả lời tĩnh của rule đó và không gọi LLM để sinh nội dung
 
-### Requirement: Theo dõi comment sau publish
-AffiHub MUST bắt đầu webhook hoặc polling comment chính thức sau khi publication trên Facebook/Instagram được xác nhận.
+#### Scenario: Nhiều keyword cùng khớp
+- **WHEN** nhiều keyword rule đang bật cùng khớp một comment
+- **THEN** AffiHub chọn keyword dài nhất; nếu độ dài bằng nhau thì chọn rule được tạo trước
 
-#### Scenario: Bài đăng được xác nhận
-- **WHEN** platform xác nhận publication cuối cùng
-- **THEN** AffiHub theo dõi comment mới cho destination đó nếu auto-reply đã được bật
+### Requirement: Nhận comment bằng Meta webhook
+AffiHub MUST nhận comment qua Meta Webhooks chính thức: Page field `feed` cho Facebook và field `comments` cho Instagram Business qua Facebook Login. App subscription chỉ được bật khi destination có default rule đang hoạt động. Callback phải xác minh `hub.verify_token` cho GET handshake và HMAC-SHA256 header `X-Hub-Signature-256` trên raw body POST trước khi xử lý payload.
+
+#### Scenario: Xác minh webhook callback
+- **WHEN** Meta gọi GET callback với `hub.mode=subscribe` và verify token trùng cấu hình bí mật
+- **THEN** AffiHub trả `hub.challenge`; token sai bị từ chối và challenge không được trả
+
+#### Scenario: Nhận comment Facebook mới
+- **WHEN** webhook Page có `field=feed`, `item=comment`, `verb=add` và destination Page đã bật default rule
+- **THEN** AffiHub nhận `comment_id` cùng `message`, bỏ qua event ngoài loại comment hoặc comment do chính Page gửi, rồi tạo một workflow nền
+
+#### Scenario: Nhận comment Instagram mới
+- **WHEN** webhook Instagram có `field=comments`, comment cấp đầu có `id` và `text`, và destination đã bật default rule
+- **THEN** AffiHub tạo một workflow nền; bỏ qua field khác, comment do account tự gửi, comment cấp reply và payload thiếu ID/nội dung
+
+#### Scenario: Từ chối webhook không hợp lệ
+- **WHEN** chữ ký POST không khớp raw request body hoặc JSON không hợp lệ
+- **THEN** AffiHub không tạo AutoReplyEvent/WorkflowRun và không gọi provider reply API
 
 ### Requirement: Dedupe và đối soát reply
 AffiHub MUST dùng khóa duy nhất theo destination và comment/event ID; timeout sau khi gửi reply MUST được đối soát trước khi retry hoặc nhận quyết định thủ công.
 
 #### Scenario: Webhook comment gửi lặp
-- **WHEN** cùng comment/event được nhận lại qua webhook hoặc polling
+- **WHEN** cùng comment/event được Meta gửi lại trong notification retry
 - **THEN** AffiHub chỉ tạo một tác vụ reply cho comment đó
+
+#### Scenario: Bài đăng chưa bật auto-reply
+- **WHEN** webhook đến destination không có default rule đang hoạt động
+- **THEN** AffiHub không tạo tác vụ reply
 
 #### Scenario: Timeout khi gửi reply
 - **WHEN** API có thể đã nhận reply nhưng response timeout

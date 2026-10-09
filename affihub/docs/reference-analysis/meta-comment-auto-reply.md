@@ -1,47 +1,54 @@
 # Meta Facebook/Instagram public-comment auto-reply — Porting Note
 
-Ngày đối chiếu: 2026-10-09
+Ngày đối chiếu tài liệu: 2026-10-09. API version AffiHub đang cấu hình: `v26.0`.
 
 ## Phạm vi
 
-Note này chỉ áp dụng cho comment công khai trên bài đăng đã publish của Facebook Page và Instagram Professional account khi destination đã bật auto-reply. Theo OpenSpec, không xử lý TikTok comments, DM, Messenger hoặc inbox; câu trả lời là câu mặc định cố định theo destination, có thể được thay bằng keyword rule tĩnh. Không dùng LLM để sinh reply.
+MVP chỉ tự trả lời comment công khai trên Facebook Page và Instagram Business đã liên kết Page. Không xử lý TikTok comments, DM, Messenger hoặc inbox; không dùng LLM. Meta API, quyền và khả năng nhận webhook còn phụ thuộc app mode, access level, Page task và tài khoản được cấp quyền.
 
-Meta API và quyền truy cập phụ thuộc loại đăng nhập, Graph API version, App Review và quyền của người dùng/Page. Các ví dụ dưới đây không thay thế xác minh trên app-role test account của AffiHub.
+## Nguồn chính thức đã đọc
 
-## Tài liệu Meta đã đối chiếu
+- [Graph API object comments](https://developers.facebook.com/docs/graph-api/reference/object/comments/): comment object hỗ trợ edge `/comments`; phần Publishing cho phép tạo comment trên object, trả comment ID, yêu cầu Page access token có `MODERATE` và permission `pages_manage_engagement`.
+- [Page Webhooks](https://developers.facebook.com/docs/graph-api/webhooks/getting-started/webhooks-for-pages/) và [Page webhook reference](https://developers.facebook.com/docs/graph-api/webhooks/reference/page/): Page field `feed` phát thay đổi của Page feed, gồm comment; payload `value` có các trường comment như `comment_id`, `post_id`, `item`, `verb`, `message`, `from` và `parent_id`. App cần `pages_manage_metadata`/`pages_show_list` và Page task phù hợp để cài app subscription qua `/{page-id}/subscribed_apps`.
+- [Instagram API with Facebook Login trên Meta Postman](https://www.postman.com/meta/instagram/folder/u4g5a2a/instagram-api-with-facebook-login): flow được AffiHub dùng cho Instagram Business có Page liên kết; collection xác nhận API quản lý/trả lời comments và permission `instagram_manage_comments` cùng các quyền Page cần thiết. Postman là collection do Meta phát hành.
+- [Instagram comment moderation](https://developers.facebook.com/docs/instagram-platform/comment-moderation/), [IG Comment Replies](https://developers.facebook.com/docs/instagram-platform/instagram-graph-api/reference/ig-comment/replies/), [Instagram Webhooks](https://developers.facebook.com/docs/instagram-platform/webhooks/) và [Instagram webhook reference](https://developers.facebook.com/docs/graph-api/webhooks/reference/instagram/): đã đọc trực tiếp ngày 2026-10-09.
 
-- [Tài liệu Instagram API do Meta phát hành trên Postman](https://www.postman.com/meta/instagram/documentation/6yqw8pt/instagram-api) và [folder Facebook Login](https://www.postman.com/meta/instagram/folder/u4g5a2a/instagram-api-with-facebook-login), đọc ngày 2026-10-09. Tài liệu xác nhận flow Facebook Login dành cho Instagram Professional account (Business hoặc Creator) có Facebook Page liên kết, hỗ trợ quản lý/trả lời comment trên media và liệt kê `instagram_manage_comments` cùng `pages_read_engagement`, `pages_show_list`, `instagram_basic`, `instagram_content_publish`. Tài liệu collection nói các endpoint hỗ trợ cursor-based pagination; đây là contract pagination ở mức collection, chưa xác định tên field/cursor và giới hạn cụ thể của comment edge.
-- [Facebook API documentation trong workspace Meta trên Postman](https://www.postman.com/meta/facebook/documentation/r56bjfd/facebook-api), đọc ngày 2026-10-09. Phần truy cập được mô tả cách lấy Page Access Token từ Page người dùng quản lý qua `/me/accounts`; collection này không được dùng làm căn cứ cho endpoint reply hoặc webhook comment.
-- [Meta Instagram API with Instagram Login — collection do Meta phát hành trên Postman](https://www.postman.com/meta/instagram/folder/6raa77c/instagram-api-with-instagram-login), đọc ngày 2026-10-09. Đây là luồng đăng nhập khác, không yêu cầu Facebook Page liên kết và dùng permission `instagram_business_manage_comments`. MVP hiện chọn Facebook Login for Business theo spec 05; không trộn permission Instagram Login vào OAuth flow này.
-- [Meta Graph API Webhooks](https://developers.facebook.com/docs/graph-api/webhooks/), [Webhooks for Pages](https://developers.facebook.com/docs/graph-api/webhooks/getting-started/webhooks-for-pages/) và [Instagram Platform Webhooks](https://developers.facebook.com/docs/instagram-platform/webhooks/) là nguồn chính thức cần dùng để xác minh subscription, event fields, callback verification và delivery contract.
-- [Graph API object comments reference](https://developers.facebook.com/docs/graph-api/reference/object/comments/) và [Meta permissions reference](https://developers.facebook.com/docs/permissions/reference/) là nguồn chính thức cần dùng để xác minh thao tác đọc/reply và quyền Page tương ứng.
+## Contract đã xác minh
 
-Các trang Meta Developers về Webhooks, Graph API comments, Instagram comment moderation và permissions được thử mở trực tiếp ngày 2026-10-09 nhưng trả 429 hoặc không truy cập được trong công cụ tra cứu. Tài liệu Postman chính thức xác nhận khả năng comment của Instagram và permission ở trên, nhưng không cung cấp đủ contract cho subscription/event payload hoặc request đọc/reply cần port. Vì vậy note này chưa khẳng định tên webhook field, cấu trúc payload, URL callback/challenge, retry headers, cursor cụ thể, giới hạn request, permission Page-comment, hay request/response cụ thể của thao tác đọc và reply Facebook/Instagram. Phải đối chiếu các chi tiết đó trên tài liệu Meta theo Graph API version được cấu hình trước khi triển khai Client; không suy ra chúng từ tên đường dẫn hoặc source Postiz.
+### Facebook Page
 
-## Postiz — nguồn tham khảo kiến trúc
+- Reply công khai bằng `POST /{comment-id}/comments`, gửi `message` và Page access token. Phản hồi thành công chứa comment ID. Page token phải đại diện người có task `MODERATE`; permission tạo reply là `pages_manage_engagement`.
+- Theo dõi bằng Page webhook field `feed`. Chỉ nhận change có `item=comment` và `verb=add`; lấy ID từ `comment_id`, nội dung từ `message`, Page ID từ `entry.id`. Change `edited`/`remove`, item khác và comment do chính Page gửi không tạo reply.
+- App cần đăng ký field `feed` trong Webhooks product và cài subscription cho từng Page bằng Page access token. Webhook `feed` cần `pages_manage_metadata` cùng `pages_show_list`.
 
-Postiz chỉ được tham khảo để nhìn ranh giới provider và cách provider gửi comment; không phải API truth, runtime dependency hay code để sao chép. Repo Postiz được pin tại SHA `86b3c3dd55d38fbed77fdbf82a21bfc1a169cac6`. Đã đọc ngày 2026-10-09:
+### Instagram Business qua Facebook Login
 
-- [FacebookProvider](https://github.com/gitroomhq/postiz-app/blob/86b3c3dd55d38fbed77fdbf82a21bfc1a169cac6/libraries/nestjs-libraries/src/integrations/social/facebook.provider.ts): method `comment` đăng message lên edge `/{replyToId}/comments`, trong đó `replyToId` là comment cuối nếu có hoặc post ID; trả ID và permalink lấy từ response.
-- [InstagramProvider](https://github.com/gitroomhq/postiz-app/blob/86b3c3dd55d38fbed77fdbf82a21bfc1a169cac6/libraries/nestjs-libraries/src/integrations/social/instagram.provider.ts): method `comment` đăng message lên edge `/{postId}/comments`, rồi đọc permalink từ media cha. Tham số `lastCommentId` không được dùng trong request của method này.
-- Hai method trên là interface đăng comment gắn với luồng publish/comment của Postiz. Chúng không thể hiện webhook subscription, polling comment đến mới, event dedupe, keyword rule, pause/claim hoặc xử lý `OutcomeUnknown` cho inbound comment; không port chúng thành AutoResponder.
-- License của repo được ghi nhận là AGPL-3.0. Chỉ tham khảo kiến trúc và API boundary, không copy hoặc vendor code.
+- Reply công khai bằng `POST /{ig-comment-id}/replies?message={message}` trên Graph API host của flow Facebook Login. Thành công trả `id` của reply. Permission gồm `instagram_basic` và `instagram_manage_comments`, cùng quyền Page được tài liệu yêu cầu. Không reply comment bị ẩn hoặc comment trên live media; thao tác reply vào comment reply được Meta đưa về comment cấp đầu.
+- Theo dõi bằng webhook field `comments`; payload có `object=instagram`, `entry[].id`, `changes[].field=comments` và `changes[].value`. Value chứa comment `id`, `text`, `from.id`, `self_ig_scoped_id`, `media.id` và `parent_id` khi là reply. Chỉ comment cấp đầu của media thường được đưa vào AutoResponder; bỏ qua event không phải `comments`, comment do account tự gửi và event không có ID/nội dung cần thiết.
+- Webhooks product cần subscribe field `comments`; với Facebook Login, permission field gồm `instagram_basic`, `instagram_manage_comments`, `pages_manage_metadata`, `pages_read_engagement`, `pages_show_list`. Cài app subscription cho Page/account bằng token và endpoint Graph API tương ứng với Facebook Login.
 
-## Ánh xạ vào contract AffiHub
+### Callback chung
 
-1. Chỉ bắt đầu nhận comment sau khi publication trên Facebook/Instagram được xác nhận cuối cùng và auto-reply đã bật cho destination đó.
-2. Dùng webhook Meta hoặc polling chính thức theo contract/spec. OpenSpec cho phép một trong hai; lựa chọn và khả năng API phải được xác minh trước khi chọn cách triển khai. Nếu có cả delivery lặp hoặc hai nguồn cùng quan sát một comment, khóa duy nhất theo destination cùng comment/event ID phải khiến một reply tối đa được tạo.
-3. Ghép một câu reply mặc định cố định theo destination; chỉ thay bằng keyword rule tĩnh đang bật. Lưu snapshot rule và message thực tế trong append-only log. Không gọi LLM.
-4. Trước mỗi lần claim comment, kiểm tra cờ pause. Event ngoài scope không được đưa vào quy trình reply.
-5. Nếu lệnh gửi reply timeout sau khi có thể đã tới Meta, đối soát bằng API chính thức trước khi retry. Nếu không thể xác định kết quả, giữ `OutcomeUnknown` và yêu cầu một trong ba quyết định thủ công đã nêu trong spec; không gửi reply thứ hai một cách tự động.
-6. Permission, Graph API version, webhook field, poll path/fields và các giới hạn provider phải được cấu hình theo convention YAML + `Rails.application.config_for` trong task implementation. Nội dung UX/lỗi thông thường tiếp tục viết trực tiếp trong Ruby/ERB theo `affihub/CLAUDE.md`.
+- Meta gửi GET với `hub.mode=subscribe`, `hub.verify_token`, `hub.challenge`. Chỉ trả lại challenge khi verify token trùng secret cấu hình.
+- POST notification có JSON `object`/`entry`/`changes` và header `X-Hub-Signature-256: sha256=...`. Tính HMAC-SHA256 trên raw request body bằng Meta App Secret, so sánh constant-time rồi mới parse/enqueue. Trả HTTP 200 sau khi event hợp lệ đã được ghi bền; Meta có thể retry delivery trong tối đa 36 giờ nên dedupe theo destination + comment ID là bắt buộc.
+- App cần ở Live mode để nhận notification; `comments` cần Advanced Access theo cấu hình Meta, Business Verification và tài khoản Instagram Professional công khai. Meta yêu cầu callback HTTPS có chứng thư hợp lệ. App local phải có callback HTTPS công khai (ví dụ tunnel do người vận hành tự cấu hình) thì Meta mới gọi được; code không tạo public tunnel.
 
-## Việc phải xác minh trước task 10.3
+## Repo tham khảo kiến trúc
 
-- Trên Meta App Dashboard, xác nhận Facebook Login for Business được cấp `instagram_manage_comments` cùng permission/access tier thực tế cần thiết; xác nhận Page và Instagram Professional account liên kết thuộc người dùng test.
-- Đọc lại tài liệu Meta Webhooks và comment references theo API version trong config; ghi tên subscription field, payload/event ID, quy tắc xác thực callback, polling pagination/limits, quyền đọc comment và thao tác reply.
-- Trên Page/Instagram test destination, nhận một comment công khai và xác nhận event hoặc polling response; sau đó gửi một reply tĩnh duy nhất, lưu provider comment ID và bằng chứng response đã được khử secret.
-- Thử timeout/reconcile trên test destination để xác định API có thể tìm reply đã gửi theo dữ liệu nào. Nếu không đủ bằng chứng thì để các lựa chọn `OutcomeUnknown` theo OpenSpec, không tự retry.
-- Chỉ dùng WebMock trong RSpec để kiểm tra request boundary đã xác minh; test không thay cho quyền truy cập hoặc smoke test với Meta thật.
+Postiz chỉ dùng để đối chiếu ranh giới provider; không dùng làm nguồn API truth, runtime dependency hoặc code để sao chép. Repo pin tại SHA `86b3c3dd55d38fbed77fdbf82a21bfc1a169cac6`:
 
-Note này ghi nhận giới hạn bằng chứng hiện có; cần cập nhật lại nếu lần xác minh API thật cho thấy contract khác.
+- [FacebookProvider](https://github.com/gitroomhq/postiz-app/blob/86b3c3dd55d38fbed77fdbf82a21bfc1a169cac6/libraries/nestjs-libraries/src/integrations/social/facebook.provider.ts) gửi comment qua `/{replyToId}/comments`.
+- [InstagramProvider](https://github.com/gitroomhq/postiz-app/blob/86b3c3dd55d38fbed77fdbf82a21bfc1a169cac6/libraries/nestjs-libraries/src/integrations/social/instagram.provider.ts) có interface comment riêng; không dùng method này để suy ra webhook hoặc contract Instagram Graph API.
+- Repo Postiz có license AGPL-3.0. Chỉ tham khảo kiến trúc, không vendor/copy/link thư viện này.
+
+## Ánh xạ vào AffiHub
+
+1. Controller chỉ nhận webhook handshake/event và gọi Service; signature verification, payload normalization, event persistence, claim, reply và audit nằm trong Service/Model/Job.
+2. Routes theo design: singleton webhook resource `GET` cho handshake, `POST` cho delivery. Không thêm controller action tùy ý.
+3. `AutoReplyEvent` dùng unique key destination + provider comment ID. Một replay chỉ trả về event/workflow đã có, không enqueue hoặc gửi reply thứ hai.
+4. Trước claim kiểm tra global auto-reply pause. Lưu outbound attempt trước request; timeout/malformed response có thể đã phát sinh side effect thì giữ `OutcomeUnknown`. Không tự retry khi chưa reconcile.
+5. YAML qua `Rails.application.config_for` chỉ chứa cấu hình vận hành cần tập trung: API version/base URL và endpoint paths, OAuth scopes, subscription fields, timeout/retry limits, cùng machine statuses/event types/defaults/limits/error-code keys. Payload field mapping, signature header và parsing contract cố định nằm trong provider code. Meta App Secret và webhook verify token là secrets, giữ trong Rails credentials; câu chữ hiển thị/log thân thiện để trực tiếp trong Ruby/ERB.
+
+## Chưa được smoke test
+
+Tài liệu xác nhận request contract, nhưng chưa xác minh bằng Page/Instagram test account của AffiHub: app mode/access tier, quyền thực được cấp, subscription hoạt động, delivery qua HTTPS tunnel, reply thật, timeout/reconcile và hành vi retry. Các yêu cầu này vẫn là production/runtime gates; RSpec/WebMock không thay thế smoke test trên tài khoản Meta thật.
