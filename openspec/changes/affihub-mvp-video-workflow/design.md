@@ -94,7 +94,7 @@ resources :video_projects, only: %i[index show new create edit update destroy] d
   resources :preflight_reports, only: %i[create show]
   resources :publications, only: %i[index show new create edit update]
   resources :schedules, only: %i[index show new create edit update destroy]
-  resources :drive_exports, only: %i[index show create]
+  resources :drive_exports, only: %i[index show create update]
   resources :sheet_syncs, only: %i[index show create]
 end
 
@@ -142,6 +142,8 @@ Rails tự tìm view theo controller/action; ví dụ `VideoProjectsController#i
 | `SheetSyncsController` | `app/views/sheet_syncs/index.html.erb`, `app/views/sheet_syncs/show.html.erb` |
 
 `create`, `update` và `destroy` thường redirect sau khi thành công; khi validation thất bại, `create` render `new` và `update` render `edit` với lỗi. Không tạo template cho action chỉ redirect. View chỉ trình bày dữ liệu controller/service cung cấp, không query Model hoặc giữ business logic; route helpers được dùng thay URL viết cứng. Shared layout nằm ở `app/views/layouts/application.html.erb`, partial dùng chung ở `app/views/shared/`, còn component giao diện dùng daisyUI theo quyết định 8. Xem [Rails Layouts and Rendering](https://guides.rubyonrails.org/v8.1/layouts_and_rendering.html).
+
+`DriveExports#update` cập nhật một Drive export đã có, gồm xác nhận thủ công khi trạng thái là `OutcomeUnknown`; controller gọi `DriveExports::UpdateService`. Form xác nhận nằm trên `drive_exports#show`, nên không cần action `edit` hoặc route reconcile riêng. Helper/Decorator chuẩn bị quyết định nào có thể chọn và giá trị form; ERB chỉ hiển thị các giá trị đó.
 
 ### 10. Ánh xạ wireframe MVP vào resource routes
 
@@ -212,6 +214,14 @@ Antigravity là lựa chọn UI “Chưa khả dụng”: điều khoản Google
 
 MPT v1.3.8 dùng LLM provider/config API key cho `/scripts` và `/terms`; Gemini API cũng phải gọi endpoint chính thức trực tiếp nếu OAuth contract được xác minh. Codex hiện auth-only, không phải LLM provider. Không có ChatGPT/SIWC path; không đưa user OAuth token vào MPT OpenAI-compatible endpoint. Không gửi yêu cầu MPT tạo video trước khi cost gate/consent hiện có pass. Gemini cost/quota phải có nguồn project; MuAPI/stock/TTS tính theo lượt vẫn qua cost gate và consent.
 
+### 15. Google Drive/Sheets miễn phí, không bật billing
+
+AffiHub dùng Google Drive/Sheets API trực tiếp theo tài liệu chính thức, không chạy `rclone` như runtime dependency. API tiêu chuẩn hiện không tính thêm phí; ứng dụng chỉ dùng quota tiêu chuẩn và không bật Google Cloud Billing, gửi yêu cầu quota trả phí, thu thập thẻ hay mua thêm dung lượng. Nếu quota API hết, side job dừng và chờ quota khả dụng; nếu Drive storage của tài khoản đầy, upload dừng tới khi người dùng tự giải phóng dung lượng. Trong cả hai trường hợp, source/render local, local export và Publication không đổi.
+
+Tài khoản Google cá nhân có tối đa 15 GB dùng chung cho Drive, Gmail và Photos; đây là hạn mức của tài khoản, không phải storage do AffiHub cấp. OAuth project/client ID cần được cấu hình và người dùng cần tự consent; với app dùng cá nhân dưới 100 người, Google cho phép không xác minh OAuth nhưng vẫn có thể hiện cảnh báo “unverified”. Rclone miễn phí nhưng vẫn cần OAuth/consent; shared client ID của rclone được lên lịch ngừng trong năm 2026, nên không loại bỏ bước tạo OAuth client riêng. Tham khảo [Drive API pricing and limits](https://developers.google.com/workspace/drive/api/guides/limits), [Google OAuth verification exceptions](https://support.google.com/cloud/answer/13464323?hl=en), [Google account storage](https://support.google.com/drive/answer/9312312?hl=en), [rclone Drive backend](https://rclone.org/drive/).
+
+Drive và Sheets side job có thể chạy độc lập. SheetSync được phép ghi hàng trước khi Drive upload hoàn tất, khi đó link Drive tạm rỗng; khi Drive xác nhận thành công, AffiHub enqueue SheetSync để upsert cùng hàng với link mới nhất. Sheets lỗi chỉ retry Sheets; Drive lỗi chỉ retry Drive. Quota exhaustion không được chuyển thành nhánh billing hoặc quota upgrade.
+
 ## Risks / Trade-offs
 
 - [API review hoặc quyền public thay đổi/được duyệt chậm] → Hiển thị trạng thái connector và nghiệm thu kỹ thuật riêng với public readiness; không đặt deadline bên ngoài làm điều kiện code hoàn tất.
@@ -219,6 +229,7 @@ MPT v1.3.8 dùng LLM provider/config API key cho `/scripts` và `/terms`; Gemini
 - [`yt-dlp` extractor hỏng hoặc source từ chối tải] → Pin và cập nhật version có chủ ý, giới hạn request, hiện lỗi và fallback file local; không retry khi bị rate-limit/block.
 - [Máy local tắt khi tới lịch] → Không hứa chạy khi máy ngủ; đánh dấu lịch bị lỡ và yêu cầu user chọn lịch lại hoặc đăng tay.
 - [Timeout sau external side effect] → Giữ `OutcomeUnknown`, reconcile trước retry, dùng idempotency key/claim guard và lưu `ManualOutcomeConfirmed` riêng.
+- [Google thay đổi quota/pricing hoặc tài khoản đầy storage] → Giữ billing tắt, không yêu cầu thẻ hoặc nâng quota; dừng side job Google ở giới hạn miễn phí và tiếp tục local workflow.
 - [FFmpeg/MPT/TTS tiêu tốn tài nguyên hoặc không sẵn sàng] → Health check từ đúng network namespace, giới hạn worker và báo service lỗi riêng; giữ source/render có sẵn.
 - [Google Sheets không có transaction/unique key] → Serialize upsert, dò key trước append, đối soát sau timeout; Rails database giữ authoritative record.
 - [Nhiều platform có contract không đồng nhất] → Giữ workflow cụ thể theo connector, kiểm thử smoke riêng trên tài khoản test rồi mới trừu tượng hóa phần thực sự chung.

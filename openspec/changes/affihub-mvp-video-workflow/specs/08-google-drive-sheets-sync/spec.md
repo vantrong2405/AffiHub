@@ -13,6 +13,21 @@ AffiHub MUST cho phép bỏ qua Drive/Sheets hoặc kết nối sau mà không c
 - **WHEN** người dùng chưa kết nối Drive hoặc Sheets
 - **THEN** các luồng video tiếp tục độc lập và audit hiển thị `Chưa cấu hình` cho integration tương ứng
 
+### Requirement: Google sync không phát sinh phí và không cần thẻ thanh toán
+AffiHub MUST chỉ dùng hạn mức tiêu chuẩn của Google Drive/Sheets API; MUST NOT yêu cầu người dùng thêm thẻ, bật Google Cloud Billing, mua dung lượng, xin tăng quota trả phí hoặc tự chuyển sang dịch vụ trả phí. Khi quota API hoặc dung lượng Drive miễn phí của tài khoản hết, AffiHub MUST dừng side job Google tương ứng và báo trạng thái; MUST giữ nguyên source/render local cùng các luồng edit, export và publish.
+
+#### Scenario: Quota Google API tiêu chuẩn đã hết
+- **WHEN** Google từ chối thao tác vì quota tiêu chuẩn đã hết
+- **THEN** AffiHub giữ side job ở trạng thái chờ quota khả dụng, không bật billing hoặc xin quota trả phí, và giữ các luồng video local hoạt động
+
+#### Scenario: Google API trả rate limit tạm thời
+- **WHEN** Drive hoặc Sheets trả rate-limit có thể hồi phục như `429` hoặc `userRateLimitExceeded`
+- **THEN** AffiHub retry bằng exponential backoff có giới hạn theo cấu hình, không retry vô hạn hoặc xin quota trả phí
+
+#### Scenario: Dung lượng Drive miễn phí đã hết
+- **WHEN** Google từ chối upload vì tài khoản không còn dung lượng
+- **THEN** AffiHub báo cần giải phóng dung lượng Drive, không mua thêm dung lượng, và giữ render local cùng trạng thái publication
+
 ### Requirement: Bảo vệ Google OAuth và token
 Drive/Sheets OAuth MUST dùng state ngẫu nhiên, hết hạn, dùng một lần và gắn phiên; dùng PKCE khi hỗ trợ, callback allowlist, scope tối thiểu, mã hóa access/refresh token và không log secret.
 
