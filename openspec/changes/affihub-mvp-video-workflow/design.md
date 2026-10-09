@@ -105,7 +105,7 @@ end
 resources :ai_provider_connections, only: %i[index show create update destroy]
 resources :google_connections, only: %i[index show new create edit update destroy]
 resources :auto_reply_rules, only: %i[index show new create edit update destroy]
-resources :auto_reply_logs, only: %i[index show]
+resources :auto_reply_logs, only: %i[index show update]
 resource :meta_comment_webhook, only: %i[show create], path: "webhooks/meta/comments"
 
 get "/auth/:provider/callback",
@@ -138,7 +138,7 @@ Rails tự tìm view theo controller/action; ví dụ `VideoProjectsController#i
 | `AiProviderConnectionsController` | `app/views/ai_provider_connections/index.html.erb`, `app/views/ai_provider_connections/show.html.erb` |
 | `GoogleConnectionsController` | `app/views/google_connections/index.html.erb`, `app/views/google_connections/show.html.erb`, `app/views/google_connections/new.html.erb`, `app/views/google_connections/edit.html.erb` |
 | `AutoReplyRulesController` | `app/views/auto_reply_rules/index.html.erb`, `app/views/auto_reply_rules/show.html.erb`, `app/views/auto_reply_rules/new.html.erb`, `app/views/auto_reply_rules/edit.html.erb`, `app/views/auto_reply_rules/_form.html.erb` |
-| `AutoReplyLogsController` | `app/views/auto_reply_logs/index.html.erb`, `app/views/auto_reply_logs/show.html.erb` |
+| `AutoReplyLogsController` | `app/views/auto_reply_logs/index.html.erb`, `app/views/auto_reply_logs/show.html.erb`; `update` xử lý quyết định đối soát từ trang `show` |
 | `MetaCommentWebhooksController` | Không có template; `show` trả webhook challenge dạng text và `create` trả acknowledgement HTTP 200 |
 | `DriveExportsController` | `app/views/drive_exports/index.html.erb`, `app/views/drive_exports/show.html.erb` |
 | `SheetSyncsController` | `app/views/sheet_syncs/index.html.erb`, `app/views/sheet_syncs/show.html.erb` |
@@ -146,6 +146,8 @@ Rails tự tìm view theo controller/action; ví dụ `VideoProjectsController#i
 `create`, `update` và `destroy` thường redirect sau khi thành công; khi validation thất bại, `create` render `new` và `update` render `edit` với lỗi. Không tạo template cho action chỉ redirect. View chỉ trình bày dữ liệu controller/service cung cấp, không query Model hoặc giữ business logic; route helpers được dùng thay URL viết cứng. Shared layout nằm ở `app/views/layouts/application.html.erb`, partial dùng chung ở `app/views/shared/`, còn component giao diện dùng daisyUI theo quyết định 8. Xem [Rails Layouts and Rendering](https://guides.rubyonrails.org/v8.1/layouts_and_rendering.html).
 
 `DriveExports#update` cập nhật một Drive export đã có, gồm xác nhận thủ công khi trạng thái là `OutcomeUnknown`; controller gọi `DriveExports::UpdateService`. Form xác nhận nằm trên `drive_exports#show`, nên không cần action `edit` hoặc route reconcile riêng. Helper/Decorator chuẩn bị quyết định nào có thể chọn và giá trị form; ERB chỉ hiển thị các giá trị đó.
+
+`AutoReplyLogs#update` lưu một trong ba quyết định đối soát cho `AutoReplyEvent` đang `OutcomeUnknown`, qua `AutoResponder::ResolveOutcomeService`. Form nằm trên `auto_reply_logs#show`; không thêm action reconcile riêng. Helper chuẩn bị trạng thái và lựa chọn hiển thị; ERB chỉ trình bày form tương ứng.
 
 ### 10. Ánh xạ wireframe MVP vào resource routes
 
