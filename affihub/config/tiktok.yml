@@ -1,0 +1,133 @@
+shared:
+  oauth:
+    client_id: <%= ENV.fetch("TIKTOK_CLIENT_KEY", "") %>
+    client_secret: <%= Rails.application.credentials.dig(:tiktok, :client_secret) %>
+    authorization_base_url: https://www.tiktok.com
+    authorization_path: /v2/auth/authorize/
+    authorization_client_parameter: client_key
+    token_url: https://open.tiktokapis.com/v2/oauth/token/
+    redirect_uri: http://127.0.0.1:3000/auth/tiktok/callback
+    allowed_redirect_uris:
+      - http://127.0.0.1:3000/auth/tiktok/callback
+    scopes:
+      - user.info.basic
+      - video.publish
+      - video.list
+    required_publish_scopes:
+      - video.publish
+    pkce_enabled: true
+    oauth_state_ttl_seconds: 600
+  provider_key: tiktok
+  media_transfer_protocol: tiktok_file_upload
+  page_create_content_tasks: []
+  client_class: TikTok::Client
+  publication_operation: publication_publish
+  publish_stage: publish
+  worker_id_prefix: tiktok-publish
+  api_base_url: https://open.tiktokapis.com/v2
+  api_paths:
+    profile: /user/info/
+    creator_info: /post/publish/creator_info/query/
+    initialize_video_publish: /post/publish/video/init/
+    publish_status: /post/publish/status/fetch/
+    video_query: /video/query/
+  profile_fields:
+    - open_id
+    - display_name
+  video_query_fields:
+    - id
+    - share_url
+  video_list_scope: video.list
+  title_max_utf16_units: 2200
+  upload_source: FILE_UPLOAD
+  successful_response_code: ok
+  publish_statuses:
+    processing:
+      - PROCESSING_UPLOAD
+    complete: PUBLISH_COMPLETE
+    failed: FAILED
+  creator_info_fields:
+    privacy_levels: privacy_level_options
+    comment_disabled: comment_disabled
+    duet_disabled: duet_disabled
+    stitch_disabled: stitch_disabled
+  creator_interactions_disabled_when_unavailable: true
+  cap_statuses:
+    unavailable_counter: unavailable_counter
+    creator: creator_cap_reached
+    app: provider_app_cap_reached
+  public_post_ids_field: publicaly_available_post_id
+  max_distinct_creators_window_seconds: 86400
+  max_distinct_creators_per_24_hours: 5
+  token_refresh_buffer_seconds: 300
+  require_music_usage_confirmation: true
+  require_aigc_disclosure_confirmation: true
+  ambiguous_error_codes:
+    - invalid_json_response
+    - network_request_failed
+    - tiktok_upload_not_confirmed
+  ambiguous_http_error_prefix: tiktok_http_5
+  provider_cap_errors:
+    creator: spam_risk_too_many_posts
+    app: reached_active_user_cap
+  safe_error_codes:
+    missing_privacy_choice: tiktok_privacy_choice_required
+    caption_too_long: tiktok_caption_too_long
+    privacy_not_allowed: tiktok_privacy_not_allowed
+    privacy_unavailable: tiktok_privacy_unavailable
+    private_account_not_confirmed: tiktok_private_account_not_confirmed
+    music_usage_not_confirmed: tiktok_music_usage_not_confirmed
+    ai_disclosure_not_confirmed: tiktok_ai_disclosure_not_confirmed
+    interaction_disabled: tiktok_creator_interaction_disabled
+    branded_content_self_only: tiktok_branded_content_self_only
+    creator_cap_reached: spam_risk_too_many_posts
+    provider_app_cap_reached: reached_active_user_cap
+    app_local_cap_reached: tiktok_app_creator_cap_reached
+    creator_info_unavailable: tiktok_creator_info_unavailable
+    invalid_publish_response: tiktok_invalid_publish_response
+    upload_not_confirmed: tiktok_upload_not_confirmed
+    publish_status_unknown: tiktok_publish_status_unknown
+    publish_failed: tiktok_publish_failed
+    worker_lease_lost: tiktok_publish_worker_lease_lost
+  audit_events:
+    upload_confirmed: tiktok_upload_confirmed
+    processing: tiktok_publish_processing
+    published: tiktok_publish_completed
+    failed: tiktok_publish_failed
+    outcome_unknown: tiktok_publish_outcome_unknown
+  permalink_hosts:
+    - tiktok.com
+    - www.tiktok.com
+  upload_host_suffix: .tiktokapis.com
+  content_posting_audited: false
+  unaudited_allowed_privacy_levels:
+    - SELF_ONLY
+  unaudited_requires_private_account: true
+  upload_min_chunk_size_bytes: 5000000
+  upload_chunk_size_bytes: 64000000
+  upload_max_single_chunk_size_bytes: 64000000
+  upload_max_final_chunk_size_bytes: 128000000
+  upload_max_chunks: 1000
+  upload_response_codes:
+    partial: 206
+    complete: 201
+  video_content_type: video/mp4
+  http_error_code_prefix: tiktok_http_
+  client_error_codes:
+    invalid_file_size: invalid_file_size
+    too_many_upload_chunks: too_many_upload_chunks
+    invalid_upload_offset: invalid_upload_offset
+    upload_chunk_too_large: upload_chunk_too_large
+    invalid_upload_url: invalid_upload_url
+    upload_not_confirmed: tiktok_upload_not_confirmed
+    invalid_json_response: invalid_json_response
+    network_request_failed: network_request_failed
+  open_timeout_seconds: 10
+  read_timeout_seconds: 30
+  upload_timeout_seconds: 900
+  status_poll_interval_seconds: 30
+  status_poll_max_attempts: 20
+test:
+  oauth:
+    client_id: tiktok-test-client
+    client_secret: tiktok-test-secret

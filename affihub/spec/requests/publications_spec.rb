@@ -61,6 +61,87 @@ RSpec.describe "Publication pages", type: :request do
 
       expect(response).to have_http_status(:not_found)
     end
+
+    it "persists TikTok consent using the selected creator and render records" do
+      video_project = create(:video_project)
+      render_version = create(:render_version, video_project:)
+      social_connection = create(
+        :social_connection,
+        provider: "tiktok",
+        external_user_id: "creator-1"
+      )
+      social_destination = create(
+        :social_destination,
+        social_connection:,
+        provider: "tiktok",
+        external_id: "creator-1"
+      )
+      publication = create(:publication, render_version:, social_destination:)
+      token_service = double("TikTok access token service", call: true, access_token: "creator-access-token")
+      tiktok_client = double("TikTok::Client")
+      allow(SocialConnections::TikTok::AccessTokenService).to receive(:new)
+        .with(social_destination_id: social_destination.id)
+        .and_return(token_service)
+      allow(TikTok::Client).to receive(:new).and_return(tiktok_client)
+      allow(tiktok_client).to receive(:creator_info).with(access_token: "creator-access-token").and_return(
+        "data" => {
+          "privacy_level_options" => [ "SELF_ONLY" ],
+          "comment_disabled" => false,
+          "duet_disabled" => false,
+          "stitch_disabled" => false
+        },
+        "error" => { "code" => "ok" }
+      )
+
+      patch video_project_publication_path(video_project, publication), params: {
+        publication: {
+          caption: "Caption TikTok",
+          consent_attributes: {
+            privacy_level: "SELF_ONLY",
+            allow_comment: "0",
+            allow_duet: "0",
+            allow_stitch: "0",
+            brand_organic_toggle: "0",
+            brand_content_toggle: "0",
+            is_aigc: "1",
+            creator_account_private: "1",
+            music_usage_confirmed: "1",
+            tiktok_creator_id: "forged-creator"
+          }
+        }
+      }
+
+      expect(response).to redirect_to(video_project_publication_path(video_project, publication))
+      expect(publication.reload.consent_snapshot.slice(
+        "privacy_level",
+        "allow_comment",
+        "allow_duet",
+        "allow_stitch",
+        "brand_organic_toggle",
+        "brand_content_toggle",
+        "is_aigc",
+        "creator_account_private",
+        "music_usage_confirmed",
+        "tiktok_social_connection_id",
+        "tiktok_creator_id",
+        "tiktok_render_version_id",
+        "tiktok_publication_id"
+      )).to eq(
+        "privacy_level" => "SELF_ONLY",
+        "allow_comment" => false,
+        "allow_duet" => false,
+        "allow_stitch" => false,
+        "brand_organic_toggle" => false,
+        "brand_content_toggle" => false,
+        "is_aigc" => true,
+        "creator_account_private" => true,
+        "music_usage_confirmed" => true,
+        "tiktok_social_connection_id" => social_connection.id,
+        "tiktok_creator_id" => "creator-1",
+        "tiktok_render_version_id" => render_version.id,
+        "tiktok_publication_id" => publication.id
+      )
+    end
   end
 
   describe "POST /video_projects/:video_project_id/publications/:id/confirm" do

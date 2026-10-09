@@ -35,7 +35,14 @@ class AiProviderConnections::ShowService < ApplicationService
   def step_load_callback_origin
     configuration = Rails.application.config_for(:ai_providers).deep_symbolize_keys
     provider_configuration = configuration.fetch(:providers).fetch(@ai_provider_connection.provider.to_sym)
-    @provider_presentation = provider_configuration.slice(:display_name, :required_scopes, :model_selection_enabled)
+    @provider_presentation = provider_configuration.slice(
+      :display_name,
+      :required_scopes,
+      :model_selection_enabled,
+      :project_id,
+      :quota_console_url,
+      :pricing_source_url
+    )
     redirect_uri = provider_configuration.fetch(:redirect_uri)
     @callback_origin = step_uri_origin(redirect_uri)
     @callback_origin_matches = @current_origin.present? && step_uri_origin(@current_origin) == @callback_origin

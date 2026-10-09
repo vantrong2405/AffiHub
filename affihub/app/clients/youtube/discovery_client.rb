@@ -26,6 +26,7 @@ module Youtube
     # @param query [String] the user-entered keyword query
     # @return [Array<Hash>] normalized video metadata and attribution URLs
     def search_videos(query:)
+      step_reserve_quota(:search_list)
       response = request(
         endpoint: CONFIGURATION.fetch(:search_endpoint),
         params: {
@@ -60,6 +61,13 @@ module Youtube
     end
 
     private
+
+    def step_reserve_quota(bucket)
+      reservation = Youtube::QuotaReservationService.new(bucket:)
+      return if reservation.call
+
+      raise Error, "quota_exhausted"
+    end
 
     def request(endpoint:, params:)
       api_key = CONFIGURATION.fetch(:api_key).to_s

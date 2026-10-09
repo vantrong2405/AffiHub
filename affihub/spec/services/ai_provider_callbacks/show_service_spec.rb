@@ -306,7 +306,7 @@ RSpec.describe AiProviderCallbacks::ShowService, type: :service do
       allow(codex_client).to receive(:verify_id_token).and_return(codex_identity)
     end
 
-    it "saves a separately authenticated Codex connection as pending verification without listing models" do
+    it "persists a separately authenticated Codex connection as pending verification without listing models" do
       expect(service.call).to eq(true)
 
       connection = AiProviderConnection.find_by!(provider: "codex", provider_subject: "codex-user-789")

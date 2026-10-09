@@ -40,12 +40,22 @@ class OutboundAttempts::StartService < ApplicationService
         step_fail!("Stage hoặc thời hạn request không hợp lệ.")
       elsif step_find_unresolved_attempt(workflow_run)
         step_fail!("Cần đối soát outbound attempt trước khi gửi lại.")
-      else
+      elsif step_reserve_publication_quota(workflow_run)
         step_create_attempt(workflow_run)
         step_record_attempt_started(workflow_run)
         step_succeed!
       end
     end
+  end
+
+  def step_reserve_publication_quota(workflow_run)
+    publication = workflow_run.workflowable
+    return true unless publication.is_a?(Publication)
+
+    service = Publications::QuotaReservationService.new(publication_id: publication.id)
+    return true if service.call
+
+    step_fail!(service.errors.full_messages.to_sentence)
   end
 
   def step_current_lease?(workflow_run)

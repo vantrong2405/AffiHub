@@ -8,11 +8,11 @@ module WorkflowStatusHelper
     badge_class = case status.to_s
     when "ready", "completed", "published", "confirmed", "manual_outcome_confirmed"
       "badge-success"
-    when "failed", "outcome_unknown", "reconciliation_required"
+    when "failed", "outcome_unknown", "reconciliation_required", "scope_missing", "reauth_required", "revoked"
       "badge-error"
     when "processing", "running", "submitting"
       "badge-info"
-    when "pending", "waiting_for_download_slot", "queued", "draft", "prepared", "manual_outcome_not_occurred"
+    when "pending", "pending_verification", "waiting_for_download_slot", "queued", "draft", "prepared", "manual_outcome_not_occurred"
       "badge-warning"
     else
       "badge-neutral"

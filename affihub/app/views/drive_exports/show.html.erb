@@ -1,0 +1,73 @@
+<% content_for :title, drive_export_page_title(@drive_export) %>
+
+<section class="mx-auto max-w-3xl space-y-6">
+  <div class="space-y-2">
+    <%= link_to "← Lịch sử Drive", video_project_drive_exports_path(@video_project), class: "link link-hover text-sm" %>
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div class="space-y-1">
+        <h1 class="text-3xl font-bold">Bản render v<%= @drive_export.render_version.version_number %></h1>
+        <p class="text-sm text-base-content/70"><%= @video_project.name %> · <%= @drive_export.google_connection.email %></p>
+      </div>
+      <span class="badge <%= drive_export_badge_class(@drive_export.status) %>"><%= drive_export_status_label(@drive_export.status) %></span>
+    </div>
+  </div>
+
+  <% if @has_safe_error %>
+    <div role="alert" class="alert alert-warning"><span><%= google_safe_error_message(@drive_export.safe_error_code) %></span></div>
+  <% end %>
+
+  <% if @has_drive_url %>
+    <article class="card border border-base-300 bg-base-100">
+      <div class="card-body gap-3 p-4 sm:p-5">
+        <h2 class="card-title">File trên Google Drive</h2>
+        <p class="break-all text-sm text-base-content/70"><%= @drive_url %></p>
+        <%= link_to "Mở file Drive", @drive_url, target: "_blank", rel: "noopener", class: "btn btn-outline w-full sm:w-auto" %>
+      </div>
+    </article>
+  <% end %>
+
+  <% if @needs_manual_reconciliation %>
+    <article class="card border border-warning/30 bg-warning/5">
+      <div class="card-body gap-4 p-4 sm:p-5">
+        <div class="space-y-2">
+          <h2 class="card-title">Google chưa xác nhận kết quả upload</h2>
+          <p class="text-sm">Upload có thể đã hoàn tất dù AffiHub bị timeout. Mở thư mục Drive và kiểm tra file của bản render này trước khi cho phép thử lại. Không tick thử lại nếu chưa xác nhận file chưa tồn tại.</p>
+        </div>
+
+        <%= form_with url: video_project_drive_export_path(@video_project, @drive_export), method: :patch, class: "space-y-4" do |form| %>
+          <div class="space-y-2">
+            <%= form.label :decision, "Kết quả kiểm tra", class: "label-text font-medium" %>
+            <%= form.select :decision,
+                            options_for_select([["File đã có trên Drive", "occurred"], ["Đã xác nhận file chưa có", "not_occurred"], ["Chưa thể kết luận", "unknown"]]),
+                            {},
+                            class: "select select-bordered h-11 w-full" %>
+          </div>
+          <div class="space-y-2">
+            <%= form.label :evidence, "Ghi chú kiểm tra", class: "label-text font-medium" %>
+            <%= form.text_area :evidence, required: true, maxlength: 2000, rows: 3, class: "textarea textarea-bordered w-full", placeholder: "Ví dụ: đã tìm theo tên project và phiên bản render trong Drive" %>
+          </div>
+          <div class="space-y-2">
+            <%= form.label :actor_reference, "Người kiểm tra", class: "label-text font-medium" %>
+            <%= form.text_field :actor_reference, required: true, class: "input input-bordered h-11 w-full", placeholder: "Tên hoặc mã người thao tác" %>
+          </div>
+          <div class="space-y-2">
+            <%= form.label :provider_reference, "Link file Drive nếu đã upload", class: "label-text font-medium" %>
+            <%= form.url_field :provider_reference, class: "input input-bordered h-11 w-full", placeholder: "https://drive.google.com/file/d/…" %>
+          </div>
+          <label class="flex items-start gap-3 rounded-box border border-base-300 bg-base-100 p-4 text-sm">
+            <%= check_box_tag :risk_confirmed, "1", false, class: "checkbox checkbox-warning mt-0.5" %>
+            <span>Tôi xác nhận đã kiểm tra Drive và hiểu rằng chọn “chưa có” sẽ xếp một lần upload lại.</span>
+          </label>
+          <%= form.submit "Lưu kết quả đối soát", class: "btn btn-primary w-full sm:w-auto" %>
+        <% end %>
+      </div>
+    </article>
+  <% else %>
+    <article class="card border border-base-300 bg-base-100">
+      <div class="card-body gap-3 p-4 sm:p-5">
+        <h2 class="card-title">Trạng thái riêng của Drive</h2>
+        <p class="text-sm text-base-content/70">Lỗi hoặc giới hạn Drive không khởi chạy lại render hay bài đăng.</p>
+      </div>
+    </article>
+  <% end %>
+</section>

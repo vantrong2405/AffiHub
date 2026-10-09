@@ -36,6 +36,209 @@ RSpec.describe Publications::ConfirmService, type: :service do
       expect(WorkflowRun.find_by!(workflowable: publication)).to have_attributes(status: "queued")
     end
 
+    context "when a scheduled Publication needs manual confirmation again" do
+      it "returns the existing workflow to the queue without creating another workflow" do
+        schedule = create(:schedule, render_version:, recurrence: "daily", status: "paused")
+        schedule_occurrence = create(:schedule_occurrence, schedule:, status: "dispatched")
+        publication.update!(schedule_occurrence:)
+        workflow_run = create(
+          :workflow_run,
+          workflowable: publication,
+          operation_id: "publication-#{publication.id}-publish",
+          operation: "publication_publish",
+          stage: "publish",
+          status: "failed"
+        )
+
+        expect { service.call }.to have_enqueued_job(Publications::PublishJob).exactly(1).times
+
+        expect(service.success?).to eq(true)
+        expect(publication.reload.status).to eq("approved")
+        expect(workflow_run.reload.status).to eq("queued")
+        expect(workflow_run.checkpoint.fetch("scheduled_manual_confirmation_at")).to be_present
+        expect(publication.workflow_runs.count).to eq(1)
+      end
+    end
+
+    context "when a YouTube Publication has no upload terms confirmation" do
+      let(:social_destination) do
+        social_connection = create(
+          :social_connection,
+          provider: "youtube",
+          external_user_id: "google-sub-1"
+        )
+        create(
+          :social_destination,
+          social_connection:,
+          provider: "youtube",
+          external_id: "channel-1"
+        )
+      end
+
+      it "returns failure without approving or enqueueing the Publication" do
+        expect { service.call }.not_to have_enqueued_job(Publications::PublishJob)
+
+        expect(service).not_to be_success
+        expect(publication.reload.status).to eq("draft")
+        expect(WorkflowRun.where(workflowable: publication)).to be_empty
+      end
+    end
+
+    context "when a YouTube Publication has complete consent bound to its current target" do
+      let(:social_destination) do
+        social_connection = create(
+          :social_connection,
+          provider: "youtube",
+          external_user_id: "google-sub-1"
+        )
+        create(
+          :social_destination,
+          social_connection:,
+          provider: "youtube",
+          external_id: "channel-1"
+        )
+      end
+      let(:publication) do
+        youtube_publication = create(
+          :publication,
+          render_version:,
+          social_destination:,
+          status: "draft"
+        )
+        youtube_publication.update!(
+          consent_snapshot: {
+            "upload_terms_confirmed" => true,
+            "youtube_account_id" => "google-sub-1",
+            "youtube_channel_id" => "channel-1",
+            "render_version_id" => render_version.id,
+            "publication_id" => youtube_publication.id,
+            "confirmed_at" => Time.current.iso8601,
+            "privacy_status" => "private",
+            "self_declared_made_for_kids" => false,
+            "contains_synthetic_media" => false
+          }
+        )
+        youtube_publication
+      end
+
+      it "approves and queues the consented YouTube Publication" do
+        expect { service.call }.to have_enqueued_job(Publications::PublishJob)
+
+        expect(service).to be_success
+        expect(publication.reload.status).to eq("approved")
+      end
+
+      it "returns success when the user confirms an unlisted YouTube upload" do
+        publication.update!(consent_snapshot: publication.consent_snapshot.merge("privacy_status" => "unlisted"))
+
+        expect { service.call }.to have_enqueued_job(Publications::PublishJob)
+
+        expect(service.success?).to eq(true)
+        expect(publication.reload.status).to eq("approved")
+      end
+
+      it "returns success when the user confirms a public YouTube upload" do
+        publication.update!(consent_snapshot: publication.consent_snapshot.merge("privacy_status" => "public"))
+
+        expect { service.call }.to have_enqueued_job(Publications::PublishJob)
+
+        expect(service.success?).to eq(true)
+        expect(publication.reload.status).to eq("approved")
+      end
+    end
+
+    context "when a TikTok Publication has no explicit privacy consent" do
+      let(:social_destination) do
+        social_connection = create(
+          :social_connection,
+          provider: "tiktok",
+          external_user_id: "creator-1"
+        )
+        create(
+          :social_destination,
+          social_connection:,
+          provider: "tiktok",
+          external_id: "creator-1"
+        )
+      end
+
+      it "returns failure without approving or enqueueing the Publication" do
+        expect { service.call }.not_to have_enqueued_job(Publications::PublishJob)
+
+        expect(service).not_to be_success
+        expect(publication.reload.status).to eq("draft")
+        expect(WorkflowRun.where(workflowable: publication)).to be_empty
+      end
+    end
+
+    context "when a TikTok Publication has complete consent bound to its current creator" do
+      let(:social_destination) do
+        social_connection = create(
+          :social_connection,
+          provider: "tiktok",
+          external_user_id: "creator-1"
+        )
+        create(
+          :social_destination,
+          social_connection:,
+          provider: "tiktok",
+          external_id: "creator-1"
+        )
+      end
+      let(:publication) do
+        tiktok_publication = create(
+          :publication,
+          render_version:,
+          social_destination:,
+          status: "draft"
+        )
+        tiktok_publication.update!(
+          consent_snapshot: {
+            "privacy_level" => "SELF_ONLY",
+            "allow_comment" => false,
+            "allow_duet" => false,
+            "allow_stitch" => false,
+            "brand_organic_toggle" => false,
+            "brand_content_toggle" => false,
+            "is_aigc" => true,
+            "creator_account_private" => true,
+            "music_usage_confirmed" => true,
+            "tiktok_social_connection_id" => social_destination.social_connection_id,
+            "tiktok_creator_id" => "creator-1",
+            "tiktok_render_version_id" => render_version.id,
+            "tiktok_publication_id" => tiktok_publication.id,
+            "tiktok_confirmed_at" => Time.current.iso8601
+          }
+        )
+        tiktok_publication
+      end
+
+      it "approves and queues the consented TikTok Publication" do
+        expect { service.call }.to have_enqueued_job(Publications::PublishJob)
+
+        expect(service).to be_success
+        expect(publication.reload.status).to eq("approved")
+      end
+
+      it "keeps the TikTok Publication as a draft when consent belongs to another creator" do
+        publication.update!(consent_snapshot: publication.consent_snapshot.merge("tiktok_creator_id" => "other-creator"))
+
+        expect(service.call).to eq(false)
+
+        expect(publication.reload.status).to eq("draft")
+        expect(WorkflowRun.where(workflowable: publication)).to be_empty
+      end
+
+      it "keeps a private TikTok Publication as a draft when branded content is selected" do
+        publication.update!(consent_snapshot: publication.consent_snapshot.merge("brand_content_toggle" => true))
+
+        expect(service.call).to eq(false)
+
+        expect(publication.reload.status).to eq("draft")
+        expect(WorkflowRun.where(workflowable: publication)).to be_empty
+      end
+    end
+
     context "when the destination is now blocked by preflight" do
       let(:destination_results) do
         { social_destination.id.to_s => { "status" => "blocked" } }

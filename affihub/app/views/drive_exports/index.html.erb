@@ -1,0 +1,85 @@
+<% content_for :title, drive_exports_page_title(@video_project) %>
+
+<section class="space-y-6">
+  <div class="space-y-2">
+    <%= link_to "← #{@video_project.name}", video_project_path(@video_project), class: "link link-hover text-sm" %>
+    <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+      <div class="space-y-1">
+        <h1 class="text-3xl font-bold">Google Drive</h1>
+        <p class="text-sm text-base-content/70">Bản render trong <%= @video_project.name %></p>
+      </div>
+      <span class="badge badge-neutral badge-outline">Tùy chọn · không cần thẻ</span>
+    </div>
+  </div>
+
+  <div role="note" class="alert border border-info/30 bg-info/5 text-sm">
+    <span>Chỉ dùng quota và dung lượng sẵn có của tài khoản Google. Khi quota hết hoặc Drive đầy, AffiHub dừng nhánh này và giữ file render local.</span>
+  </div>
+
+  <% if @has_export_form %>
+    <article class="card border border-base-300 bg-base-100">
+      <div class="card-body gap-4 p-4 sm:p-5">
+        <div class="space-y-1">
+          <h2 class="card-title">Lưu một bản render</h2>
+          <p class="text-sm text-base-content/70">Tải lên chạy nền. Mỗi bản render chỉ có một yêu cầu theo từng kết nối Google.</p>
+        </div>
+        <%= form_with url: video_project_drive_exports_path(@video_project), method: :post, class: "grid grid-cols-1 items-end gap-4 md:grid-cols-3" do |form| %>
+          <div class="space-y-2">
+            <%= form.label :render_version_id, "Bản render", class: "label-text font-medium" %>
+            <%= form.select :render_version_id,
+                            google_render_version_options(@render_versions),
+                            {},
+                            class: "select select-bordered h-11 w-full" %>
+          </div>
+          <div class="space-y-2">
+            <%= form.label :google_connection_id, "Tài khoản Drive", class: "label-text font-medium" %>
+            <%= form.select :google_connection_id,
+                            google_connection_options(@google_connections, @default_google_connection_id),
+                            {},
+                            class: "select select-bordered h-11 w-full" %>
+          </div>
+          <%= form.submit "Lưu lên Drive", class: "btn btn-primary w-full" %>
+        <% end %>
+      </div>
+    </article>
+  <% elsif !@has_drive_connections %>
+    <div class="rounded-box border border-dashed border-base-300 bg-base-100 p-5 sm:p-6">
+      <h2 class="font-semibold">Chưa có kết nối Drive</h2>
+      <p class="mt-1 text-sm text-base-content/70">Kết nối Google Drive trước. Đây là lựa chọn phụ; render local vẫn dùng được.</p>
+      <%= link_to "Mở kết nối Google", google_connections_path, class: "btn btn-outline mt-4 w-full sm:w-auto" %>
+    </div>
+  <% else %>
+    <div class="rounded-box border border-dashed border-base-300 bg-base-100 p-5 sm:p-6">
+      <h2 class="font-semibold">Chưa có render sẵn sàng để tải lên</h2>
+      <p class="mt-1 text-sm text-base-content/70">Khi một render hoàn tất, bạn có thể chọn rõ ràng bản cần lưu.</p>
+    </div>
+  <% end %>
+
+  <section class="space-y-3" aria-labelledby="drive-history-heading">
+    <div>
+      <h2 id="drive-history-heading" class="text-xl font-semibold">Lịch sử đồng bộ</h2>
+      <p class="text-sm text-base-content/60">Trạng thái Drive tách biệt với trạng thái render và bài đăng.</p>
+    </div>
+    <% if @has_drive_exports %>
+      <ul class="divide-y divide-base-300 rounded-box border border-base-300 bg-base-100">
+        <% @drive_exports.each do |drive_export| %>
+          <li class="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+            <div class="min-w-0 space-y-1">
+              <h3 class="font-semibold">Bản render v<%= drive_export.render_version.version_number %></h3>
+              <p class="text-sm text-base-content/60"><%= drive_export.google_connection.email %> · <%= google_local_time(drive_export.updated_at) %></p>
+            </div>
+            <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <span class="badge <%= drive_export_badge_class(drive_export.status) %>"><%= drive_export_status_label(drive_export.status) %></span>
+              <%= link_to "Chi tiết", video_project_drive_export_path(@video_project, drive_export), class: "btn btn-outline btn-sm w-full sm:w-auto" %>
+            </div>
+          </li>
+        <% end %>
+      </ul>
+    <% else %>
+      <div class="rounded-box border border-dashed border-base-300 bg-base-100 p-5 sm:p-6">
+        <h3 class="font-semibold">Chưa có yêu cầu lưu lên Drive</h3>
+        <p class="mt-1 text-sm text-base-content/70">Chọn một render sẵn sàng ở phía trên để tạo yêu cầu đầu tiên.</p>
+      </div>
+    <% end %>
+  </section>
+</section>

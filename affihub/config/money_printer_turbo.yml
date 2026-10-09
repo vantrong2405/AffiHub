@@ -14,6 +14,10 @@ shared:
     tasks: /api/v1/tasks
     download: /api/v1/download
   task_list_page_size: 1000
+  preflight:
+    restart_recovery_verified: false
+    restart_recovery_verified_at: null
+    restart_recovery_verified_for: {}
   generation_profile:
     video_source: muapi
     model_id: seedance-lite-t2v

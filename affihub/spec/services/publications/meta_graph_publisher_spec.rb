@@ -21,17 +21,23 @@ RSpec.describe Publications::MetaGraphPublisher, type: :service do
       )
     end
     let(:graph_api_url) do
-      configuration = Meta::Client::CONFIGURATION
+      configuration = Rails.application.config_for(:meta).deep_symbolize_keys.fetch(:providers).fetch(:facebook)
       "#{configuration.fetch(:graph_api_base_url)}/#{configuration.fetch(:api_version)}"
     end
     let(:page_reel_request) do
       stub_request(:post, "#{graph_api_url}/page-1/video_reels").with(
-        query: hash_including("upload_phase" => "start", "access_token" => "page-access-token")
+        query: { "upload_phase" => "start", "access_token" => "page-access-token" }
       ).to_return(body: { video_id: "video-1", upload_url: "https://rupload.facebook.com/upload/video-1" }.to_json)
     end
     let(:finish_reel_request) do
       stub_request(:post, "#{graph_api_url}/page-1/video_reels").with(
-        query: hash_including("upload_phase" => "finish", "video_id" => "video-1")
+        query: {
+          "upload_phase" => "finish",
+          "video_id" => "video-1",
+          "video_state" => "PUBLISHED",
+          "description" => publication.caption,
+          "access_token" => "page-access-token"
+        }
       ).to_return(body: { success: true }.to_json)
     end
     let(:upload_request) do
@@ -41,7 +47,7 @@ RSpec.describe Publications::MetaGraphPublisher, type: :service do
     end
     let(:status_request) do
       stub_request(:get, "#{graph_api_url}/video-1").with(
-        query: hash_including("fields" => "status,permalink_url", "access_token" => "page-access-token")
+        query: { "fields" => "status,permalink_url", "access_token" => "page-access-token" }
       ).to_return(
         body: {
           status: {
@@ -79,7 +85,7 @@ RSpec.describe Publications::MetaGraphPublisher, type: :service do
     context "when Meta has not confirmed the final Reel status" do
       let(:status_request) do
         stub_request(:get, "#{graph_api_url}/video-1").with(
-          query: hash_including("fields" => "status,permalink_url", "access_token" => "page-access-token")
+          query: { "fields" => "status,permalink_url", "access_token" => "page-access-token" }
         ).to_return(
           body: {
             status: {
@@ -103,7 +109,7 @@ RSpec.describe Publications::MetaGraphPublisher, type: :service do
     context "when Meta confirms publishing but does not return a permalink" do
       let(:status_request) do
         stub_request(:get, "#{graph_api_url}/video-1").with(
-          query: hash_including("fields" => "status,permalink_url", "access_token" => "page-access-token")
+          query: { "fields" => "status,permalink_url", "access_token" => "page-access-token" }
         ).to_return(
           body: {
             status: {
@@ -126,7 +132,7 @@ RSpec.describe Publications::MetaGraphPublisher, type: :service do
     context "when Meta returns a permalink outside Facebook" do
       let(:status_request) do
         stub_request(:get, "#{graph_api_url}/video-1").with(
-          query: hash_including("fields" => "status,permalink_url", "access_token" => "page-access-token")
+          query: { "fields" => "status,permalink_url", "access_token" => "page-access-token" }
         ).to_return(
           body: {
             status: {
@@ -190,7 +196,7 @@ RSpec.describe Publications::MetaGraphPublisher, type: :service do
     context "when Meta's final status request times out" do
       let(:status_request) do
         stub_request(:get, "#{graph_api_url}/video-1").with(
-          query: hash_including("fields" => "status,permalink_url", "access_token" => "page-access-token")
+          query: { "fields" => "status,permalink_url", "access_token" => "page-access-token" }
         ).to_raise(Net::ReadTimeout)
       end
 
@@ -210,7 +216,13 @@ RSpec.describe Publications::MetaGraphPublisher, type: :service do
     context "when Meta reports a transient error after the publish request" do
       let(:finish_reel_request) do
         stub_request(:post, "#{graph_api_url}/page-1/video_reels").with(
-          query: hash_including("upload_phase" => "finish", "video_id" => "video-1")
+          query: {
+            "upload_phase" => "finish",
+            "video_id" => "video-1",
+            "video_state" => "PUBLISHED",
+            "description" => publication.caption,
+            "access_token" => "page-access-token"
+          }
         ).to_return(body: { error: { code: 2, message: "Temporary failure" } }.to_json)
       end
 

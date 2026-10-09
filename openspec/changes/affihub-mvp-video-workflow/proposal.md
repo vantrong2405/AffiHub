@@ -26,7 +26,7 @@
 - `05-social-account-connections`: Kết nối nhiều profile, chọn Page/kênh/tài khoản và kiểm tra quyền riêng cho Facebook, TikTok, Instagram và YouTube.
 - `06-multi-platform-publishing`: Publication riêng theo đích, publish thủ công/lên lịch, giao thức upload riêng từng nền tảng, giới hạn nội bộ, idempotency, reconciliation và trạng thái cuối.
 - `07-comment-auto-reply`: Rule câu trả lời cố định/keyword cho comment công khai trên Facebook/Instagram, dedupe event và log kết quả.
-- `08-google-drive-sheets-sync`: Tích hợp tùy chọn, đồng bộ nền theo render version/publication, upsert idempotent và retry độc lập.
+- `08-google-drive-sheets-sync`: Tích hợp tùy chọn, đồng bộ nền theo render version/publication, chọn bảng tính bằng Google Picker với quyền theo từng file, upsert idempotent và retry độc lập.
 - `09-telegram-operations`: Cảnh báo, `/status`, pause/resume automation và allowlist `chat_id`.
 - `10-background-worker-reliability`: Claim nguyên tử, lease/heartbeat/fencing, phát hiện job treo và phục hồi side effect sau restart.
 

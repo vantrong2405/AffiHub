@@ -11,7 +11,10 @@ RSpec.describe "Social destination pages", type: :request do
 
   before do
     stub_request(:get, "https://graph.facebook.com/v26.0/me/accounts")
-      .with(query: hash_including("access_token" => "user-access-token"))
+      .with(query: {
+        "access_token" => "user-access-token",
+        "fields" => "id,name,access_token,tasks"
+      })
       .to_return(body: { data: pages }.to_json)
   end
 
@@ -20,7 +23,7 @@ RSpec.describe "Social destination pages", type: :request do
       get social_connection_social_destinations_path(social_connection)
 
       expect(response).to have_http_status(:ok)
-      expect(response.body).not_to include("page-token-1", "page-token-2")
+      expect(response.body.match?(Regexp.union("page-token-1", "page-token-2"))).to eq(false)
     end
   end
 

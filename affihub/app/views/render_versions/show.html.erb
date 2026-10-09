@@ -76,6 +76,45 @@
     </section>
   </div>
 
+  <section class="card border border-base-300 bg-base-100" aria-labelledby="preflight-start-heading">
+    <div class="card-body gap-4">
+      <div>
+        <h2 id="preflight-start-heading" class="card-title">Kiểm tra toàn bộ</h2>
+        <p class="text-sm text-base-content/70">Kiểm tra source, render, worker và từng destination đã chọn. Lượt kiểm tra chỉ đọc, không đăng bài, upload media hay tạo job AI tính phí.</p>
+      </div>
+
+      <%= form_with url: video_project_preflight_reports_path(@video_project), scope: :preflight_report, class: "space-y-4" do %>
+        <%= hidden_field_tag "preflight_report[render_version_id]", @render_version.id %>
+      <% if @social_destinations.any? %>
+        <fieldset class="space-y-3">
+          <legend class="font-medium">Destination cần kiểm tra</legend>
+          <div class="grid gap-3 md:grid-cols-2">
+            <% @social_destinations.each do |social_destination| %>
+              <label class="flex min-w-0 items-start gap-3 rounded-box border border-base-300 p-4">
+                <%= check_box_tag "preflight_report[social_destination_ids][]", social_destination.id, false, class: "checkbox checkbox-primary mt-0.5" %>
+                <span class="min-w-0">
+                  <span class="block font-medium"><%= social_destination.name %></span>
+                  <span class="mt-1 block text-sm text-base-content/60"><%= social_provider_name(social_destination.provider) %> · <%= social_destination.social_connection.name %></span>
+                </span>
+                <span class="ml-auto"><%= workflow_status_badge(social_destination.status, resource: "social_destination") %></span>
+              </label>
+            <% end %>
+          </div>
+        </fieldset>
+      <% else %>
+        <div class="rounded-box bg-base-200 p-4">
+          <p class="text-sm">Chưa có destination được kết nối. Bạn vẫn có thể kiểm tra project và khả năng export local.</p>
+          <%= link_to "Mở kết nối mạng xã hội", social_connections_path, class: "link link-hover mt-2 inline-block text-sm font-medium" %>
+        </div>
+      <% end %>
+
+        <div class="flex justify-end">
+          <%= submit_tag "Kiểm tra toàn bộ", class: "btn btn-primary w-full sm:w-auto", data: { turbo_submits_with: "Đang kiểm tra…" } %>
+        </div>
+      <% end %>
+    </div>
+  </section>
+
   <section class="card border border-base-300 bg-base-100" aria-labelledby="frame-comparison-heading">
     <div class="card-body gap-5">
       <div>

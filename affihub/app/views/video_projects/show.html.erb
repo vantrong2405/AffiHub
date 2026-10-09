@@ -44,6 +44,29 @@
     <article class="card border border-base-300 bg-base-100">
       <div class="card-body justify-between gap-4 sm:flex-row sm:items-center">
         <div class="space-y-1">
+          <h2 class="card-title">Lịch đăng</h2>
+          <p class="text-sm text-base-content/70">Xem lần chạy tiếp theo, timezone, quota và các lần bị lỡ.</p>
+        </div>
+        <%= link_to "Mở lịch đăng", video_project_schedules_path(@video_project), class: "btn btn-outline w-full sm:w-auto" %>
+      </div>
+    </article>
+
+    <article class="card border border-base-300 bg-base-100">
+      <div class="card-body gap-4 p-4 sm:p-5">
+        <div class="space-y-1">
+          <h2 class="card-title">Google Drive &amp; Sheets</h2>
+          <p class="text-sm text-base-content/70">Theo dõi bản sao Drive và chọn render để đồng bộ trạng thái Sheets.</p>
+        </div>
+        <div class="flex flex-col gap-2 sm:flex-row">
+          <%= link_to "Trạng thái Drive", video_project_drive_exports_path(@video_project), class: "btn btn-outline w-full sm:w-auto" %>
+          <%= link_to "Trạng thái Sheets", video_project_sheet_syncs_path(@video_project), class: "btn btn-outline w-full sm:w-auto" %>
+        </div>
+      </div>
+    </article>
+
+    <article class="card border border-base-300 bg-base-100">
+      <div class="card-body justify-between gap-4 sm:flex-row sm:items-center">
+        <div class="space-y-1">
           <h2 class="card-title">Thêm nguồn video</h2>
           <p class="text-sm text-base-content/70">Nhập file MP4/MOV, URL cụ thể hoặc tìm metadata YouTube.</p>
         </div>

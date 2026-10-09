@@ -1,0 +1,122 @@
+<article class="rounded-box border border-base-300 bg-base-100 p-4">
+  <div class="flex flex-wrap items-start justify-between gap-3">
+    <h3 class="min-w-0 font-semibold"><%= local_assigns[:title].presence || check.fetch("subject", "Kiểm tra") %></h3>
+    <span class="badge <%= preflight_status_badge_class(check.fetch("status", "unavailable")) %>">
+      <%= preflight_status_label(check.fetch("status", "unavailable")) %>
+    </span>
+  </div>
+
+  <p class="mt-2 text-sm"><%= check.fetch("reason", "Chưa có mô tả kết quả kiểm tra.") %></p>
+  <p class="mt-1 text-sm text-base-content/70"><span class="font-medium">Khắc phục:</span> <%= check.fetch("action", "Kiểm tra lại cấu hình liên quan.") %></p>
+
+  <% if check["measured"].present? %>
+    <dl class="mt-3 grid gap-2 rounded-box bg-base-200 p-3 text-sm sm:grid-cols-2">
+      <% check.fetch("measured").each do |key, value| %>
+        <div>
+          <dt class="text-xs text-base-content/60"><%= t("video_workflow.media_metadata.#{key}", default: key.humanize) %></dt>
+          <dd class="mt-1 font-medium"><%= value.nil? ? "—" : value %></dd>
+        </div>
+      <% end %>
+    </dl>
+  <% end %>
+
+  <% if check["quota_usage"].present? && check["quota_total"].present? %>
+    <p class="mt-3 rounded-box bg-base-200 p-3 text-sm tabular-nums">
+      Instagram: đã dùng <%= check.fetch("quota_usage") %> / <%= check.fetch("quota_total") %> lượt trong <%= check.fetch("quota_duration_seconds") %> giây.
+    </p>
+  <% end %>
+
+  <% if check["observed_posters"].present? && check["local_cap"].present? %>
+    <p class="mt-3 rounded-box bg-base-200 p-3 text-sm tabular-nums">
+      AffiHub đã ghi nhận <%= check.fetch("observed_posters") %> / <%= check.fetch("local_cap") %> creator trong cửa sổ giới hạn.
+    </p>
+  <% end %>
+
+  <% if check["operation"].present? || check["stage"].present? || check["worker_id"].present? || check["heartbeat_at"].present? || check["lease_expires_at"].present? %>
+    <dl class="mt-3 grid gap-2 rounded-box bg-base-200 p-3 text-sm sm:grid-cols-2">
+      <% if check["operation"].present? %>
+        <div><dt class="text-xs text-base-content/60">Thao tác</dt><dd class="mt-1 font-medium"><%= check.fetch("operation") %></dd></div>
+      <% end %>
+      <% if check["stage"].present? %>
+        <div><dt class="text-xs text-base-content/60">Bước cuối</dt><dd class="mt-1 font-medium"><%= check.fetch("stage") %></dd></div>
+      <% end %>
+      <% if check["worker_id"].present? %>
+        <div><dt class="text-xs text-base-content/60">Worker</dt><dd class="mt-1 font-medium"><%= check.fetch("worker_id") %></dd></div>
+      <% end %>
+      <% if check["heartbeat_at"].present? %>
+        <div><dt class="text-xs text-base-content/60">Heartbeat cuối</dt><dd class="mt-1 font-medium"><%= check.fetch("heartbeat_at") %></dd></div>
+      <% end %>
+      <% if check["lease_expires_at"].present? %>
+        <div><dt class="text-xs text-base-content/60">Lease hết hạn</dt><dd class="mt-1 font-medium"><%= check.fetch("lease_expires_at") %></dd></div>
+      <% end %>
+    </dl>
+  <% end %>
+
+  <% if check.key?("restart_recovery_verified") %>
+    <p class="mt-3 rounded-box bg-base-200 p-3 text-sm">
+      <% if check.fetch("restart_recovery_verified") && check["restart_recovery_verified_at"].present? %>
+        Recovery sau restart đã xác minh lúc <%= check.fetch("restart_recovery_verified_at") %>.
+      <% else %>
+        Recovery sau restart chưa được xác minh cho cấu hình hiện tại.
+      <% end %>
+    </p>
+  <% end %>
+
+  <% if check.key?("required_costs_known") %>
+    <p class="mt-3 text-sm text-base-content/70">
+      <%= check.fetch("required_costs_known") ? "Đã có nguồn giá cho các khoản bắt buộc." : "Còn khoản phí bắt buộc chưa có nguồn giá." %>
+    </p>
+  <% end %>
+
+  <% if check["overlay_types"].present? %>
+    <p class="mt-3 text-sm text-base-content/70">Overlay liên quan: <%= check.fetch("overlay_types").join(", ") %></p>
+  <% end %>
+
+  <% if check["operations"].present? %>
+    <div class="mt-3 rounded-box bg-base-200 p-3 text-sm">
+      <p class="font-medium">Quota YouTube do AffiHub ghi nhận</p>
+      <ul class="mt-2 space-y-1 tabular-nums">
+        <% check.fetch("operations").each do |operation, operation_check| %>
+          <li><%= operation %>: <%= operation_check.fetch("observed_count") %> / <%= operation_check.fetch("daily_limit") %> lượt</li>
+        <% end %>
+      </ul>
+      <% if check["scope_notice"].present? %>
+        <p class="mt-2 text-base-content/70"><%= check.fetch("scope_notice") %></p>
+      <% end %>
+      <% if check["limit_source_url"].present? %>
+        <%= link_to "Xem nguồn giới hạn", check.fetch("limit_source_url"), class: "link link-hover mt-2 inline-block", target: "_blank", rel: "noopener" %>
+      <% end %>
+      <% if check["console_url"].present? %>
+        <%= link_to "Mở Google Cloud Console", check.fetch("console_url"), class: "link link-hover mt-2 inline-block sm:ml-4", target: "_blank", rel: "noopener" %>
+      <% end %>
+    </div>
+  <% end %>
+
+  <% if check["total_amount"].present? %>
+    <div class="mt-3 rounded-box bg-base-200 p-3 text-sm">
+      <p class="font-medium">Estimate AI đã lưu: <%= check.fetch("total_amount") %> <%= check.fetch("currency", "") %></p>
+      <% if check["estimated_at"].present? %>
+        <p class="mt-1 text-base-content/70">Thời điểm: <%= check.fetch("estimated_at") %> · Estimate không giữ giá.</p>
+      <% end %>
+      <% check.fetch("cost_breakdown", {}).to_h.each do |provider, quote| %>
+        <p class="mt-1 text-base-content/70"><%= quote.fetch("provider", provider.humanize) %>: <%= quote.fetch("amount", "—") %> <%= quote.fetch("currency", "") %> · <%= quote.fetch("source", "") %></p>
+      <% end %>
+    </div>
+  <% end %>
+
+  <% if check["required_scopes"].present? %>
+    <p class="mt-3 text-sm text-base-content/70">Quyền cần có: <%= check.fetch("required_scopes").join(", ") %></p>
+  <% end %>
+
+  <% if check["tasks"].present? %>
+    <ul class="mt-3 rounded-box bg-base-200 p-3 text-sm">
+      <% check.fetch("tasks").each do |task| %>
+        <li>Task <%= task.fetch("task_id", "chưa có ID") %> · <%= task.fetch("provider_state", "chưa đối soát") %></li>
+      <% end %>
+    </ul>
+  <% end %>
+
+  <% if remediation_path.present? && preflight_status_label(check.fetch("status", "unavailable")) != preflight_status_label("passed") %>
+    <%= link_to "Mở phần khắc phục", remediation_path, class: "link link-hover mt-3 inline-block text-sm font-medium" %>
+  <% end %>
+</article>

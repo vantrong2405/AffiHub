@@ -1,5 +1,6 @@
 class PreflightReport < ApplicationRecord
   belongs_to :render_version, inverse_of: :preflight_reports
+  has_many :schedule_occurrences, inverse_of: :preflight_report, dependent: :restrict_with_exception
 
   scope :recent_first, proc { order(checked_at: :desc, id: :desc) }
 

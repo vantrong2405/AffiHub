@@ -7,6 +7,7 @@ RSpec.describe Gemini::Client, type: :service do
       token_endpoint: "https://oauth2.googleapis.com/token",
       revocation_endpoint: "https://oauth2.googleapis.com/revoke",
       api_base_url: "https://generativelanguage.googleapis.com/v1",
+      generate_content_api_base_url: "https://generativelanguage.googleapis.com/v1beta",
       client_id: "gemini-web-client",
       client_secret: "gemini-client-secret",
       project_id: "affihub-mvp",
@@ -115,6 +116,67 @@ RSpec.describe Gemini::Client, type: :service do
 
       expect do
         client.list_models(access_token: "gemini-access-token")
+      end.to raise_error(described_class::Error, "http_429")
+    end
+  end
+
+  describe "#generate_text" do
+    it "returns generated text from the project-scoped OAuth request" do
+      generation_request = stub_request(
+        :post,
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent"
+      ).with(
+        headers: {
+          "Authorization" => "Bearer gemini-access-token",
+          "x-goog-user-project" => "affihub-mvp",
+          "Content-Type" => "application/json"
+        },
+        body: {
+          "contents" => [
+            {
+              "role" => "user",
+              "parts" => [ { "text" => "Write a short video script." } ]
+            }
+          ]
+        }.to_json
+      ).to_return(
+        status: 200,
+        body: {
+          "candidates" => [
+            {
+              "content" => {
+                "parts" => [ { "text" => "A concise video script." } ]
+              }
+            }
+          ]
+        }.to_json
+      )
+
+      response = client.generate_text(
+        access_token: "gemini-access-token",
+        model: "models/gemini-3.8-flash",
+        input: "Write a short video script."
+      )
+
+      expect(response).to eq("A concise video script.")
+      expect(generation_request).to have_been_requested.once
+    end
+
+    it "returns only a safe quota status when generation is rate-limited" do
+      stub_request(
+        :post,
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent"
+      ).to_return(
+        status: 429,
+        body: { error: { message: "private quota detail" } }.to_json
+      )
+
+      expect do
+        client.generate_text(
+          access_token: "gemini-access-token",
+          model: "models/gemini-3.8-flash",
+          input: "Write a short video script."
+        )
       end.to raise_error(described_class::Error, "http_429")
     end
   end

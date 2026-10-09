@@ -23,7 +23,7 @@ class SocialDestinationsController < MainController
     render_service(
       service,
       failure_redirect: social_connection_social_destinations_path(params[:social_connection_id]),
-      notice: "Đã thêm Page làm đích đăng."
+      notice: "Đã thêm đích đăng."
     ) do
       social_connection_path(service.social_connection)
     end

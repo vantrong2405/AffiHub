@@ -63,6 +63,38 @@ class Gemini::Client
     end
   end
 
+  # Generates text with the selected Gemini model for the configured Cloud project.
+  #
+  # @param access_token [String] the user's Google access token
+  # @param model [String] a model name returned by the Gemini model catalog
+  # @param input [String] the user prompt sent as a single-turn request
+  # @return [String] the text from the first Gemini candidate
+  def generate_text(access_token:, model:, input:)
+    model_name = model.to_s
+    raise Error, "invalid_model" unless model_name.match?(/\Amodels\/[A-Za-z0-9._-]+\z/)
+
+    response = request(
+      method: :post,
+      endpoint: "#{@configuration.fetch(:generate_content_api_base_url)}/#{model_name}:generateContent",
+      headers: {
+        "Authorization" => "Bearer #{access_token}",
+        @configuration.fetch(:user_project_header) => @configuration.fetch(:project_id)
+      },
+      body: {
+        contents: [
+          {
+            role: "user",
+            parts: [ { text: input } ]
+          }
+        ]
+      },
+      body_format: :json
+    )
+    Array(response.dig("candidates", 0, "content", "parts")).filter_map do |part|
+      part["text"] if part.is_a?(Hash)
+    end.join
+  end
+
   # Refreshes a Google access token for the configured Gemini OAuth client.
   #
   # @param refresh_token [String] the encrypted renewable Google credential
@@ -95,14 +127,22 @@ class Gemini::Client
 
   private
 
-  def request(method:, endpoint:, headers: {}, body: nil)
+  def request(method:, endpoint:, headers: {}, body: nil, body_format: :form)
     uri = URI(endpoint)
     request_class = Net::HTTP.const_get(method.to_s.capitalize)
     http_request = request_class.new(uri)
     headers.each { |name, value| http_request[name] = value }
     if body
-      http_request["Content-Type"] = "application/x-www-form-urlencoded"
-      http_request.body = URI.encode_www_form(body)
+      case body_format
+      when :form
+        http_request["Content-Type"] = "application/x-www-form-urlencoded"
+        http_request.body = URI.encode_www_form(body)
+      when :json
+        http_request["Content-Type"] = "application/json"
+        http_request.body = body.to_json
+      else
+        raise ArgumentError, "Unsupported request body format"
+      end
     end
     response = Net::HTTP.start(
       uri.host,

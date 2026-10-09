@@ -1,0 +1,39 @@
+<label class="form-control w-full">
+  <span class="label-text mb-1">Quyền riêng tư YouTube</span>
+  <%= select_tag "publication[consent_attributes][privacy_status]",
+                 options_for_select(presenter.youtube_privacy_options, presenter.youtube_privacy_choice),
+                 class: "select select-bordered w-full",
+                 required: true %>
+</label>
+<label class="form-control w-full">
+  <span class="label-text mb-1">Video này dành cho trẻ em</span>
+  <%= select_tag "publication[consent_attributes][self_declared_made_for_kids]",
+                 options_for_select(presenter.disclosure_options, presenter.youtube_made_for_kids_choice),
+                 class: "select select-bordered w-full",
+                 required: true %>
+</label>
+<label class="form-control w-full">
+  <span class="label-text mb-1">Video có nội dung tổng hợp hoặc chỉnh sửa bằng AI</span>
+  <%= select_tag "publication[consent_attributes][contains_synthetic_media]",
+                 options_for_select(presenter.disclosure_options, presenter.youtube_synthetic_media_choice),
+                 class: "select select-bordered w-full",
+                 required: true %>
+</label>
+<div class="rounded-box border border-base-300 p-4">
+  <label class="flex items-start gap-3">
+    <%= check_box_tag "publication[consent_attributes][upload_terms_confirmed]",
+                      "1",
+                      presenter.youtube_upload_terms_confirmed?,
+                      id: "youtube_upload_terms_confirmed",
+                      class: "checkbox checkbox-primary mt-1" %>
+    <span class="text-sm">
+      Tôi đã đọc và đồng ý với
+      <%= link_to "Điều khoản dịch vụ của YouTube",
+                  "https://www.youtube.com/t/terms",
+                  target: "_blank",
+                  rel: "noopener",
+                  class: "link link-primary" %>
+      cho video và kênh đã chọn.
+    </span>
+  </label>
+</div>

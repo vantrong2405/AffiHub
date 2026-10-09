@@ -19,7 +19,7 @@ Rails.application.routes.draw do
       end
     end
     resources :schedules, only: %i[index show new create edit update destroy]
-    resources :drive_exports, only: %i[index show create]
+    resources :drive_exports, only: %i[index show create update]
     resources :sheet_syncs, only: %i[index show create]
   end
 

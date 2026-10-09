@@ -39,7 +39,8 @@ class PublicationsController < MainController
     service = Publications::UpdateService.new(
       video_project_id: params[:video_project_id],
       publication_id: params[:id],
-      caption: publication_params[:caption]
+      caption: publication_params[:caption],
+      consent_attributes: publication_params[:consent_attributes] || {}
     )
     service.call
 
@@ -113,6 +114,23 @@ class PublicationsController < MainController
     @preflight_ready = service.preflight_ready
     @workflow_run = service.workflow_run
     @outbound_attempt = service.outbound_attempt
+    @youtube_privacy_statuses = service.youtube_privacy_statuses
+    @tiktok_privacy_levels = service.tiktok_privacy_levels
+    @tiktok_disabled_interactions = service.tiktok_disabled_interactions
+    @tiktok_creator_info_available = service.tiktok_creator_info_available
+    @tiktok_cap_status = service.tiktok_cap_status
+    @tiktok_cap_status_values = service.tiktok_cap_status_values
+    @tiktok_brand_content_enabled = service.tiktok_brand_content_enabled
+    @publication_consent_presenter = Publications::ConsentPresenter.new(
+      publication: @publication,
+      youtube_privacy_statuses: @youtube_privacy_statuses,
+      tiktok_privacy_levels: @tiktok_privacy_levels,
+      tiktok_disabled_interactions: @tiktok_disabled_interactions,
+      tiktok_creator_info_available: @tiktok_creator_info_available,
+      tiktok_cap_status: @tiktok_cap_status,
+      tiktok_cap_status_values: @tiktok_cap_status_values,
+      tiktok_brand_content_enabled: @tiktok_brand_content_enabled
+    )
   end
 
   def publication_params
@@ -124,6 +142,21 @@ class PublicationsController < MainController
       :evidence,
       :provider_reference,
       :risk_confirmed,
+      consent_attributes: [
+        :upload_terms_confirmed,
+        :privacy_status,
+        :self_declared_made_for_kids,
+        :contains_synthetic_media,
+        :privacy_level,
+        :allow_comment,
+        :allow_duet,
+        :allow_stitch,
+        :brand_organic_toggle,
+        :brand_content_toggle,
+        :is_aigc,
+        :creator_account_private,
+        :music_usage_confirmed
+      ],
       destination_ids: [],
       destination_captions: {}
     )

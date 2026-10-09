@@ -80,6 +80,28 @@ shared:
       - fe80::/10
       - fec0::/10
       - ff00::/8
+  publication_quota:
+    max_per_destination: 5
+    window_seconds: 86400
+  publication_workflow:
+    operation: publication_publish
+    publish_stage: publish
+    safe_error_codes:
+      schedule_preflight_blocked: schedule_preflight_blocked
+      schedule_preflight_failed: schedule_preflight_failed
+      schedule_paused: schedule_paused
+      schedule_cancelled: schedule_cancelled
+      quota_exhausted: publication_quota_exhausted
+  schedule:
+    recurrence_values:
+      - once
+      - daily
+      - weekly
+    jitter_min_seconds: 300
+    jitter_max_seconds: 1800
+    max_execution_window_seconds: 1800
+    scheduler_operation: publication_publish
+    scheduler_stage: publish
   media:
     ffmpeg_command: ffmpeg
     ffmpeg_timeout_seconds: 1800
@@ -96,6 +118,36 @@ shared:
     video_preset: veryfast
     audio_codec: aac
     video_crf: 23
+  preflight:
+    frame_interval_seconds: 1
+    worker_heartbeat_timeout_seconds: 300
+    worker_process_kind: Worker
+    project_check_order:
+      - source
+      - render
+      - worker
+      - ai_estimate
+      - paid_ai
+      - google_drive
+      - google_sheets
+      - publish_readiness
+    destination_check_order:
+      - connector
+      - media_transfer
+      - content_policy
+      - publishing_cap
+      - permissions
+      - quota
+    tiktok_disallowed_overlay_types:
+      - logo
+      - text
+    output_video_codec: h264
+    output_audio_codec: aac
+    active_ai_generation_statuses:
+      - submitting
+      - processing
+      - reconciliation_required
+      - outcome_unknown
   statuses:
     video_project:
       default: draft
@@ -131,6 +183,22 @@ shared:
         failed: failed
         outcome_unknown: outcome_unknown
         manual_outcome_confirmed: manual_outcome_confirmed
+        manual_outcome_not_occurred: manual_outcome_not_occurred
+    schedule:
+      default: active
+      values:
+        active: active
+        paused: paused
+        completed: completed
+        cancelled: cancelled
+    schedule_occurrence:
+      default: scheduled
+      values:
+        scheduled: scheduled
+        dispatched: dispatched
+        missed: missed
+        skipped: skipped
+        failed: failed
         manual_outcome_not_occurred: manual_outcome_not_occurred
     workflow_run:
       default: queued

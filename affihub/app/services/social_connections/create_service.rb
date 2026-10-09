@@ -26,8 +26,7 @@ class SocialConnections::CreateService < ApplicationService
   private
 
   def step_load_provider_configuration
-    meta_configuration = Rails.application.config_for(:meta).deep_symbolize_keys
-    @provider_configuration = meta_configuration.fetch(:providers).fetch(@provider.to_sym)
+    @provider_configuration = SocialConnections::ProviderConfiguration.for(@provider)
     true
   rescue KeyError
     step_fail!("Nền tảng này chưa được cấu hình kết nối.")
@@ -37,9 +36,16 @@ class SocialConnections::CreateService < ApplicationService
     allowed_uris = @provider_configuration.fetch(:allowed_redirect_uris)
     redirect_uri = @provider_configuration.fetch(:redirect_uri)
     return step_fail!("Callback OAuth chưa nằm trong danh sách được phép.") unless allowed_uris.include?(redirect_uri)
-    return step_fail!("Chưa cấu hình Meta App ID.") if @provider_configuration.fetch(:client_id).blank?
+    return step_fail!("Chưa cấu hình OAuth client cho nền tảng này.") if @provider_configuration.fetch(:client_id).blank?
+    return step_fail!("Chưa cấu hình đầy đủ quyền kết nối cho nền tảng này.") if missing_authorization_parameter?
 
     true
+  end
+
+  def missing_authorization_parameter?
+    required_parameters = @provider_configuration.fetch(:required_authorization_parameters, [])
+    authorization_params = @provider_configuration.fetch(:authorization_params, {})
+    required_parameters.any? { |parameter| authorization_params[parameter].blank? }
   end
 
   def step_create_authorization_request
@@ -51,20 +57,35 @@ class SocialConnections::CreateService < ApplicationService
       "expires_at" => (Time.current + oauth_state_ttl).iso8601(6)
     }
     authorization_params = {
-      client_id: @provider_configuration.fetch(:client_id),
+      @provider_configuration.fetch(:authorization_client_parameter, :client_id) => @provider_configuration.fetch(:client_id),
       redirect_uri: attempt.fetch("redirect_uri"),
       response_type: "code",
-      scope: @provider_configuration.fetch(:scopes).join(","),
       state: @state
     }
+    step_add_scopes(authorization_params)
+    authorization_params.merge!(@provider_configuration.fetch(:authorization_params, {}))
     step_add_pkce(authorization_params, attempt)
     attempts = @session["social_oauth_attempts"] || {}
     attempts[digest] = attempt
     @session["social_oauth_attempts"] = attempts
     base_url = @provider_configuration.fetch(:authorization_base_url)
-    version = @provider_configuration.fetch(:api_version)
-    @authorization_url = "#{base_url}/#{version}/dialog/oauth?#{URI.encode_www_form(authorization_params)}"
+    authorization_path = if @provider_configuration.key?(:authorization_path)
+      @provider_configuration.fetch(:authorization_path)
+    else
+      "/#{@provider_configuration.fetch(:api_version)}/dialog/oauth"
+    end
+    authorization_uri = URI.join("#{base_url}/", authorization_path).to_s
+    @authorization_url = "#{authorization_uri}?#{URI.encode_www_form(authorization_params)}"
     step_succeed!
+  end
+
+  def step_add_scopes(authorization_params)
+    return true unless @provider_configuration.fetch(:include_scopes_in_authorization_request, true)
+
+    authorization_params[:scope] = @provider_configuration.fetch(:scopes).join(
+      @provider_configuration.fetch(:scope_separator, ",")
+    )
+    true
   end
 
   def step_add_pkce(authorization_params, attempt)
@@ -78,6 +99,9 @@ class SocialConnections::CreateService < ApplicationService
   end
 
   def oauth_state_ttl
-    Rails.application.config_for(:meta).fetch(:oauth_state_ttl_seconds).seconds
+    @provider_configuration.fetch(
+      :oauth_state_ttl_seconds,
+      Rails.application.config_for(:meta).fetch(:oauth_state_ttl_seconds)
+    ).seconds
   end
 end

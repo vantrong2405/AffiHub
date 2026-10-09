@@ -53,4 +53,72 @@ RSpec.describe "Publication review", type: :system do
     expect(workflow_run.reload.status).to eq("queued")
     expect(ActiveJob::Base.queue_adapter.enqueued_jobs.size).to eq(1)
   end
+
+  it "identifies the Instagram destination on an unknown Reels outcome" do
+    video_project = create(:video_project)
+    render_version = create(:render_version, video_project:)
+    social_connection = create(:social_connection, provider: "instagram", name: "Facebook của Bếp Nhà")
+    social_destination = create(
+      :social_destination,
+      social_connection:,
+      provider: "instagram",
+      external_id: "ig-business-1",
+      name: "Reels Bếp Nhà"
+    )
+    publication = create(:publication, render_version:, social_destination:, status: "outcome_unknown")
+    workflow_run = create(
+      :workflow_run,
+      workflowable: publication,
+      operation: "publication_publish",
+      stage: "publish",
+      status: "outcome_unknown"
+    )
+    create(
+      :outbound_attempt,
+      workflow_run:,
+      status: "outcome_unknown",
+      sender_stopped_at: 2.minutes.ago,
+      request_timeout_at: 1.minute.ago
+    )
+
+    visit video_project_publication_path(video_project, publication)
+
+    expect(page).to have_content("Kết quả đăng trên Reels Bếp Nhà chưa xác định")
+    expect(page).to have_content("Hãy kiểm tra bài trên Instagram")
+    expect(page).to have_field("Bằng chứng kiểm tra")
+  end
+
+  it "identifies the YouTube channel on an unknown upload outcome" do
+    video_project = create(:video_project)
+    render_version = create(:render_version, video_project:)
+    social_connection = create(:social_connection, provider: "youtube", name: "Google của Bếp Nhà")
+    social_destination = create(
+      :social_destination,
+      social_connection:,
+      provider: "youtube",
+      external_id: "channel-1",
+      name: "Kênh Bếp Nhà"
+    )
+    publication = create(:publication, render_version:, social_destination:, status: "outcome_unknown")
+    workflow_run = create(
+      :workflow_run,
+      workflowable: publication,
+      operation: "publication_publish",
+      stage: "publish",
+      status: "outcome_unknown"
+    )
+    create(
+      :outbound_attempt,
+      workflow_run:,
+      status: "outcome_unknown",
+      sender_stopped_at: 2.minutes.ago,
+      request_timeout_at: 1.minute.ago
+    )
+
+    visit video_project_publication_path(video_project, publication)
+
+    expect(page).to have_content("Kết quả đăng trên Kênh Bếp Nhà chưa xác định")
+    expect(page).to have_content("Hãy kiểm tra bài trên YouTube")
+    expect(page).to have_field("Bằng chứng kiểm tra")
+  end
 end

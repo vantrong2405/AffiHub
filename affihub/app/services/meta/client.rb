@@ -1,6 +1,4 @@
 class Meta::Client
-  CONFIGURATION = Rails.application.config_for(:meta).deep_symbolize_keys.fetch(:providers).fetch(:facebook)
-
   class Error < StandardError
     attr_reader :code
 
@@ -14,6 +12,14 @@ class Meta::Client
     end
   end
 
+  # Initializes Graph API requests with one configured Meta provider.
+  #
+  # @param provider [String, Symbol] the Facebook or Instagram connection provider
+  # @return [Meta::Client] the configured Graph API client
+  def initialize(provider: :facebook)
+    @configuration = Rails.application.config_for(:meta).deep_symbolize_keys.fetch(:providers).fetch(provider.to_sym)
+  end
+
   # Exchanges the authorization code for a Facebook user access token.
   #
   # @param code [String] the single-use authorization code
@@ -22,8 +28,8 @@ class Meta::Client
   # @return [Hash] the token response
   def exchange_code(code:, redirect_uri:, code_verifier: nil)
     params = {
-      client_id: CONFIGURATION.fetch(:client_id),
-      client_secret: CONFIGURATION.fetch(:client_secret),
+      client_id: @configuration.fetch(:client_id),
+      client_secret: @configuration.fetch(:client_secret),
       redirect_uri:,
       code:
     }
@@ -47,9 +53,106 @@ class Meta::Client
     response = request(
       method: :get,
       url: "#{graph_api_base_url}/me/accounts",
-      params: { fields: "id,name,access_token,tasks", access_token: }
+      params: { fields: @configuration.fetch(:page_fields).join(","), access_token: }
     )
     response.fetch("data", [])
+  end
+
+  # Reads the current Instagram content publishing quota for a Business account.
+  #
+  # @param instagram_user_id [String] the selected Instagram Business account ID
+  # @param page_access_token [String] the token authorized for the linked Page
+  # @return [Hash] the current quota usage and provider-reported quota configuration
+  def instagram_content_publishing_limit(instagram_user_id:, page_access_token:)
+    encoded_user_id = URI.encode_www_form_component(instagram_user_id)
+    request(
+      method: :get,
+      url: "#{graph_api_base_url}/#{encoded_user_id}/content_publishing_limit",
+      params: {
+        fields: @configuration.fetch(:instagram_content_publishing_limit_fields).join(","),
+        access_token: page_access_token
+      }
+    )
+  end
+
+  # Creates a resumable Instagram Reel container for local binary upload.
+  #
+  # @param instagram_user_id [String] the selected Instagram Business account ID
+  # @param page_access_token [String] the token authorized for the linked Page
+  # @param caption [String] the approved caption for this Publication
+  # @return [Hash] the container ID and signed binary upload URI
+  def start_instagram_reel_upload(instagram_user_id:, page_access_token:, caption:)
+    encoded_user_id = URI.encode_www_form_component(instagram_user_id)
+    request(
+      method: :post,
+      url: "#{graph_api_base_url}/#{encoded_user_id}/media",
+      params: {
+        media_type: @configuration.fetch(:instagram_media_type),
+        upload_type: @configuration.fetch(:instagram_upload_type),
+        caption:,
+        access_token: page_access_token
+      }
+    )
+  end
+
+  # Uploads a local render file to Instagram's signed resumable upload URI.
+  #
+  # @param upload_url [String] the signed URI returned by Instagram
+  # @param page_access_token [String] the token authorized for the linked Page
+  # @param file [IO] the open local render file
+  # @param file_size [Integer] the complete render size in bytes
+  # @return [Hash] the provider upload acknowledgement
+  def upload_instagram_reel(upload_url:, page_access_token:, file:, file_size:)
+    upload_reel(upload_url:, page_access_token:, file:, file_size:)
+  end
+
+  # Reads upload processing status for an existing Instagram media container.
+  #
+  # @param creation_id [String] the saved media container ID
+  # @param page_access_token [String] the token authorized for the linked Page
+  # @return [Hash] the container status returned by Instagram
+  def instagram_reel_status(creation_id:, page_access_token:)
+    encoded_creation_id = URI.encode_www_form_component(creation_id)
+    request(
+      method: :get,
+      url: "#{graph_api_base_url}/#{encoded_creation_id}",
+      params: {
+        fields: @configuration.fetch(:instagram_container_status_fields).join(","),
+        access_token: page_access_token
+      }
+    )
+  end
+
+  # Publishes a finished Instagram Reels container.
+  #
+  # @param instagram_user_id [String] the selected Instagram Business account ID
+  # @param page_access_token [String] the token authorized for the linked Page
+  # @param creation_id [String] the finished container ID
+  # @return [Hash] the media ID returned by Instagram after publish
+  def publish_instagram_reel(instagram_user_id:, page_access_token:, creation_id:)
+    encoded_user_id = URI.encode_www_form_component(instagram_user_id)
+    request(
+      method: :post,
+      url: "#{graph_api_base_url}/#{encoded_user_id}/media_publish",
+      params: { creation_id:, access_token: page_access_token }
+    )
+  end
+
+  # Reads the published media ID and permalink returned by Instagram.
+  #
+  # @param media_id [String] the media ID returned by `media_publish`
+  # @param page_access_token [String] the token authorized for the linked Page
+  # @return [Hash] the media fields returned by Instagram
+  def instagram_media(media_id:, page_access_token:)
+    encoded_media_id = URI.encode_www_form_component(media_id)
+    request(
+      method: :get,
+      url: "#{graph_api_base_url}/#{encoded_media_id}",
+      params: {
+        fields: @configuration.fetch(:instagram_media_fields).join(","),
+        access_token: page_access_token
+      }
+    )
   end
 
   # Reads a Page-owned Video node without logging its potentially signed source URL.
@@ -101,7 +204,7 @@ class Meta::Client
       },
       stream: file,
       file_size:,
-      timeout_seconds: CONFIGURATION.fetch(:upload_timeout_seconds)
+      timeout_seconds: @configuration.fetch(:upload_timeout_seconds)
     )
   end
 
@@ -161,12 +264,12 @@ class Meta::Client
     headers.each { |name, value| http_request[name] = value }
     http_request.body_stream = stream if stream
     http_request.content_length = file_size if file_size
-    timeout = timeout_seconds || CONFIGURATION.fetch(:read_timeout_seconds)
+    timeout = timeout_seconds || @configuration.fetch(:read_timeout_seconds)
     response = Net::HTTP.start(
       uri.host,
       uri.port,
       use_ssl: uri.scheme == "https",
-      open_timeout: CONFIGURATION.fetch(:open_timeout_seconds),
+      open_timeout: @configuration.fetch(:open_timeout_seconds),
       read_timeout: timeout
     ) { |http| http.request(http_request) }
     parsed_response = JSON.parse(response.body.presence || "{}")
@@ -181,7 +284,7 @@ class Meta::Client
   end
 
   def graph_api_base_url
-    "#{CONFIGURATION.fetch(:graph_api_base_url)}/#{CONFIGURATION.fetch(:api_version)}"
+    "#{@configuration.fetch(:graph_api_base_url)}/#{@configuration.fetch(:api_version)}"
   end
 
   def safe_error_code(response, parsed_response)

@@ -10,7 +10,7 @@ class SocialConnections::NewService < ApplicationService
     super()
   end
 
-  # Reports whether the provider has the public OAuth client ID configured.
+  # Reports whether the provider has its OAuth client and required parameters configured.
   #
   # @return [Boolean] whether the provider connection can start
   def call
@@ -23,15 +23,20 @@ class SocialConnections::NewService < ApplicationService
   private
 
   def step_load_provider_configuration
-    provider_configuration = Rails.application.config_for(:meta).deep_symbolize_keys
-    @provider_configuration = provider_configuration.fetch(:providers).fetch(@provider.to_sym)
+    @provider_configuration = SocialConnections::ProviderConfiguration.for(@provider)
     true
   rescue KeyError
     step_fail!("Nền tảng này chưa được cấu hình kết nối.")
   end
 
   def step_check_provider_configuration
-    @provider_configured = @provider_configuration.fetch(:client_id, nil).present?
+    @provider_configured = @provider_configuration.fetch(:client_id, nil).present? && required_authorization_parameters_present?
     step_succeed!
+  end
+
+  def required_authorization_parameters_present?
+    required_parameters = @provider_configuration.fetch(:required_authorization_parameters, [])
+    authorization_params = @provider_configuration.fetch(:authorization_params, {})
+    required_parameters.all? { |parameter| authorization_params[parameter].present? }
   end
 end

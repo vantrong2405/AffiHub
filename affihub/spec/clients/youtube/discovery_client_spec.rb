@@ -6,7 +6,13 @@ RSpec.describe Youtube::DiscoveryClient, type: :client do
   describe "#search_videos" do
     it "uses the official video keyword search endpoint" do
       request = stub_request(:get, "https://www.googleapis.com/youtube/v3/search")
-        .with(query: hash_including("q" => "cooking", "type" => "video"))
+        .with(query: {
+          "part" => "snippet",
+          "q" => "cooking",
+          "type" => "video",
+          "regionCode" => "VN",
+          "maxResults" => "25"
+        })
         .to_return(
           status: 200,
           body: {
@@ -26,6 +32,7 @@ RSpec.describe Youtube::DiscoveryClient, type: :client do
       result = described_class.new.search_videos(query: "cooking")
 
       expect(request).to have_been_made.once
+      expect(YoutubeQuotaCounter.find_by!(bucket: "search.list").requests_count).to eq(1)
       expect(result).to eq([
         {
           video_id: "video-123",
@@ -36,16 +43,31 @@ RSpec.describe Youtube::DiscoveryClient, type: :client do
         }
       ])
     end
+
+    it "raises a local quota error without sending a request when search.list is exhausted" do
+      configuration = Rails.application.config_for(:youtube).deep_symbolize_keys
+      bucket = configuration.dig(:quota, :buckets, :search_list)
+      create(:youtube_quota_counter, bucket: bucket.fetch(:method), requests_count: bucket.fetch(:daily_limit))
+      request = stub_request(:get, "https://www.googleapis.com/youtube/v3/search")
+
+      expect do
+        described_class.new.search_videos(query: "cooking")
+      end.to raise_error(described_class::Error, "quota_exhausted")
+
+      expect(request).not_to have_been_made
+    end
   end
 
   describe "#popular_videos" do
     it "uses the regional and category most-popular chart endpoint" do
       request = stub_request(:get, "https://www.googleapis.com/youtube/v3/videos")
-        .with(query: hash_including(
+        .with(query: {
+          "part" => "snippet",
           "chart" => "mostPopular",
           "regionCode" => "VN",
+          "maxResults" => "25",
           "videoCategoryId" => "10"
-        ))
+        })
         .to_return(
           status: 200,
           body: {
@@ -65,6 +87,7 @@ RSpec.describe Youtube::DiscoveryClient, type: :client do
       result = described_class.new.popular_videos(region_code: "VN", video_category_id: "10")
 
       expect(request).to have_been_made.once
+      expect(YoutubeQuotaCounter.count).to eq(0)
       expect(result).to eq([
         {
           video_id: "video-456",
@@ -78,12 +101,18 @@ RSpec.describe Youtube::DiscoveryClient, type: :client do
 
     it "does not send a category filter when all categories are selected" do
       request = stub_request(:get, "https://www.googleapis.com/youtube/v3/videos")
-        .with(query: hash_excluding("videoCategoryId"))
+        .with(query: {
+          "part" => "snippet",
+          "chart" => "mostPopular",
+          "regionCode" => "VN",
+          "maxResults" => "25"
+        })
         .to_return(status: 200, body: { items: [] }.to_json)
 
       result = described_class.new.popular_videos(region_code: "VN")
 
       expect(request).to have_been_made.once
+      expect(YoutubeQuotaCounter.count).to eq(0)
       expect(result).to eq([])
     end
   end

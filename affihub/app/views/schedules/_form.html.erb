@@ -1,0 +1,111 @@
+<%= form_with url: form_url, method: form_method, scope: :schedule, class: "card border border-base-300 bg-base-100" do %>
+  <div class="card-body gap-5">
+    <% if schedule_preflight_report_selected?(@preflight_report) %>
+      <%= hidden_field_tag "schedule[render_version_id]", @render_version.id %>
+      <%= hidden_field_tag "schedule[preflight_report_id]", @preflight_report.id %>
+    <% end %>
+
+    <div class="grid gap-4 md:grid-cols-3">
+      <label class="form-control w-full">
+        <span class="label-text mb-1">Ngày và giờ</span>
+        <%= text_field_tag "schedule[scheduled_at]",
+                           schedule_form_scheduled_at(schedule_form: @schedule_form, schedule:),
+                           type: "datetime-local",
+                           required: true,
+                           class: "input input-bordered w-full" %>
+        <span class="label-text-alt mt-1">Giờ được tính theo timezone đã chọn.</span>
+      </label>
+
+      <label class="form-control w-full">
+        <span class="label-text mb-1">Timezone</span>
+        <%= select_tag "schedule[time_zone]",
+                       options_for_select(
+                         schedule_time_zone_select_options(@time_zone_options),
+                         schedule_form_time_zone(
+                           schedule_form: @schedule_form,
+                           schedule:,
+                           default_time_zone: @time_zone
+                         )
+                       ),
+                       required: true,
+                       class: "select select-bordered w-full" %>
+      </label>
+
+      <label class="form-control w-full">
+        <span class="label-text mb-1">Lặp lại</span>
+        <%= select_tag "schedule[recurrence]",
+                       options_for_select(
+                         schedule_recurrence_select_options,
+                         schedule_form_recurrence(schedule_form: @schedule_form, schedule:)
+                       ),
+                       required: true,
+                       class: "select select-bordered w-full" %>
+      </label>
+    </div>
+
+    <% if schedule_destinations_present?(@ready_social_destinations) %>
+      <section class="space-y-3" aria-labelledby="schedule-destinations-heading">
+        <div>
+          <h2 id="schedule-destinations-heading" class="font-semibold">Destination đạt preflight</h2>
+          <p class="text-sm text-base-content/60">Mỗi destination có caption và trạng thái riêng.</p>
+        </div>
+        <div class="grid gap-3 md:grid-cols-2">
+          <% @ready_social_destinations.each do |social_destination| %>
+            <% destination_form = schedule_destination_form_values(
+              social_destination:,
+              schedule_form: @schedule_form,
+              publications_by_destination: @publications_by_destination,
+              consent_required_destination_ids: @consent_required_destination_ids
+            ) %>
+            <article class="card border border-base-300 bg-base-200">
+              <div class="card-body gap-3 p-4">
+                <label class="flex items-start gap-3">
+                  <%= check_box_tag "schedule[destination_ids][]",
+                                    social_destination.id,
+                                    destination_form.fetch(:selected),
+                                    disabled: destination_form.fetch(:consent_required),
+                                    class: "checkbox checkbox-primary mt-0.5" %>
+                  <span class="min-w-0 flex-1">
+                    <span class="block font-semibold"><%= social_destination.name %></span>
+                    <span class="block text-sm text-base-content/60"><%= social_destination.social_connection.name %></span>
+                  </span>
+                  <span class="badge badge-success ml-auto">Sẵn sàng</span>
+                </label>
+
+                <label class="form-control w-full">
+                  <span class="label-text mb-1">Caption cho <%= social_destination.name %></span>
+                  <%= text_area_tag "schedule[destination_captions][#{destination_form.fetch(:id)}]",
+                                    destination_form.fetch(:caption),
+                                    rows: 3,
+                                    class: "textarea textarea-bordered w-full" %>
+                </label>
+
+                <% if destination_form.fetch(:consent_required) %>
+                  <div role="alert" class="alert alert-warning">
+                    <span>Cần lưu consent trên bản nháp của destination này trước khi lập lịch.</span>
+                  </div>
+                  <%= link_to "Mở form tạo bản nháp",
+                              new_video_project_publication_path(@video_project, preflight_report_id: @preflight_report.id),
+                              class: "link link-primary text-sm" %>
+                <% elsif destination_form.fetch(:show_consent_revalidation) %>
+                  <p class="text-sm text-base-content/60">Consent hiện tại sẽ được lưu vào lịch và kiểm tra lại trước khi đăng.</p>
+                <% end %>
+              </div>
+            </article>
+          <% end %>
+        </div>
+      </section>
+    <% end %>
+
+    <div class="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+      <% if schedule_form_editing?(schedule) %>
+        <%= link_to "Quay lại lịch", video_project_schedule_path(@video_project, schedule), class: "btn btn-ghost w-full sm:w-auto" %>
+      <% else %>
+        <%= link_to "Hủy", video_project_schedules_path(@video_project), class: "btn btn-ghost w-full sm:w-auto" %>
+      <% end %>
+      <%= submit_tag submit_label,
+                     class: "btn btn-primary w-full sm:w-auto",
+                     data: { turbo_submits_with: schedule_submit_progress_label(schedule) } %>
+    </div>
+  </div>
+<% end %>

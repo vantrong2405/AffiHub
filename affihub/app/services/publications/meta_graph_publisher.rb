@@ -1,5 +1,5 @@
 class Publications::MetaGraphPublisher < ApplicationService
-  CONFIGURATION = Meta::Client::CONFIGURATION
+  CONFIGURATION = Rails.application.config_for(:meta).deep_symbolize_keys.fetch(:providers).fetch(:facebook)
   PUBLISH_STAGE = "publish"
   PROVIDER = "facebook"
 

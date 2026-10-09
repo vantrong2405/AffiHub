@@ -1,6 +1,6 @@
 class RenderVersions::ShowService < ApplicationService
   # @return [VideoProject] the project that owns the render
-  attr_reader :video_project
+  attr_reader :video_project, :social_destinations
 
   # @return [RenderVersion] the selected render version
   attr_reader :render_version
@@ -26,6 +26,7 @@ class RenderVersions::ShowService < ApplicationService
     @video_project = VideoProject.find(@video_project_id)
     @render_version = video_project.render_versions.with_attached_file.includes(:source_asset).find(@render_version_id)
     @source_asset = render_version.source_asset
+    @social_destinations = SocialDestination.includes(:social_connection).order(:provider, :name)
     step_succeed!
     success?
   end

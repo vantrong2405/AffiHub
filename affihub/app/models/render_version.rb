@@ -11,6 +11,9 @@ class RenderVersion < ApplicationRecord
   has_one_attached :file
   has_many :preflight_reports, inverse_of: :render_version, dependent: :restrict_with_exception
   has_many :publications, inverse_of: :render_version, dependent: :restrict_with_exception
+  has_many :schedules, inverse_of: :render_version, dependent: :restrict_with_exception
+  has_many :drive_exports, inverse_of: :render_version, dependent: :restrict_with_exception
+  has_many :sheet_syncs, inverse_of: :render_version, dependent: :restrict_with_exception
 
   scope :recent_first, proc { order(created_at: :desc, id: :desc) }
 

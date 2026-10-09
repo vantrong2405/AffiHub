@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_08_120001) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_09_150000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -101,6 +101,48 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_08_120001) do
     t.index ["provider", "status"], name: "index_ai_provider_connections_on_provider_and_status"
   end
 
+  create_table "drive_exports", force: :cascade do |t|
+    t.bigint "google_connection_id", null: false
+    t.bigint "render_version_id", null: false
+    t.string "status", null: false
+    t.string "folder_key", null: false
+    t.string "file_key", null: false
+    t.string "drive_folder_id"
+    t.string "drive_folder_url"
+    t.string "drive_file_id"
+    t.string "drive_url"
+    t.text "upload_session_uri"
+    t.bigint "upload_offset", default: 0, null: false
+    t.string "safe_error_code"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["file_key"], name: "index_drive_exports_on_file_key", unique: true
+    t.index ["folder_key"], name: "index_drive_exports_on_folder_key"
+    t.index ["google_connection_id"], name: "index_drive_exports_on_google_connection_id"
+    t.index ["render_version_id", "google_connection_id"], name: "index_drive_exports_on_render_and_connection", unique: true
+    t.index ["render_version_id"], name: "index_drive_exports_on_render_version_id"
+    t.index ["status", "updated_at"], name: "index_drive_exports_on_status_and_updated_at"
+  end
+
+  create_table "google_connections", force: :cascade do |t|
+    t.string "integration", null: false
+    t.string "google_account_id", null: false
+    t.string "email", null: false
+    t.text "access_token", null: false
+    t.text "refresh_token"
+    t.datetime "access_token_expires_at"
+    t.jsonb "scopes", default: [], null: false
+    t.string "status", null: false
+    t.string "safe_error_code"
+    t.string "drive_parent_folder_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.string "spreadsheet_id"
+    t.string "worksheet_title"
+    t.index ["integration", "google_account_id"], name: "index_google_connections_on_integration_and_account", unique: true
+    t.index ["integration", "status"], name: "index_google_connections_on_integration_and_status"
+  end
+
   create_table "outbound_attempts", force: :cascade do |t|
     t.bigint "workflow_run_id", null: false
     t.string "attempt_id", null: false
@@ -141,6 +183,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_08_120001) do
     t.index ["video_project_id"], name: "index_project_media_assets_on_video_project_id"
   end
 
+  create_table "publication_quota_reservations", force: :cascade do |t|
+    t.bigint "publication_id", null: false
+    t.bigint "social_destination_id", null: false
+    t.datetime "reserved_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["publication_id"], name: "index_publication_quota_reservations_on_publication_id", unique: true
+    t.index ["social_destination_id", "reserved_at"], name: "index_publication_quota_reservations_on_destination_and_time"
+    t.index ["social_destination_id"], name: "index_publication_quota_reservations_on_social_destination_id"
+  end
+
   create_table "publications", force: :cascade do |t|
     t.bigint "render_version_id", null: false
     t.bigint "social_destination_id", null: false
@@ -155,8 +208,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_08_120001) do
     t.string "safe_error_code"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.jsonb "consent_snapshot", default: {}, null: false
+    t.bigint "schedule_occurrence_id"
     t.index ["render_version_id", "social_destination_id"], name: "idx_on_render_version_id_social_destination_id_249e75c052"
     t.index ["render_version_id"], name: "index_publications_on_render_version_id"
+    t.index ["schedule_occurrence_id", "social_destination_id"], name: "index_publications_on_occurrence_and_destination", unique: true
+    t.index ["schedule_occurrence_id"], name: "index_publications_on_schedule_occurrence_id"
     t.index ["schedule_occurrence_key"], name: "index_publications_on_schedule_occurrence_key"
     t.index ["social_destination_id", "status"], name: "index_publications_on_social_destination_id_and_status"
     t.index ["social_destination_id"], name: "index_publications_on_social_destination_id"
@@ -177,6 +234,67 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_08_120001) do
     t.index ["video_project_id"], name: "index_render_versions_on_video_project_id"
   end
 
+  create_table "schedule_destinations", force: :cascade do |t|
+    t.bigint "schedule_id", null: false
+    t.bigint "social_destination_id", null: false
+    t.text "caption", default: "", null: false
+    t.jsonb "consent_snapshot", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["schedule_id", "social_destination_id"], name: "index_schedule_destinations_on_schedule_and_destination", unique: true
+    t.index ["schedule_id"], name: "index_schedule_destinations_on_schedule_id"
+    t.index ["social_destination_id"], name: "index_schedule_destinations_on_social_destination_id"
+  end
+
+  create_table "schedule_occurrences", force: :cascade do |t|
+    t.bigint "schedule_id", null: false
+    t.bigint "preflight_report_id"
+    t.string "occurrence_key", null: false
+    t.datetime "scheduled_at", null: false
+    t.datetime "dispatch_at", null: false
+    t.string "status", default: "scheduled", null: false
+    t.datetime "processed_at"
+    t.string "safe_error_code"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["preflight_report_id"], name: "index_schedule_occurrences_on_preflight_report_id"
+    t.index ["schedule_id", "occurrence_key"], name: "index_schedule_occurrences_on_schedule_and_key", unique: true
+    t.index ["schedule_id"], name: "index_schedule_occurrences_on_schedule_id"
+    t.index ["status", "dispatch_at"], name: "index_schedule_occurrences_on_status_and_dispatch_at"
+  end
+
+  create_table "schedules", force: :cascade do |t|
+    t.bigint "render_version_id", null: false
+    t.string "status", default: "active", null: false
+    t.string "recurrence", default: "once", null: false
+    t.string "time_zone", null: false
+    t.string "local_time", null: false
+    t.datetime "next_occurrence_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["render_version_id"], name: "index_schedules_on_render_version_id"
+    t.index ["status", "next_occurrence_at"], name: "index_schedules_on_status_and_next_occurrence_at"
+  end
+
+  create_table "sheet_syncs", force: :cascade do |t|
+    t.bigint "google_connection_id", null: false
+    t.bigint "render_version_id", null: false
+    t.bigint "social_destination_id", null: false
+    t.string "sheet_row_key", null: false
+    t.integer "row_number"
+    t.string "status", null: false
+    t.string "safe_error_code"
+    t.datetime "last_synced_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["google_connection_id", "render_version_id", "social_destination_id"], name: "index_sheet_syncs_on_connection_render_destination", unique: true
+    t.index ["google_connection_id"], name: "index_sheet_syncs_on_google_connection_id"
+    t.index ["render_version_id"], name: "index_sheet_syncs_on_render_version_id"
+    t.index ["sheet_row_key"], name: "index_sheet_syncs_on_sheet_row_key"
+    t.index ["social_destination_id"], name: "index_sheet_syncs_on_social_destination_id"
+    t.index ["status", "updated_at"], name: "index_sheet_syncs_on_status_and_updated_at"
+  end
+
   create_table "social_connections", force: :cascade do |t|
     t.string "provider", null: false
     t.string "external_user_id", null: false
@@ -187,6 +305,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_08_120001) do
     t.jsonb "metadata", default: {}, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.text "refresh_token"
+    t.datetime "refresh_token_expires_at"
+    t.jsonb "scopes", default: [], null: false
     t.index ["provider", "external_user_id"], name: "index_social_connections_on_provider_and_external_user_id", unique: true
     t.index ["provider", "status"], name: "index_social_connections_on_provider_and_status"
   end
@@ -322,18 +443,40 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_08_120001) do
     t.index ["video_id"], name: "index_youtube_discovery_metadata_on_video_id", unique: true
   end
 
+  create_table "youtube_quota_counters", force: :cascade do |t|
+    t.string "bucket", null: false
+    t.date "usage_date", null: false
+    t.integer "requests_count", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["bucket", "usage_date"], name: "index_youtube_quota_counters_on_bucket_and_usage_date", unique: true
+  end
+
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "ai_generation_scenes", "ai_generations"
   add_foreign_key "ai_generations", "source_assets"
   add_foreign_key "ai_generations", "video_projects"
+  add_foreign_key "drive_exports", "google_connections"
+  add_foreign_key "drive_exports", "render_versions"
   add_foreign_key "outbound_attempts", "workflow_runs"
   add_foreign_key "preflight_reports", "render_versions"
   add_foreign_key "project_media_assets", "video_projects"
+  add_foreign_key "publication_quota_reservations", "publications"
+  add_foreign_key "publication_quota_reservations", "social_destinations"
   add_foreign_key "publications", "render_versions"
+  add_foreign_key "publications", "schedule_occurrences"
   add_foreign_key "publications", "social_destinations"
   add_foreign_key "render_versions", "source_assets"
   add_foreign_key "render_versions", "video_projects"
+  add_foreign_key "schedule_destinations", "schedules"
+  add_foreign_key "schedule_destinations", "social_destinations"
+  add_foreign_key "schedule_occurrences", "preflight_reports"
+  add_foreign_key "schedule_occurrences", "schedules"
+  add_foreign_key "schedules", "render_versions"
+  add_foreign_key "sheet_syncs", "google_connections"
+  add_foreign_key "sheet_syncs", "render_versions"
+  add_foreign_key "sheet_syncs", "social_destinations"
   add_foreign_key "social_destinations", "social_connections"
   add_foreign_key "source_assets", "video_projects"
   add_foreign_key "source_discoveries", "video_projects"

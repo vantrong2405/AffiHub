@@ -1,7 +1,7 @@
 class Security::SensitiveDataRedactor
   REDACTION_MARKER = "[FILTERED]"
   SENSITIVE_KEY = /(?:authorization|oauth[_-]?(?:code|state)|code[_-]?verifier|(?:^|[_-])state(?:$|[_-])|access[_-]?token|refresh[_-]?token|token|secret|password|api[_-]?key|access[_-]?key|signed|session|upload[_-]?(?:uri|url))/i
-  SENSITIVE_QUERY_PARAMETER = /(?:authorization|oauth[_-]?(?:code|state)|code[_-]?verifier|(?:^|[_-])(?:code|state)(?:$|[_-])|token|secret|password|api[_-]?key|access[_-]?key|signature|(?:^|[_-])sig(?:$|[_-])|session|credential)/i
+  SENSITIVE_QUERY_PARAMETER = /(?:authorization|oauth[_-]?(?:code|state)|code[_-]?verifier|(?:^|[_-])(?:code|state)(?:$|[_-])|token|secret|password|api[_-]?key|access[_-]?key|upload[_-]?id|signature|(?:^|[_-])sig(?:$|[_-])|session|credential)/i
 
   # Initializes the redactor with exact secret values known to the caller.
   #

@@ -14,7 +14,7 @@
 
   <% if @publication.outcome_unknown? %>
     <div role="alert" class="alert alert-warning">
-      <span>Kết quả đăng chưa xác định. Hãy kiểm tra Page và ghi nhận bằng chứng; không gửi lại bài từ nút retry thông thường.</span>
+      <span>Kết quả đăng trên <%= @publication.social_destination.name %> chưa xác định. Hãy kiểm tra bài trên <%= social_provider_name(@publication.social_destination.provider) %> và ghi nhận bằng chứng; không gửi lại từ nút xác nhận thông thường.</span>
     </div>
   <% end %>
 
@@ -66,17 +66,20 @@
 
         <div class="space-y-3 border-t border-base-300 pt-4">
           <div>
-            <h3 class="font-semibold">Caption riêng cho Page này</h3>
-            <p class="text-sm text-base-content/60">Caption chỉ được sửa khi bài còn là bản nháp.</p>
+            <h3 class="font-semibold"><%= @publication_consent_presenter.section_title %></h3>
+            <p class="text-sm text-base-content/60"><%= @publication_consent_presenter.section_description %></p>
           </div>
           <% if @publication.draft? %>
             <%= form_with model: @publication,
                           url: video_project_publication_path(@video_project, @publication),
                           method: :patch,
                           class: "space-y-3" do |form| %>
+              <%= form.label :caption, "Caption", class: "label-text font-medium" %>
               <%= form.text_area :caption, rows: 4, class: "textarea textarea-bordered w-full" %>
+              <%= render_publication_consent_fields(@publication_consent_presenter) %>
               <div class="flex justify-end">
-                <%= form.submit "Lưu caption", class: "btn btn-outline w-full sm:w-auto" %>
+                <%= form.submit @publication_consent_presenter.submit_label,
+                                class: "btn btn-outline w-full sm:w-auto" %>
               </div>
             <% end %>
           <% else %>
@@ -120,7 +123,7 @@
       <div class="card-body gap-4">
         <div>
           <h2 class="card-title">Đối soát kết quả đăng</h2>
-          <p class="text-sm text-base-content/70">Ghi rõ bằng chứng bạn đã kiểm tra trên Page. Chọn “chưa đăng” chỉ khi sender đã dừng và bạn chấp nhận rủi ro đăng trùng.</p>
+          <p class="text-sm text-base-content/70">Ghi rõ bằng chứng bạn đã kiểm tra trên <%= social_provider_name(@publication.social_destination.provider) %>. Chọn “chưa đăng” chỉ khi sender đã dừng và bạn chấp nhận rủi ro đăng trùng.</p>
         </div>
         <%= form_with url: resolve_outcome_video_project_publication_path(@video_project, @publication),
                       scope: :publication,

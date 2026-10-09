@@ -47,6 +47,7 @@ class RenderVersionsController < MainController
     @video_project = service.video_project
     @render_version = service.render_version
     @source_asset = service.source_asset
+    @social_destinations = service.social_destinations
     @frames = []
     response_status = :ok
 

@@ -79,6 +79,7 @@ shared:
         identity: Gemini::Client
         token: Gemini::Client
         revocation: Gemini::Client
+        generation: Gemini::Client
       refresh_token_arguments: []
       revocation_enabled: true
       revocation_arguments: []
@@ -90,6 +91,9 @@ shared:
       token_endpoint: https://oauth2.googleapis.com/token
       revocation_endpoint: https://oauth2.googleapis.com/revoke
       api_base_url: https://generativelanguage.googleapis.com/v1
+      generate_content_api_base_url: https://generativelanguage.googleapis.com/v1beta
+      quota_console_url: https://console.cloud.google.com/apis/api/generativelanguage.googleapis.com/quotas
+      pricing_source_url: https://ai.google.dev/gemini-api/docs/pricing
       redirect_uri: <%= ENV.fetch("GEMINI_OAUTH_REDIRECT_URI", "http://localhost:3000/ai/auth/callback") %>
       allowed_redirect_uris:
         - http://localhost:3000/ai/auth/callback

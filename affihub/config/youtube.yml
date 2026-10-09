@@ -1,7 +1,62 @@
 shared:
   api_base_url: https://www.googleapis.com/youtube
   api_version: v3
+  upload_base_url: https://www.googleapis.com/upload/youtube
+  media_transfer_protocol: youtube_resumable_videos_insert
+  upload_session_id_parameter: upload_id
+  upload_response_codes:
+    incomplete: 308
+    complete: 201
+  provider_error_reasons:
+    project_quota: quotaExceeded
+    channel_upload_limit: uploadLimitExceeded
+    oauth_invalid_grant: invalid_grant
+  quota:
+    timezone: America/Los_Angeles
+    counter_initial_count: 0
+    discovery_operation: search.list
+    publish_operation: videos.insert
+    limit_source_url: https://developers.google.com/youtube/v3/determine_quota_cost
+    console_url: https://console.cloud.google.com/apis/api/youtube.googleapis.com/quotas
+    buckets:
+      search_list:
+        method: search.list
+        daily_limit: 100
+      videos_insert:
+        method: videos.insert
+        daily_limit: 100
   api_key: <%= Rails.application.credentials.dig(:youtube, :api_key).to_s %>
+  oauth:
+    destination_kind: channel
+    client_id: <%= ENV.fetch("YOUTUBE_CLIENT_ID", "") %>
+    authorization_base_url: https://accounts.google.com
+    authorization_path: /o/oauth2/v2/auth
+    token_url: https://oauth2.googleapis.com/token
+    userinfo_url: https://openidconnect.googleapis.com/v1/userinfo
+    redirect_uri: http://127.0.0.1:3000/auth/youtube/callback
+    allowed_redirect_uris:
+      - http://127.0.0.1:3000/auth/youtube/callback
+    scopes:
+      - openid
+      - profile
+      - https://www.googleapis.com/auth/youtube.upload
+      - https://www.googleapis.com/auth/youtube.readonly
+    scope_separator: " "
+    authorization_params:
+      access_type: offline
+    profile_id_field: sub
+    profile_name_field: name
+    required_publish_scopes:
+      - https://www.googleapis.com/auth/youtube.upload
+    pkce_enabled: true
+    oauth_state_ttl_seconds: 600
+    token_refresh_buffer_seconds: 300
+    open_timeout_seconds: 10
+    read_timeout_seconds: 30
+    upload_timeout_seconds: 900
+    channels_endpoint: channels
+    channel_list_max_results: 50
+    channel_list_max_pages: 10
   search_endpoint: search
   videos_endpoint: videos
   default_region_code: VN
@@ -30,8 +85,60 @@ shared:
   read_timeout_seconds: 30
   metadata_ttl_days: 30
   metadata_expiry_buffer_seconds: 300
+  publisher:
+    provider_key: youtube
+    publication_operation: publication_publish
+    publish_stage: publish
+    worker_id_prefix: youtube-publish
+    idempotency_key_prefix: youtube-publication
+    audit_events:
+      upload_confirmed: youtube_upload_confirmed
+      published: youtube_video_published
+    public_video_url_template: https://www.youtube.com/watch?v=%{video_id}
+    request_timeout_seconds: 900
+    title_max_characters: 100
+    description_max_characters: 5000
+    privacy_statuses:
+      - private
+      - unlisted
+      - public
+    provider_statuses:
+      processing:
+        in_progress:
+          - processing
+        succeeded: succeeded
+        failed:
+          - failed
+          - terminated
+      upload:
+        in_progress: uploaded
+        completed: processed
+    status_poll_interval_seconds: 30
+    status_poll_max_attempts: 20
+    safe_error_codes:
+      missing_upload_terms_confirmation: youtube_upload_terms_not_confirmed
+      consent_account_mismatch: youtube_consent_account_mismatch
+      consent_channel_mismatch: youtube_consent_channel_mismatch
+      consent_render_mismatch: youtube_consent_render_mismatch
+      consent_publication_mismatch: youtube_consent_publication_mismatch
+      invalid_privacy_choice: youtube_privacy_choice_invalid
+      missing_made_for_kids_disclosure: youtube_made_for_kids_disclosure_missing
+      missing_synthetic_media_disclosure: youtube_synthetic_media_disclosure_missing
+      invalid_publication: youtube_publication_not_ready
+      invalid_destination: youtube_destination_not_ready
+      invalid_render: youtube_render_not_ready
+      unresolved_attempt: youtube_outbound_attempt_unresolved
+      quota_exhausted: youtube_quota_exhausted
+      upload_limit_exhausted: youtube_channel_upload_limit_exhausted
+      upload_failed: youtube_upload_failed
+      processing_failed: youtube_processing_failed
+      processing_unknown: youtube_processing_unknown
+      network_request_failed: youtube_network_request_failed
+      invalid_upload_response: youtube_upload_response_invalid
 
 test:
   api_key: affihub-test-key
+  oauth:
+    client_id: affihub-youtube-test-client
   open_timeout_seconds: 1
   read_timeout_seconds: 1

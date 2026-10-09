@@ -68,7 +68,7 @@ RSpec.describe AiGenerations::CreateEstimateService, type: :service do
       second_estimate_request
     end
 
-    it "stores estimates tied to the approved scene inputs" do
+    it "persists estimates tied to the approved scene inputs" do
       service.call
 
       expect(service).to be_success
@@ -117,17 +117,17 @@ RSpec.describe AiGenerations::CreateEstimateService, type: :service do
         super().merge(llm_provider: "gemini", llm_model: "models/gemini-3.8-flash")
       end
 
-      it "keeps the Gemini cost unknown and does not report a zero-cost total" do
+      it "persists Gemini cost as unknown and leaves the total amount unset" do
         service.call
 
         estimate = ai_generation.reload.estimate_snapshot.deep_symbolize_keys
 
-        expect(estimate.dig(:cost_breakdown, :llm)).to include(
+        expect(estimate.dig(:cost_breakdown, :llm).slice(:amount, :provider, :source)).to eq(
           amount: nil,
           provider: "LLM",
           source: "unknown"
         )
-        expect(estimate.dig(:cost_breakdown, :unknown, :source)).to include("llm")
+        expect(estimate.dig(:cost_breakdown, :unknown, :source)).to eq("llm,tts_fallback")
         expect(estimate.fetch(:required_costs_known)).to be(false)
         expect(estimate.fetch(:total_amount)).to be_nil
       end
