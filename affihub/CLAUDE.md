@@ -33,7 +33,7 @@ This workspace also uses **OpenSpec** for spec-driven change proposals, tracked 
 
 - **Specs, proposals, design docs, tasks, commit/PR descriptions, chat/explanations to the user:** Vietnamese. Keep technical terms (class/model/method names, file paths, repo names, API field names) in English inside Vietnamese text.
 - **Code: Ruby, RSpec, views, config, comments in code:** English, always.
-- **Customer-facing copy:** write ordinary Vietnamese notices, errors, and help text directly in the Ruby or ERB file that uses them. Keep YAML/`Rails.application.config_for` for configurable provider values, statuses/defaults, limits, and rules; do not add `messages` mappings for ordinary copy.
+- **Customer-facing copy and messages:** write ordinary Vietnamese notices, errors, labels, helper text, and validation sentences in the Ruby or ERB code that presents them; do not add them to operational YAML loaded through `Rails.application.config_for`. Use that YAML only for configuration the application reads, such as provider/channel identifiers, endpoints/scopes, machine statuses/defaults, limits, feature rules, and stable machine error codes. Do not move ordinary source strings into YAML just because they mention a provider.
 
 ## Ruby readability conventions
 
@@ -147,6 +147,12 @@ No `bcrypt`/`has_secure_password` added yet — add explicitly when auth is impl
 
 - Render product screens with ERB, Tailwind CSS 4, and daisyUI 5.7.47. The pinned npm package and
   `@plugin "daisyui"` declaration are both required for CSS compilation.
+- Keep ERB focused on semantic markup and presenting prepared values. Put calculations, formatting,
+  data selection, and presentation decisions in a Helper or Decorator; keep product workflow and
+  domain decisions in Services or Models. Do not inspect domain state to calculate presentation
+  conditions, build hashes, map collections, parse values, or calculate selections inline in
+  templates. ERB may iterate collections to render repeated markup and branch only on prepared UI
+  state from a Helper or Decorator.
 - Run `npm ci` from `affihub/` after changing `package.json` or `package-lock.json`. The production
   Docker build installs the locked npm packages before `assets:precompile` and removes
   `node_modules` from the runtime image afterward.
@@ -332,16 +338,17 @@ in OpenSpec tasks; do not invent a competing layout or token set.
 
 ## Presentation logic and view testing
 
-Keep ordinary presentation decisions in ERB. Extract formatting or presentation behavior into a
-Helper when it is reused or makes a template materially harder to understand. Do not call
-`product.decorate` unless a Decorator implementation and its dependency have deliberately been
-added. Do not write RSpec view specs for templates or examples solely to assert rendered copy,
-markup, CSS classes, colors, spacing, or layout. Test Helper/Presenter public input/output contracts
-when they contain reusable behavior, comparing deterministic output with the complete expected
-value. Avoid parsing generated HTML unless structure itself is the behavior and direct output
-comparison is insufficient. Use Capybara system specs for stable user interactions, and browser
-evidence for presentation-only changes. Request specs cover HTTP outcomes and persisted effects,
-not rendered markup.
+Keep ERB focused on semantic markup and rendering values prepared by a Helper or Decorator. Put
+calculations, formatting, data selection, and presentation decisions in a Helper or Decorator; put
+workflow and domain decisions in Services or Models. ERB may iterate a collection to render repeated
+markup and branch only on UI state prepared by a Helper or Decorator. Do not call `product.decorate`
+unless a Decorator implementation and its dependency have deliberately been added. Do not write
+RSpec view specs for templates or examples solely to assert rendered copy, markup, CSS classes,
+colors, spacing, or layout. Test Helper/Presenter public input/output contracts when they contain
+reusable behavior, comparing deterministic output with the complete expected value. Avoid parsing
+generated HTML unless structure itself is the behavior and direct output comparison is insufficient.
+Use Capybara system specs for stable user interactions, and browser evidence for presentation-only
+changes. Request specs cover HTTP outcomes and persisted effects, not rendered markup.
 
 ## Serialization: use a gem, don't hand-roll JSON shaping
 

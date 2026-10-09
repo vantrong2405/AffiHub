@@ -65,12 +65,12 @@ Don't append `[skip ci]` by default; add it only if the user asks for it in the 
 
 ## 5. Database setup (affihub)
 
-`affihub` uses two local Postgres databases, both local/disposable for this POC (not shared team DBs):
+`affihub` uses three local Postgres databases, all local/disposable for this POC (not shared team DBs):
 
 ```bash
 cd affihub
-rtk bin/rails db:create    # creates affihub_development and affihub_test if missing
-rtk bin/rails db:prepare   # create + migrate + seed, idempotent
+rtk bin/rails db:create    # creates affihub_development, affihub_development_queue, and affihub_test if missing
+rtk bin/rails db:prepare   # create + migrate primary/queue databases + seed, idempotent
 ```
 
 ## 6. Running RSpec (affihub)

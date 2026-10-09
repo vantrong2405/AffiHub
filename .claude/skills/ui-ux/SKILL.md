@@ -29,6 +29,12 @@ hay không, gọi API nào. Chỗ đó để prop hoặc handler rỗng (`onPage
 `onConfirm`) cho người dùng tự nối. Cần xem nhiều trạng thái thì dựng **mỗi
 trạng thái một ví dụ tĩnh** cạnh nhau, không dựng bản bấm được để xem.
 
+Khi task yêu cầu triển khai UI thật trong Rails, giữ ERB ở markup và hiển thị
+giá trị đã chuẩn bị. Đưa tính toán, định dạng, chọn dữ liệu và điều kiện trình
+bày vào Helper hoặc Decorator; đặt quyết định nghiệp vụ trong Service hoặc
+Model. ERB chỉ giữ vòng lặp để render collection và nhánh dựa trên UI state đã
+được chuẩn bị, không tự suy ra trạng thái từ model.
+
 ---
 
 ## 0. Bốn câu hỏi, đúng thứ tự này
