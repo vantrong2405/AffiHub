@@ -283,7 +283,7 @@ RSpec.describe AiGenerations::SubmitService, type: :service do
         expect(submission_scene_snapshot.fetch(:estimate_snapshot)).to eq(
           estimate.fetch(:cost_breakdown).fetch(:tts_fallback).deep_stringify_keys
         )
-        expect(submission_scene_snapshot.fetch(:consent_snapshot)).to include(
+        expect(submission_scene_snapshot.fetch(:consent_snapshot).slice("confirmed", "estimate")).to eq(
           "confirmed" => true,
           "estimate" => estimate.fetch(:cost_breakdown).fetch(:tts_fallback).deep_stringify_keys
         )
@@ -321,7 +321,7 @@ RSpec.describe AiGenerations::SubmitService, type: :service do
         expect(service.ai_generation).to eq(draft_generation)
         expect(service.ai_generation.reload.input_snapshot).to eq(generation_inputs.deep_stringify_keys)
         expect(service.ai_generation.estimate_snapshot).to eq(estimate.deep_stringify_keys)
-        expect(service.ai_generation.consent_snapshot).to include(
+        expect(service.ai_generation.consent_snapshot.slice("confirmed", "amount", "budget", "currency")).to eq(
           "confirmed" => true,
           "amount" => "0.50",
           "budget" => "1.00",
@@ -504,7 +504,7 @@ RSpec.describe AiGenerations::SubmitService, type: :service do
 
         expect(submission_observations[:input_snapshot]).to eq(generation_inputs.deep_stringify_keys)
         expect(submission_observations[:estimate_snapshot]).to eq(estimate.deep_stringify_keys)
-        expect(submission_observations[:consent_snapshot]).to include(
+        expect(submission_observations[:consent_snapshot].slice("confirmed", "amount", "currency")).to eq(
           "confirmed" => true,
           "amount" => "0.50",
           "currency" => "USD"

@@ -16,7 +16,7 @@ RSpec.describe "Local render exports", type: :request do
 
       expect(response).to have_http_status(:ok)
       expect(response.body).to eq("rendered MP4 bytes")
-      expect(response.headers.fetch("Content-Disposition")).to include("attachment")
+      expect(response.headers.fetch("Content-Disposition").split(";").first).to eq("attachment")
       expect(ActiveJob::Base.queue_adapter.enqueued_jobs).to eq([])
     end
   end

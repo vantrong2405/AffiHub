@@ -209,7 +209,9 @@ RSpec.describe Publications::MetaGraphPublisher, type: :service do
         expect(page_reel_request).to have_been_requested.once
         expect(finish_reel_request).to have_been_requested.once
         expect(status_request).to have_been_requested.once
-        expect(ActiveJob::Base.queue_adapter.enqueued_jobs).to be_empty
+        expect(ActiveJob::Base.queue_adapter.enqueued_jobs.map { |job| job[:job] }).to eq(
+          [ Telegram::Alerts::SendJob ]
+        )
       end
     end
 
@@ -232,7 +234,9 @@ RSpec.describe Publications::MetaGraphPublisher, type: :service do
         expect(publication.reload.status).to eq("outcome_unknown")
         expect(workflow_run.outbound_attempts.sole.status).to eq("outcome_unknown")
         expect(finish_reel_request).to have_been_requested.once
-        expect(ActiveJob::Base.queue_adapter.enqueued_jobs).to be_empty
+        expect(ActiveJob::Base.queue_adapter.enqueued_jobs.map { |job| job[:job] }).to eq(
+          [ Telegram::Alerts::SendJob ]
+        )
       end
     end
   end

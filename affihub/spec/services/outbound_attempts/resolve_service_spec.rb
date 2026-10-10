@@ -91,7 +91,7 @@ RSpec.describe OutboundAttempts::ResolveService, type: :service do
         service.call
 
         expect(attempt.reload.status).to eq("manual_outcome_confirmed")
-        expect(attempt.provider_reference).to include(
+        expect(attempt.provider_reference.slice("manual_reference")).to eq(
           "manual_reference" => "https://mpt.example/tasks/mpt-task-123"
         )
         expect(attempt.workflow_run.reload.status).to eq("completed")

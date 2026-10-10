@@ -69,8 +69,10 @@ RSpec.describe AiGenerations::PollService, type: :service do
       expect(ai_generation.source_asset.source_type).to eq("ai_generated")
       expect(ai_generation.source_asset.status).to eq("pending")
       expect(ai_generation.source_asset.file.download).to eq("preview-video-bytes")
-      expect(ActiveJob::Base.queue_adapter.enqueued_jobs.map { |job| job[:job] })
-        .to include(SourceAssets::InspectJob)
+      inspection_job_count = ActiveJob::Base.queue_adapter.enqueued_jobs.count do |job|
+        job[:job] == SourceAssets::InspectJob
+      end
+      expect(inspection_job_count).to eq(1)
     end
 
     context "when MPT is still processing the task" do
