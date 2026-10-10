@@ -43,38 +43,15 @@ RSpec.describe "AI generation workflow", type: :system do
     }
   end
 
-  it "saves script and scene approval through the project workflow" do
+  it "disables generation until an AI provider supports inference" do
     video_project = create(:video_project)
-    script_request = stub_request(:post, %r{/api/v1/scripts\z})
-      .to_return(
-        status: 200,
-        body: { status: 200, data: { video_script: "A short summer skincare story." } }.to_json
-      )
-    terms_request = stub_request(:post, %r{/api/v1/terms\z})
-      .to_return(
-        status: 200,
-        body: { status: 200, data: { video_terms: [ "sunny bathroom", "skincare bottle", "morning routine", "cleanser texture", "finished look" ] } }.to_json
-      )
 
     visit video_project_path(video_project)
     click_link "Tạo video AI"
-    fill_in "Chủ đề video", with: "Summer skincare"
-    select "Tiếng Việt", from: "Ngôn ngữ kịch bản"
-    select "Thân thiện", from: "Giọng điệu"
-    fill_in "Thời lượng mục tiêu (giây)", with: "30"
-    click_button "Tạo kịch bản"
 
-    expect(page).to have_text("Duyệt kịch bản")
-    check "Tôi đã đọc và duyệt kịch bản này."
-    click_button "Duyệt kịch bản và tạo gợi ý cảnh"
-
-    expect(page).to have_text("Gợi ý cảnh")
-    expect(page).not_to have_button("Xác nhận ngân sách và tạo video")
-    expect(video_project.ai_generations.sole.status).to eq("prompts_ready")
-    expect(video_project.ai_generations.sole.input_snapshot.fetch("script_approved")).to be(true)
-    expect(video_project.ai_generations.sole.input_snapshot.fetch("scenes").length).to eq(5)
-    expect(script_request).to have_been_requested.once
-    expect(terms_request).to have_been_requested.once
+    expect(page).to have_text("Chưa có tài khoản AI sẵn sàng dùng model.")
+    expect(page).to have_button("Tạo kịch bản", disabled: true)
+    expect(video_project.ai_generations).to be_empty
   end
 
   it "submits a saved estimate after the user sets a budget and confirms consent" do
