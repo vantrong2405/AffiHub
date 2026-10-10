@@ -169,6 +169,16 @@ AffiHub MUST lưu task ID, trạng thái, model, estimate đã xác nhận và c
 - **WHEN** app hoặc worker khởi động lại trước khi job AI hoàn tất
 - **THEN** trạng thái vẫn truy xuất được và AffiHub tiếp tục polling/đối soát thay vì tự gửi job thay thế
 
+#### Scenario: MPT khởi động lại khi task không còn trong queue
+- **WHEN** MPT dùng Redis state khởi động lại và tìm thấy task `processing` không còn trong Redis queue
+- **THEN** MPT đánh dấu task bị gián đoạn; Rails chuyển generation cùng outbound attempt đã xác nhận sang `OutcomeUnknown`, ghi audit, dừng poll tự động và không gửi job MuAPI thay thế
+
+#### Scenario: MPT khởi động lại khi task vẫn còn trong queue
+- **WHEN** MPT khởi động lại và task `processing` vẫn có entry hợp lệ trong Redis queue
+- **THEN** MPT giữ task để dispatch từ queue; Rails tiếp tục polling cùng task ID và không tạo submission mới
+
+MPT MVP chạy một API process duy nhất trên Redis task state dùng chung. Không chạy nhiều MPT process/replica cùng state DB vì startup recovery không thể phân biệt task đang chạy ở process khác.
+
 ### Requirement: Chặn job trả phí khi MPT state chưa được xác minh
 AffiHub MUST xác minh MPT task/queue state có thể được tra cứu sau restart trước khi báo nhánh AI trả phí sẵn sàng; nếu state chỉ ở memory hoặc chưa được xác minh, chỉ chặn nhánh AI trả phí.
 

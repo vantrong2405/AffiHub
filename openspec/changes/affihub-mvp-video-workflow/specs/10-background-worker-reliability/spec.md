@@ -41,6 +41,10 @@ Worker MUST tiếp tục từ checkpoint bền vững gần nhất; nếu không
 - **WHEN** app khởi động lại sau khi remote upload đã tiến tới một checkpoint được lưu
 - **THEN** worker mới resume hoặc poll từ checkpoint đó, không khởi tạo upload/publish/reply mới
 
+#### Scenario: Provider worker restart không có checkpoint phục hồi
+- **WHEN** provider worker khởi động lại, side effect trước đó có thể đã xảy ra nhưng task không còn trong queue và không thể resume từ checkpoint
+- **THEN** task chuyển `OutcomeUnknown`, ghi nhận attempt hiện có và chặn side effect mới cho tới khi reconcile
+
 #### Scenario: Không có checkpoint hoặc remote reference
 - **WHEN** worker không thể xác định bước remote đã hoàn tất hay chưa
 - **THEN** job chuyển `OutcomeUnknown` và chặn retry cho tới khi dùng được quy trình đối soát
