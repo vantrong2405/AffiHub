@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_10_130000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_11_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -255,6 +255,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_10_130000) do
     t.index ["schedule_occurrence_key"], name: "index_publications_on_schedule_occurrence_key"
     t.index ["social_destination_id", "status"], name: "index_publications_on_social_destination_id_and_status"
     t.index ["social_destination_id"], name: "index_publications_on_social_destination_id"
+  end
+
+  create_table "recovery_dispatches", force: :cascade do |t|
+    t.bigint "workflow_run_id", null: false
+    t.bigint "fencing_token", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["workflow_run_id", "fencing_token"], name: "index_recovery_dispatches_on_run_and_fencing_token", unique: true
+    t.index ["workflow_run_id"], name: "index_recovery_dispatches_on_workflow_run_id"
   end
 
   create_table "render_versions", force: :cascade do |t|
@@ -507,6 +516,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_10_130000) do
   add_foreign_key "publications", "render_versions"
   add_foreign_key "publications", "schedule_occurrences"
   add_foreign_key "publications", "social_destinations"
+  add_foreign_key "recovery_dispatches", "workflow_runs"
   add_foreign_key "render_versions", "source_assets"
   add_foreign_key "render_versions", "video_projects"
   add_foreign_key "schedule_destinations", "schedules"

@@ -10,6 +10,8 @@ class WorkflowRun < ApplicationRecord
 
   has_many :outbound_attempts, inverse_of: :workflow_run, dependent: :restrict_with_exception
   has_many :workflow_audit_events, inverse_of: :workflow_run, dependent: :restrict_with_exception
+  has_many :recovery_dispatches, class_name: "WorkflowRuns::RecoveryDispatch", inverse_of: :workflow_run,
+                                dependent: :destroy
 
   validates :operation_id, :operation, :stage, presence: true
   validates :operation_id, uniqueness: true

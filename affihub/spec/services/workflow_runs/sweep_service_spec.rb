@@ -42,6 +42,30 @@ RSpec.describe WorkflowRuns::SweepService, type: :service do
       expect(ActiveJob::Base.queue_adapter.enqueued_jobs.sole.fetch(:args)).to eq([ drive_export.id ])
     end
 
+    it "returns failure then enqueues pending recovery on the next sweep after enqueue rejection" do
+      drive_export = create(:drive_export, status: "uploading")
+      create(
+        :workflow_run,
+        workflowable: drive_export,
+        operation: "drive_export_upload",
+        stage: "upload",
+        status: "running",
+        worker_id: "drive-worker-old",
+        lease_expires_at: 1.minute.ago
+      )
+      allow(DriveExports::UploadJob).to receive(:perform_later).and_return(nil)
+
+      expect(described_class.new.call).to eq(false)
+      expect(WorkflowRuns::RecoveryDispatch.count).to eq(1)
+
+      allow(DriveExports::UploadJob).to receive(:perform_later).and_call_original
+
+      expect(described_class.new.call).to eq(true)
+      expect(ActiveJob::Base.queue_adapter.enqueued_jobs.map { |job| job.fetch(:job) })
+        .to eq([ DriveExports::UploadJob ])
+      expect(WorkflowRuns::RecoveryDispatch.count).to eq(0)
+    end
+
     it "enqueues publication reconciliation without creating another outbound attempt" do
       publication = create(:publication, status: "uploading")
       workflow_run = create(

@@ -6,7 +6,6 @@ class WorkflowRuns::SweepService < ApplicationService
   # @return [WorkflowRuns::SweepService] the configured service
   def initialize
     @swept_count = 0
-    @recovery_jobs = []
     super()
   end
 
@@ -41,18 +40,43 @@ class WorkflowRuns::SweepService < ApplicationService
           stage: workflow_run.stage,
           details: { status: next_status.to_s }
         )
-        recovery_job = step_recovery_job(workflow_run)
-        @recovery_jobs << recovery_job if recovery_job
+        step_create_recovery_dispatch(workflow_run)
         @swept_count += 1
       end
     end
   end
 
   def step_enqueue_recovery_jobs
-    @recovery_jobs.each do |job_class, job_arguments|
-      return step_fail!("Không thể xếp hàng khôi phục workflow.") unless job_class.perform_later(*job_arguments)
+    WorkflowRuns::RecoveryDispatch.order(:id).pluck(:id).each do |dispatch_id|
+      return false unless step_enqueue_recovery_dispatch(dispatch_id)
     end
     true
+  end
+
+  def step_create_recovery_dispatch(workflow_run)
+    return unless step_recovery_job(workflow_run)
+
+    workflow_run.recovery_dispatches.create!(fencing_token: workflow_run.fencing_token)
+  end
+
+  def step_enqueue_recovery_dispatch(dispatch_id)
+    result = true
+    WorkflowRuns::RecoveryDispatch.transaction do
+      dispatch = WorkflowRuns::RecoveryDispatch.lock.find_by(id: dispatch_id)
+
+      if dispatch
+        recovery_job = step_recovery_job(dispatch.workflow_run)
+        job_class, job_arguments = recovery_job if recovery_job
+
+        if recovery_job && job_class.perform_later(*job_arguments)
+          dispatch.destroy!
+        else
+          result = step_fail!("Không thể xếp hàng khôi phục workflow.")
+        end
+      end
+    end
+
+    result
   end
 
   def step_recovery_job(workflow_run)
