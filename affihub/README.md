@@ -1,24 +1,27 @@
-# README
+# AffiHub
 
-This README would normally document whatever steps are necessary to get the
-application up and running.
+## Chạy local
 
-Things you may want to cover:
+PostgreSQL cần chạy trước. Lần đầu cài dependencies và chuẩn bị database:
 
-* Ruby version
+```bash
+rtk bin/setup --skip-server
+```
 
-* System dependencies
+Khởi động Rails trên loopback ở terminal thứ nhất:
 
-* Configuration
+```bash
+rtk bin/rails server -b 127.0.0.1 -p 3000
+```
 
-* Database creation
+## Mở preview qua Cloudflare Quick Tunnel
 
-* Database initialization
+Sau khi Rails đang nghe ở cổng 3000, chạy lệnh này trong terminal thứ hai:
 
-* How to run the test suite
+```bash
+rtk cloudflared tunnel --url http://127.0.0.1:3000 --http-host-header localhost:3000 --no-autoupdate
+```
 
-* Services (job queues, cache servers, search engines, etc.)
+Mở URL `trycloudflare.com` mà `cloudflared` in ra. Giữ cả hai tiến trình chạy trong lúc preview; nhấn `Ctrl+C` ở từng terminal để dừng.
 
-* Deployment instructions
-
-* ...
+Quick Tunnel tạo hostname ngẫu nhiên và đưa ứng dụng local ra Internet. Chỉ dùng dữ liệu thử nghiệm. Nếu hostname đổi, cập nhật hostname được phép trong `config/environments/development.rb` rồi khởi động lại Rails.
