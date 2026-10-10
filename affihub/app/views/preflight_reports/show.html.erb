@@ -1,7 +1,5 @@
 <% content_for :title, "Kiểm tra toàn bộ · Version #{@render_version.version_number} | #{@video_project.name}" %>
-<% ready_destination_count = @destination_entries.count { |entry| entry.fetch(:status) == "ready" } %>
-<% blocked_destination_count = @destination_entries.count { |entry| entry.fetch(:status) == "blocked" } %>
-<% unavailable_destination_count = @destination_entries.count { |entry| entry.fetch(:status) == "unavailable" } %>
+<% destination_counts = preflight_destination_counts(@destination_entries) %>
 
 <section class="mx-auto max-w-7xl space-y-6">
   <div class="space-y-3">
@@ -10,11 +8,11 @@
       <div>
         <p class="text-sm text-base-content/60">Version <%= @render_version.version_number %> · Kiểm tra lúc <%= l(@preflight_report.checked_at, format: :long) %></p>
         <h1 class="mt-1 text-3xl font-bold">Kết quả Kiểm tra toàn bộ</h1>
-        <p class="mt-2 text-sm text-base-content/70">Báo cáo chỉ đọc cho đúng render version và destination đã chọn. Chưa có bài nào được gửi.</p>
+        <p class="mt-2 text-sm text-base-content/70">Báo cáo chỉ đọc cho đúng render version và destination đã chọn. Kết quả đạt kỹ thuật không xác nhận quyền đăng công khai hoặc trạng thái xét duyệt của nền tảng. Chưa có bài nào được gửi.</p>
       </div>
-      <% if ready_destination_count.positive? %>
-        <div class="flex flex-col gap-2 sm:flex-row">
-          <%= link_to "Chọn đích đạt để tạo bản nháp",
+      <% if destination_counts.fetch(:ready).positive? %>
+        <div class="flex flex-col gap-2 sm:flex-row lg:flex-col 2xl:flex-row">
+          <%= link_to "Tạo bản nháp (đạt kỹ thuật)",
                       new_video_project_publication_path(@video_project, preflight_report_id: @preflight_report.id),
                       class: "btn btn-outline w-full lg:w-auto" %>
           <%= link_to "Lên lịch video",
@@ -26,9 +24,9 @@
   </div>
 
   <div class="flex flex-wrap gap-2" aria-label="Tổng hợp destination">
-    <span class="badge badge-success badge-lg"><%= ready_destination_count %> đích đạt</span>
-    <span class="badge badge-error badge-lg"><%= blocked_destination_count %> bị chặn</span>
-    <span class="badge badge-warning badge-lg"><%= unavailable_destination_count %> chưa thể kiểm tra</span>
+    <span class="badge badge-success badge-lg"><%= destination_counts.fetch(:ready) %> đích đạt kỹ thuật</span>
+    <span class="badge badge-error badge-lg"><%= destination_counts.fetch(:blocked) %> bị chặn kỹ thuật</span>
+    <span class="badge badge-warning badge-lg"><%= destination_counts.fetch(:unavailable) %> chưa thể kiểm tra kỹ thuật</span>
   </div>
 
   <section class="card border border-base-300 bg-base-100" aria-labelledby="project-checks-heading">
@@ -40,11 +38,12 @@
       <% if @project_checks.any? %>
         <div class="grid gap-3 lg:grid-cols-2">
           <% @project_checks.each do |check_key, check| %>
-            <% remediation_path = case check_key
-              when "source" then video_project_source_assets_path(@video_project)
-              when "render" then new_video_project_render_version_path(@video_project, source_asset_id: @render_version.source_asset_id)
-              when "google_drive", "google_sheets" then google_connections_path
-              end %>
+            <% remediation_path = preflight_remediation_path(
+              check_key,
+              video_project: @video_project,
+              render_version: @render_version,
+              social_connection_id: nil
+            ) %>
             <%= render "check", check:, remediation_path: %>
           <% end %>
         </div>
@@ -58,18 +57,14 @@
     <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
       <div>
         <h2 id="destination-results-heading" class="text-xl font-semibold">Kết quả theo destination</h2>
-        <p class="mt-1 text-sm text-base-content/70">Mỗi destination có readiness riêng; lỗi của một đích không làm đổi trạng thái đích khác.</p>
+        <p class="mt-1 text-sm text-base-content/70">Readiness kỹ thuật riêng cho từng destination; quyền public và trạng thái review hiển thị thành điều kiện phát hành riêng.</p>
       </div>
       <% if @destination_entries.any? %>
         <%= form_with url: video_project_preflight_report_path(@video_project, @preflight_report), method: :get, class: "flex w-full flex-col gap-2 sm:w-auto sm:flex-row" do %>
           <label class="form-control w-full sm:min-w-64">
             <span class="label-text mb-1">Destination</span>
-            <% destination_options = @destination_entries.map do |entry|
-              label = entry[:provider].present? ? "#{entry.fetch(:name)} · #{social_provider_name(entry[:provider])}" : entry.fetch(:name)
-              [ label, entry.fetch(:id) ]
-            end %>
             <%= select_tag :destination_id,
-                           options_for_select([["Tất cả destination", ""]] + destination_options, @selected_destination_id),
+                           options_for_select([["Tất cả destination", ""]] + preflight_destination_options(@destination_entries), @selected_destination_id),
                            class: "select select-bordered w-full" %>
           </label>
           <%= submit_tag "Lọc", class: "btn btn-outline w-full sm:w-auto" %>
@@ -95,25 +90,38 @@
               <% if entry.fetch(:checks).any? %>
                 <div class="grid gap-3 lg:grid-cols-2">
                   <% entry.fetch(:checks).each do |check_key, check| %>
-                    <% check_title = case check_key
-                      when "connector" then "Kết nối tài khoản"
-                      when "media_transfer" then "Chuyển file media"
-                      when "content_policy" then "Chính sách nội dung"
-                      when "publishing_cap" then "Giới hạn đăng"
-                      when "permissions" then "Quyền đăng lên Page"
-                      when "quota" then "Quota YouTube"
-                      else check.fetch("subject", "Kiểm tra")
-                      end %>
-                    <% remediation_path = case check_key
-                      when "connector" then social_connection_path(entry[:social_connection_id]) if entry[:social_connection_id]
-                      when "permissions" then social_connection_social_destinations_path(entry[:social_connection_id]) if entry[:social_connection_id]
-                      when "content_policy" then new_video_project_render_version_path(@video_project, source_asset_id: @render_version.source_asset_id)
-                      end %>
+                    <% check_title = preflight_check_title(check_key, check) %>
+                    <% remediation_path = preflight_remediation_path(
+                      check_key,
+                      video_project: @video_project,
+                      render_version: @render_version,
+                      social_connection_id: entry[:social_connection_id]
+                    ) %>
                     <%= render "check", check:, remediation_path:, title: check_title %>
                   <% end %>
                 </div>
               <% else %>
                 <p class="py-6 text-center text-sm text-base-content/60">Báo cáo chưa có chi tiết kiểm tra cho destination này.</p>
+              <% end %>
+
+              <% if entry.fetch(:production_gates).any? %>
+                <section class="card border border-base-300 bg-base-200" aria-label="Điều kiện phát hành">
+                  <div class="card-body gap-3">
+                    <h4 class="card-title text-base">Điều kiện phát hành</h4>
+                    <% entry.fetch(:production_gates).each do |gate| %>
+                      <article class="space-y-2">
+                        <div class="flex flex-wrap items-center justify-between gap-2">
+                          <h5 class="font-semibold"><%= gate.fetch("subject") %></h5>
+                          <span class="badge <%= preflight_production_gate_badge_class(gate.fetch("status")) %>">
+                            <%= preflight_production_gate_status_label(gate.fetch("status")) %>
+                          </span>
+                        </div>
+                        <p class="text-sm text-base-content/80"><%= gate.fetch("reason") %></p>
+                        <p class="text-sm text-base-content/70">Hành động: <%= gate.fetch("action") %></p>
+                      </article>
+                    <% end %>
+                  </div>
+                </section>
               <% end %>
             </div>
           </article>
@@ -127,9 +135,9 @@
       </div>
     <% end %>
 
-    <% if ready_destination_count.zero? %>
+    <% if destination_counts.fetch(:ready).zero? %>
       <div role="status" class="alert alert-warning">
-        <span>Chưa có destination nào đạt để tạo bản nháp.</span>
+        <span>Chưa có destination nào đạt kỹ thuật để tạo bản nháp.</span>
       </div>
     <% end %>
   </section>

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "rails_helper"
 
 RSpec.describe "PreflightReports::ShowService", type: :service do
@@ -58,6 +60,34 @@ RSpec.describe "PreflightReports::ShowService", type: :service do
       expect(service.preflight_report).to eq(preflight_report)
       expect(service.frame_strip).to eq([])
       expect(service.frame_error).to eq("Không thể tạo khung hình so sánh.")
+    end
+
+    it 'returns saved production gates beside the technical destination status' do
+      production_gates = [
+        {
+          "key" => "tiktok_public_visibility",
+          "status" => "public_restricted",
+          "subject" => "Đăng công khai",
+          "reason" => "Content Posting API chưa được audit.",
+          "action" => "Chỉ đăng thử với tài khoản private và privacy SELF_ONLY."
+        }
+      ]
+      preflight_report.update!(
+        destination_results: {
+          social_destination.id.to_s => {
+            "status" => "ready",
+            "checks" => {},
+            "production_gates" => production_gates
+          }
+        }
+      )
+
+      expect(service.call).to eq(true)
+
+      expect(service.destination_entries.first.slice(:status, :production_gates)).to eq(
+        status: "ready",
+        production_gates:
+      )
     end
   end
 end

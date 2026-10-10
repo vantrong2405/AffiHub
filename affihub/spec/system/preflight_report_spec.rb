@@ -30,6 +30,15 @@ RSpec.describe "Preflight report", type: :system do
         },
         blocked_destination.id.to_s => {
           "status" => "blocked",
+          "production_gates" => [
+            {
+              "key" => "meta_app_review",
+              "status" => "not_verified",
+              "subject" => "Meta App Review",
+              "reason" => "Preflight không đọc trạng thái App Review hoặc access tier của Meta App.",
+              "action" => "Kiểm tra Meta App Dashboard trước khi phát hành."
+            }
+          ],
           "checks" => {
             "connector" => { "status" => "blocked", "subject" => blocked_destination.name, "reason" => "Token destination đã hết hạn.", "action" => "Kết nối lại account/Page rồi chạy preflight." },
             "media_transfer" => { "status" => "passed", "subject" => blocked_destination.name, "reason" => "Upload local đã cấu hình.", "action" => "Không cần khắc phục." },
@@ -38,6 +47,15 @@ RSpec.describe "Preflight report", type: :system do
         },
         ready_destination.id.to_s => {
           "status" => "ready",
+          "production_gates" => [
+            {
+              "key" => "youtube_compliance_audit",
+              "status" => "not_verified",
+              "subject" => "YouTube compliance audit",
+              "reason" => "Audit chỉ cần khi xin quota cao hơn mức mặc định.",
+              "action" => "Kiểm tra quy trình audit nếu cần tăng quota."
+            }
+          ],
           "checks" => {
             "connector" => { "status" => "passed", "subject" => ready_destination.name, "reason" => "Kết nối và quyền đang sẵn sàng.", "action" => "Không cần khắc phục." },
             "media_transfer" => { "status" => "passed", "subject" => ready_destination.name, "reason" => "Upload local đã cấu hình.", "action" => "Không cần khắc phục." },
@@ -69,7 +87,7 @@ RSpec.describe "Preflight report", type: :system do
     expect(page).to have_content("Kết nối và quyền đang sẵn sàng.")
   end
 
-  it "returns only the selected destination while keeping project checks visible after filtering" do
+  it 'returns only the selected destination and its production gate after filtering' do
     visit video_project_preflight_report_path(video_project, preflight_report)
     select "Page Bếp Nhà · Facebook", from: "Destination"
     click_button "Lọc"
@@ -77,11 +95,13 @@ RSpec.describe "Preflight report", type: :system do
     expect(page).to have_css("#destination-#{blocked_destination.id}", count: 1)
     expect(page).to have_no_css("#destination-#{ready_destination.id}")
     expect(page).to have_content("Google Drive")
+    expect(page).to have_content("Meta App Review")
+    expect(page).to have_no_content("YouTube compliance audit")
   end
 
-  it "returns the draft form for the exact report without creating a publication" do
+  it 'returns the draft form for the exact report without creating a publication' do
     visit video_project_preflight_report_path(video_project, preflight_report)
-    click_link "Chọn đích đạt để tạo bản nháp"
+    click_link "Tạo bản nháp (đạt kỹ thuật)"
 
     expect(page).to have_current_path(new_video_project_publication_path(video_project, preflight_report_id: preflight_report.id))
     expect(page).to have_content("Tạo bản đăng")

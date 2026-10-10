@@ -44,11 +44,13 @@ keeps the report visible if frame extraction is unavailable. `PreflightReportsCo
 creates reports under the selected project; `#show` scopes report access to that project and filters
 the existing snapshot with the `destination_id` query parameter. The render detail page contains the
 destination selection form, including project-only checks when no destination is selected. The
-report page orders shared and destination checks from `config/video_workflow.yml`, displays status
-labels from that config, links remediation only to existing source/render/social/Google routes, and
-hands ready destinations to `Publications#new` for draft creation. It does not add a publish route or
-start a post. Request and system specs cover persistence, nested project scope, filtering, and draft
-handoff.
+report page orders shared and destination checks from `config/video_workflow.yml`, prepares
+technical status labels, counts, check titles, and remediation paths through `ApplicationHelper`, and
+shows production gates in a separate snapshot for TikTok public visibility, Meta App Review, and
+YouTube compliance audit. It marks external review state as unverified when preflight cannot read it;
+technical readiness does not imply public access or approval. Technically ready destinations remain
+eligible for `Publications#new` draft creation. The report adds no publish route and starts no post.
+Request and system specs cover persistence, nested project scope, filtering, and draft handoff.
 The paid AI branch remains gated because restart/reconcile verification has not been recorded in
 `config/money_printer_turbo.yml`.
 `Meta::Client` loads provider settings from

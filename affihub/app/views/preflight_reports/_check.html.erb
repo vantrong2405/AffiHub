@@ -116,7 +116,7 @@
     </ul>
   <% end %>
 
-  <% if remediation_path.present? && preflight_status_label(check.fetch("status", "unavailable")) != preflight_status_label("passed") %>
+  <% if preflight_remediation_available?(remediation_path, check.fetch("status", "unavailable")) %>
     <%= link_to "Mở phần khắc phục", remediation_path, class: "link link-hover mt-3 inline-block text-sm font-medium" %>
   <% end %>
 </article>

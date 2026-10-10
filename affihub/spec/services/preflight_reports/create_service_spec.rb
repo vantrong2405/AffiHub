@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "rails_helper"
 
 RSpec.describe "PreflightReports::CreateService", type: :service do
@@ -288,6 +290,50 @@ RSpec.describe "PreflightReports::CreateService", type: :service do
         expect(destination_checks.fetch("media_transfer").fetch("protocol")).to eq("tiktok_file_upload")
       end
 
+      it 'returns TikTok technical readiness beside its public visibility restriction' do
+        expect(service.call).to eq(true)
+
+        result = PreflightReport.order(:id).last.destination_results.fetch(tiktok_destination.id.to_s)
+        expect(result.dig("checks", "connector", "status")).to eq("passed")
+        expect(result.dig("checks", "content_policy", "status")).to eq("passed")
+        expect(result.dig("checks", "media_transfer", "status")).to eq("passed")
+        expect(result.fetch("production_gates")).to eq(
+          [
+            {
+              "key" => "tiktok_public_visibility",
+              "status" => "public_restricted",
+              "subject" => "Đăng công khai",
+              "reason" => "TikTok Content Posting API chưa được audit. Bản đăng qua app chưa audit chỉ dùng privacy SELF_ONLY trên tài khoản private.",
+              "action" => "Chỉ đăng thử với tài khoản private và privacy SELF_ONLY; hoàn tất TikTok audit trước khi mở đăng công khai.",
+              "allowed_privacy_levels" => [ "SELF_ONLY" ],
+              "requires_private_account" => true
+            }
+          ]
+        )
+      end
+
+      it 'returns the configured TikTok audit state without claiming external verification' do
+        tiktok_configuration = Rails.application.config_for(:tiktok).deep_symbolize_keys
+          .deep_merge(content_posting_audited: true)
+        allow(Rails.application).to receive(:config_for).and_call_original
+        allow(Rails.application).to receive(:config_for).with("tiktok").and_return(tiktok_configuration)
+
+        expect(service.call).to eq(true)
+
+        result = PreflightReport.order(:id).last.destination_results.fetch(tiktok_destination.id.to_s)
+        expect(result.fetch("production_gates")).to eq(
+          [
+            {
+              "key" => "tiktok_public_visibility",
+              "status" => "audited_in_configuration",
+              "subject" => "Audit TikTok",
+              "reason" => "Cấu hình AffiHub ghi nhận Content Posting API đã audit; preflight không xác minh trạng thái này trực tiếp với TikTok.",
+              "action" => "Xác minh trạng thái audit còn hiệu lực trong TikTok Developer Portal."
+            }
+          ]
+        )
+      end
+
       context "when the render contains a promotional text overlay" do
         let(:edit_config) do
           super().merge(
@@ -364,6 +410,25 @@ RSpec.describe "PreflightReports::CreateService", type: :service do
         expect(check.fetch("quota_usage")).to eq(nil)
         expect(check.fetch("quota_total")).to eq(nil)
       end
+
+      it 'returns Instagram technical quota beside the unverified Meta App Review state' do
+        expect(service.call).to eq(true)
+
+        result = PreflightReport.order(:id).last.destination_results.fetch(instagram_destination.id.to_s)
+        expect(result.dig("checks", "connector", "status")).to eq("passed")
+        expect(result.dig("checks", "publishing_cap", "status")).to eq("passed")
+        expect(result.fetch("production_gates")).to eq(
+          [
+            {
+              "key" => "meta_app_review",
+              "status" => "not_verified",
+              "subject" => "Meta App Review",
+              "reason" => "Preflight xác minh quyền API hiện tại nhưng không đọc được trạng thái App Review hoặc access tier của Meta App.",
+              "action" => "Kiểm tra App Review và access tier trong Meta App Dashboard trước khi phát hành cho tài khoản ngoài vai trò app."
+            }
+          ]
+        )
+      end
     end
 
     it "returns YouTube counters per operation with the configured limit source and Console link" do
@@ -410,6 +475,32 @@ RSpec.describe "PreflightReports::CreateService", type: :service do
         .dig(youtube_destination.id.to_s, "checks", "media_transfer")
       expect(transfer_check.fetch("status")).to eq("passed")
       expect(transfer_check.fetch("protocol")).to eq("youtube_resumable_videos_insert")
+    end
+
+    it 'returns YouTube quota readiness separately from its unverified conditional compliance audit' do
+      social_connection = create(:social_connection, provider: "youtube", scopes: youtube_publish_scopes)
+      youtube_destination = create(:social_destination, social_connection:, provider: "youtube")
+      youtube_service = service_class.new(
+        video_project_id: video_project.id,
+        render_version_id: render_version.id,
+        social_destination_ids: [ youtube_destination.id ]
+      )
+
+      expect(youtube_service.call).to eq(true)
+
+      result = PreflightReport.order(:id).last.destination_results.fetch(youtube_destination.id.to_s)
+      expect(result.dig("checks", "quota", "status")).to eq("passed")
+      expect(result.fetch("production_gates")).to eq(
+        [
+          {
+            "key" => "youtube_compliance_audit",
+            "status" => "not_verified",
+            "subject" => "YouTube compliance audit",
+            "reason" => "Preflight không đọc trạng thái compliance audit của Google Cloud project. Audit chỉ cần khi xin quota cao hơn mức mặc định và không quyết định privacy của video.",
+            "action" => "Kiểm tra quy trình audit nếu cần quota cao hơn mức mặc định. Privacy dựa trên lựa chọn đã xác nhận và trạng thái cuối từ YouTube API."
+          }
+        ]
+      )
     end
 
     it "returns an unavailable transfer check when YouTube upload configuration is incomplete" do

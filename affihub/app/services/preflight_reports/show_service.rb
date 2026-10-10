@@ -69,6 +69,7 @@ class PreflightReports::ShowService < ApplicationService
         provider: destination&.provider,
         social_connection_id: destination&.social_connection_id,
         status: result.fetch("status", "unavailable"),
+        production_gates: Array(result["production_gates"]),
         checks:
       }
     end

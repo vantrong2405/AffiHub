@@ -180,6 +180,10 @@ shared:
       - publishing_cap
       - permissions
       - quota
+    production_gate_statuses:
+      tiktok_public_restricted: public_restricted
+      tiktok_audited_in_configuration: audited_in_configuration
+      external_review_not_verified: not_verified
     tiktok_disallowed_overlay_types:
       - logo
       - text

@@ -266,7 +266,72 @@ class PreflightReports::CreateService < ApplicationService
       "ready"
     end
 
-    { "status" => status, "checks" => checks }
+    {
+      "status" => status,
+      "checks" => checks,
+      "production_gates" => step_production_gates(social_destination)
+    }
+  end
+
+  def step_production_gates(social_destination)
+    gate_statuses = @configuration.fetch(:production_gate_statuses)
+    case social_destination.provider
+    when "tiktok"
+      [ step_tiktok_public_visibility_gate(gate_statuses) ]
+    when "facebook", "instagram"
+      [ step_meta_app_review_gate(gate_statuses) ]
+    when "youtube"
+      [ step_youtube_compliance_gate(gate_statuses) ]
+    else
+      []
+    end
+  end
+
+  def step_tiktok_public_visibility_gate(gate_statuses)
+    provider_configuration = step_provider_configuration(:tiktok)
+    if provider_configuration.fetch(:content_posting_audited) == true
+      return step_production_gate(
+        "tiktok_public_visibility",
+        gate_statuses.fetch(:tiktok_audited_in_configuration),
+        "Audit TikTok",
+        "Cấu hình AffiHub ghi nhận Content Posting API đã audit; preflight không xác minh trạng thái này trực tiếp với TikTok.",
+        "Xác minh trạng thái audit còn hiệu lực trong TikTok Developer Portal."
+      )
+    end
+
+    step_production_gate(
+      "tiktok_public_visibility",
+      gate_statuses.fetch(:tiktok_public_restricted),
+      "Đăng công khai",
+      "TikTok Content Posting API chưa được audit. Bản đăng qua app chưa audit chỉ dùng privacy SELF_ONLY trên tài khoản private.",
+      "Chỉ đăng thử với tài khoản private và privacy SELF_ONLY; hoàn tất TikTok audit trước khi mở đăng công khai.",
+      allowed_privacy_levels: provider_configuration.fetch(:unaudited_allowed_privacy_levels),
+      requires_private_account: provider_configuration.fetch(:unaudited_requires_private_account)
+    )
+  end
+
+  def step_meta_app_review_gate(gate_statuses)
+    step_production_gate(
+      "meta_app_review",
+      gate_statuses.fetch(:external_review_not_verified),
+      "Meta App Review",
+      "Preflight xác minh quyền API hiện tại nhưng không đọc được trạng thái App Review hoặc access tier của Meta App.",
+      "Kiểm tra App Review và access tier trong Meta App Dashboard trước khi phát hành cho tài khoản ngoài vai trò app."
+    )
+  end
+
+  def step_youtube_compliance_gate(gate_statuses)
+    step_production_gate(
+      "youtube_compliance_audit",
+      gate_statuses.fetch(:external_review_not_verified),
+      "YouTube compliance audit",
+      "Preflight không đọc trạng thái compliance audit của Google Cloud project. Audit chỉ cần khi xin quota cao hơn mức mặc định và không quyết định privacy của video.",
+      "Kiểm tra quy trình audit nếu cần quota cao hơn mức mặc định. Privacy dựa trên lựa chọn đã xác nhận và trạng thái cuối từ YouTube API."
+    )
+  end
+
+  def step_production_gate(key, status, subject, reason, action, **details)
+    step_result(status, subject, reason, action, **details).merge("key" => key)
   end
 
   def step_check_connector(social_destination)
