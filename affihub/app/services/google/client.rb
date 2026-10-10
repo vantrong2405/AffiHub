@@ -226,25 +226,33 @@ class Google::Client
   # @param session_uri [String] the encrypted Google resumable session URI
   # @param file [IO] the open local render file
   # @param file_size [Integer] the complete render size in bytes
+  # @param resume [Boolean] whether to query the persisted session before sending file bytes
+  # @yield [offset] reports a server-confirmed byte offset
+  # @yieldparam offset [Integer] the next byte position confirmed by Google
   # @return [Hash] the completed Drive file metadata
-  def upload_file(session_uri:, file:, file_size:)
+  def upload_file(session_uri:, file:, file_size:, resume: false, &checkpoint)
     validate_upload_session_uri!(session_uri)
     file.rewind
-    response = request(
-      method: :put,
-      url: session_uri,
-      headers: { "Content-Type" => @configuration.dig(:drive, :upload_content_type) },
-      stream: file,
-      file_size:,
-      timeout_seconds: @configuration.dig(:requests, :upload_timeout_seconds),
-      return_response: true,
-      accepted_status_codes: [ 308 ]
-    )
+    return step_resume_upload(session_uri:, file:, file_size:, &checkpoint) if resume
+
+    response = begin
+      request(
+        method: :put,
+        url: session_uri,
+        headers: { "Content-Type" => @configuration.dig(:drive, :upload_content_type) },
+        stream: file,
+        file_size:,
+        timeout_seconds: @configuration.dig(:requests, :upload_timeout_seconds),
+        return_response: true,
+        accepted_status_codes: [ 308 ]
+      )
+    rescue NetworkError
+      return step_resume_upload(session_uri:, file:, file_size:, &checkpoint)
+    end
+    checkpoint&.call(file_size) if response.is_a?(Net::HTTPSuccess)
     return step_parse_upload_response(response) if response.is_a?(Net::HTTPSuccess)
 
-    step_resume_upload(session_uri:, file:, file_size:)
-  rescue NetworkError
-    step_resume_upload(session_uri:, file:, file_size:)
+    step_resume_upload(session_uri:, file:, file_size:, &checkpoint)
   end
 
   # Updates the existing keyed Sheet row or appends one RAW row when the key is absent.
@@ -349,6 +357,8 @@ class Google::Client
       [ StorageQuotaExceeded, api_errors.fetch(:storage_quota) ]
     elsif status == 429 || (reasons & api_errors.fetch(:rate_limits)).any?
       [ RateLimitError, (reasons & api_errors.fetch(:rate_limits)).first || api_errors.fetch(:rate_limits).first ]
+    elsif api_errors.fetch(:server_errors).include?(status)
+      [ NetworkError, @configuration.dig(:client_errors, :network_request_failed) ]
     else
       [ ApiError, "#{@configuration.dig(:client_errors, :http_error_prefix)}#{status}" ]
     end
@@ -364,7 +374,7 @@ class Google::Client
     value.to_s.gsub("\\", "\\\\").gsub("'", "\\'")
   end
 
-  def step_resume_upload(session_uri:, file:, file_size:)
+  def step_resume_upload(session_uri:, file:, file_size:, &checkpoint)
     attempts = 0
 
     loop do
@@ -380,9 +390,13 @@ class Google::Client
         return_response: true,
         accepted_status_codes: [ 308 ]
       )
-      return step_parse_upload_response(status_response) if status_response.is_a?(Net::HTTPSuccess)
+      if status_response.is_a?(Net::HTTPSuccess)
+        checkpoint&.call(file_size)
+        return step_parse_upload_response(status_response)
+      end
 
       offset = step_upload_offset(status_response["Range"])
+      checkpoint&.call(offset)
       raise NetworkError.new(
         status: 308,
         reason: @configuration.dig(:client_errors, :upload_session_not_complete)
@@ -403,7 +417,12 @@ class Google::Client
         return_response: true,
         accepted_status_codes: [ 308 ]
       )
-      return step_parse_upload_response(upload_response) if upload_response.is_a?(Net::HTTPSuccess)
+      if upload_response.is_a?(Net::HTTPSuccess)
+        checkpoint&.call(file_size)
+        return step_parse_upload_response(upload_response)
+      end
+
+      checkpoint&.call(step_upload_offset(upload_response["Range"]))
 
       attempts += 1
       raise NetworkError.new(

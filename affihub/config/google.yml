@@ -54,6 +54,7 @@ shared:
       retry_exhausted: google_drive_rate_limit_retries_exhausted
       reconnect_required: google_drive_reconnect_required
       enqueue_failed: google_drive_job_enqueue_failed
+      worker_lease_lost: google_drive_worker_lease_lost
     audit_events:
       uploaded: drive_export_uploaded
       quota_wait: drive_export_waiting_for_quota
@@ -128,6 +129,11 @@ shared:
     daily_quota: dailyLimitExceeded
     quota_exhausted: quotaExceeded
     storage_quota: storageQuotaExceeded
+    server_errors:
+      - 500
+      - 502
+      - 503
+      - 504
     rate_limits:
       - rateLimitExceeded
       - userRateLimitExceeded

@@ -210,6 +210,43 @@ RSpec.describe "DriveExports::UploadService", type: :service do
       end
     end
 
+    context "when continuing a saved upload session after a worker restart" do
+      it "returns OutcomeUnknown with the last server checkpoint when the resumed request times out" do
+        drive_export.update!(upload_session_uri:, upload_offset: 4)
+        resume_flags = []
+        allow(google_client).to receive(:find_file).and_return(nil)
+        allow(google_client).to receive(:upload_file) do |resume:, **_arguments, &checkpoint|
+          resume_flags << resume
+          checkpoint.call(8)
+          raise Timeout::Error
+        end
+
+        service.call
+
+        expect(resume_flags).to eq([ true ])
+        expect(drive_export.reload.status).to eq("outcome_unknown")
+        expect(drive_export.upload_session_uri).to eq(upload_session_uri)
+        expect(drive_export.upload_offset).to eq(8)
+      end
+
+      it "returns failure without saving a checkpoint after another worker fences the upload lease" do
+        drive_export.update!(upload_session_uri:, upload_offset: 4)
+        upload_continued = false
+        allow(google_client).to receive(:find_file).and_return(nil)
+        allow(google_client).to receive(:upload_file) do |&checkpoint|
+          workflow_run = drive_export.workflow_runs.find_by!(operation: "drive_export_upload")
+          workflow_run.update!(worker_id: "replacement-worker", fencing_token: workflow_run.fencing_token + 1)
+          checkpoint.call(8)
+          upload_continued = true
+        end
+
+        expect(service.call).to eq(false)
+
+        expect(upload_continued).to eq(false)
+        expect(drive_export.reload.upload_offset).to eq(4)
+      end
+    end
+
     context "when reconciliation cannot determine whether the upload completed" do
       before do
         find_file_calls = 0

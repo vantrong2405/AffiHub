@@ -169,8 +169,16 @@ class DriveExports::UploadService < ApplicationService
       upload_result = @google_client.upload_file(
         session_uri: @upload_session_uri,
         file:,
-        file_size: drive_export.render_version.file.byte_size
-      )
+        file_size: drive_export.render_version.file.byte_size,
+        resume: @resume_upload_session
+      ) do |offset|
+        unless step_save_upload_checkpoint(offset)
+          raise Google::Client::ApiError.new(
+            status: nil,
+            reason: DRIVE_CONFIGURATION.fetch(:safe_error_codes).fetch(:worker_lease_lost)
+          )
+        end
+      end
     end
     step_complete_export(upload_result)
   rescue Google::Client::NetworkError, Timeout::Error => error
@@ -180,6 +188,7 @@ class DriveExports::UploadService < ApplicationService
   end
 
   def step_create_upload_session
+    @resume_upload_session = drive_export.upload_session_uri.present?
     @upload_session_uri = drive_export.upload_session_uri
     if @upload_session_uri.blank?
       @upload_session_uri = @google_client.create_upload_session(
@@ -191,6 +200,26 @@ class DriveExports::UploadService < ApplicationService
       drive_export.update!(upload_session_uri: @upload_session_uri, upload_offset: 0)
     end
     true
+  end
+
+  def step_save_upload_checkpoint(offset)
+    saved = false
+    WorkflowRun.transaction do
+      checkpoint_service = WorkflowRuns::CheckpointService.new(
+        workflow_run_id: @workflow_run.id,
+        worker_id: @worker_id,
+        fencing_token: @fencing_token,
+        stage: @workflow_run.stage,
+        checkpoint: { "drive_upload_offset" => offset }
+      )
+      next unless checkpoint_service.call
+
+      @workflow_run = checkpoint_service.workflow_run
+      drive_export.lock!
+      drive_export.update!(upload_offset: offset)
+      saved = true
+    end
+    saved
   end
 
   def step_reconcile_upload_after_timeout

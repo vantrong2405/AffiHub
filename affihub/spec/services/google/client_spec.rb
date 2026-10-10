@@ -202,6 +202,73 @@ RSpec.describe "Google::Client", type: :service do
       expect(status_check).to have_been_requested.once
       expect(resumed_upload).to have_been_requested.once
     end
+
+    it "returns the completed file after resuming a saved upload session from Google's checkpoint" do
+      status_check = stub_request(:put, session_uri)
+        .with(
+          headers: {
+            "Content-Length" => "0",
+            "Content-Range" => "bytes */11"
+          },
+          body: ""
+        )
+        .to_return(status: 308, headers: { "Range" => "bytes=0-3" })
+      resumed_upload = stub_request(:put, session_uri)
+        .with(
+          headers: {
+            "Content-Length" => "7",
+            "Content-Range" => "bytes 4-10/11"
+          },
+          body: "er-data"
+        )
+        .to_return(
+          status: 200,
+          body: { id: "drive-file-1" }.to_json,
+          headers: { "Content-Type" => "application/json" }
+        )
+      checkpoints = []
+
+      result = google_client.upload_file(session_uri:, file:, file_size: 11, resume: true) do |offset|
+        checkpoints << offset
+      end
+
+      expect(result).to eq("id" => "drive-file-1")
+      expect(checkpoints).to eq([ 4, 11 ])
+      expect(status_check).to have_been_requested.once
+      expect(resumed_upload).to have_been_requested.once
+    end
+
+    it "raises a network error after the configured number of failed resume status checks" do
+      status_check = stub_request(:put, session_uri)
+        .with(
+          headers: {
+            "Content-Length" => "0",
+            "Content-Range" => "bytes */11"
+          },
+          body: ""
+        )
+        .to_return({ status: 503 }, { status: 503 }, { status: 503 }, { status: 308 })
+      resumed_upload = stub_request(:put, session_uri)
+        .with(
+          headers: {
+            "Content-Length" => "11",
+            "Content-Range" => "bytes 0-10/11"
+          },
+          body: "render-data"
+        )
+        .to_return(
+          status: 200,
+          body: { id: "drive-file-1" }.to_json,
+          headers: { "Content-Type" => "application/json" }
+        )
+
+      expect do
+        google_client.upload_file(session_uri:, file:, file_size: 11, resume: true)
+      end.to raise_error(Google::Client::NetworkError)
+
+      expect(status_check).to have_been_requested.times(3)
+      expect(resumed_upload).not_to have_been_requested
+    end
   end
 
   describe "#upsert_sheet_row" do
