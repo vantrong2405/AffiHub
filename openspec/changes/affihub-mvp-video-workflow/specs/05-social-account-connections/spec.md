@@ -78,3 +78,15 @@ AffiHub MUST hiển thị riêng trạng thái tích hợp kỹ thuật và tr�
 #### Scenario: Connector bị giới hạn bởi review
 - **WHEN** API cho phép test nhưng chưa cấp quyền đăng công khai
 - **THEN** AffiHub cho biết khả năng test hiện có và không hiển thị connector như đã sẵn sàng public
+
+#### Scenario: TikTok kỹ thuật sẵn sàng nhưng Content Posting API chưa audit
+- **WHEN** preflight xác nhận connector TikTok đủ điều kiện kỹ thuật trong khi cấu hình audit vẫn tắt
+- **THEN** báo cáo giữ kết quả readiness kỹ thuật riêng, ghi rõ đăng công khai bị giới hạn, và nêu điều kiện tài khoản private cùng privacy `SELF_ONLY`
+
+#### Scenario: Meta App Review không thể xác minh từ preflight
+- **WHEN** preflight xác nhận quyền API hiện thời nhưng không đọc được App Review/access tier của Meta App
+- **THEN** báo cáo tách quyền kỹ thuật hiện thời khỏi trạng thái App Review và ghi rõ trạng thái review chưa được xác minh
+
+#### Scenario: YouTube compliance audit không xác định privacy của video
+- **WHEN** preflight kiểm tra quota YouTube nhưng không đọc được trạng thái compliance audit của project
+- **THEN** báo cáo nêu quota là readiness kỹ thuật riêng, compliance audit chỉ cần kiểm tra khi cần quota vượt mức mặc định, và privacy vẫn theo consent cùng trạng thái API cuối
