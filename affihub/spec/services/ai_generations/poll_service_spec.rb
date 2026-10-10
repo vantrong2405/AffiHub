@@ -88,6 +88,46 @@ RSpec.describe AiGenerations::PollService, type: :service do
       end
     end
 
+    context "when MPT reports that the task was interrupted during restart" do
+      let(:task_result) { super().merge(state: -2, failed_stage: "mpt_restart") }
+      let(:workflow_run) do
+        create(
+          :workflow_run,
+          workflowable: ai_generation,
+          operation: "ai_generation",
+          stage: "submission",
+          status: "completed"
+        )
+      end
+      let(:outbound_attempt) do
+        create(
+          :outbound_attempt,
+          workflow_run:,
+          stage: AiGenerations::SubmitService::SUBMISSION_STAGE,
+          status: "confirmed",
+          request_timeout_at: 30.seconds.from_now
+        )
+      end
+
+      it "marks the saved submission OutcomeUnknown and records an audit event" do
+        workflow_run
+        outbound_attempt
+
+        expect(call_result).to be(true)
+
+        expect(ai_generation.reload.status).to eq("outcome_unknown")
+        expect(ai_generation.safe_error_code).to eq("mpt_interrupted_on_restart")
+        expect(ai_generation.provider_state).to eq(-2)
+        expect(outbound_attempt.reload.status).to eq("outcome_unknown")
+        expect(workflow_run.reload.status).to eq("reconciliation_required")
+        expect(workflow_run.workflow_audit_events.pluck(:event_type)).to eq(
+          [ "mpt_video_task_interrupted" ]
+        )
+        expect(service.retry_poll?).to be(false)
+        expect(WebMock).not_to have_requested(:get, %r{/api/v1/download/})
+      end
+    end
+
     context "when MPT reports a failed task" do
       let(:task_result) { super().slice(:task_id).merge(state: -1) }
       let(:ai_generation_scene) do

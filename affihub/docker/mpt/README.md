@@ -41,6 +41,15 @@ MPT khởi động lại. Không gọi `POST /api/v1/videos` hoặc provider tr�
 đã hoàn tất có thể tra cứu bền qua Redis/MPT restart; không xác nhận MPT tiếp tục tác vụ provider
 đang chạy, Rails/Solid Queue worker restart, hay enqueue bền giữa hai database.
 
+Image `affihub-mpt-wav:recovery-20261011` được build sau khi thêm recovery cho task bị mất worker.
+Smoke cô lập ghi hai task sentinel `state=4`: task không còn trong queue được MPT đổi thành
+`state=-2`, `failed_stage=mpt_restart`; task còn trong queue không bị đánh dấu interrupted và được
+queue handler dispatch (sentinel dùng handler cố ý không tồn tại, nên bị loại an toàn thành
+`state=-1`). Lặp lại bằng cách ghi task `state=4` khi MPT đang chạy rồi restart container cũng trả
+`state=-2`. Không gửi `POST /api/v1/videos`, không gọi provider và không dùng credentials thật.
+Đây xác minh owner-loss signaling với task sentinel; chưa xác minh một request MuAPI thật có thể
+reconcile hay chi phí bên provider sau khi MPT bị kill.
+
 ## Cấu hình runtime
 
 - `MPT_API_KEY`: bắt buộc để xác thực request Rails tới MPT.
@@ -58,10 +67,13 @@ tại `/data` và cho MPT tại `/MoneyPrinterTurbo/storage`; image tạo storag
 `mpt` để process non-root ghi được vào volume. Health check gọi endpoint `/ping`; không publish
 cổng 8080 ra host.
 
-Redis giữ task state và queued work qua lần restart đã smoke. Recovery smoke xác minh Rails có thể
-reconcile generation đã lưu với task MPT đã hoàn tất sau restart. Redis/MPT không tự tiếp tục một
-provider task đang chạy khi process MPT chết; chưa xác minh recovery của task còn chạy hoặc video
-được provider tạo thật, nên không coi đây là bảo đảm khôi phục một video đang chạy.
+Redis giữ task state và queued work qua lần restart đã smoke. MPT chỉ chạy một API process trên
+Redis state dùng chung: startup giữ entry còn trong queue để dispatch lại, đồng thời đổi task
+`processing` không còn queue thành `interrupted` (`state=-2`). Rails map trạng thái này sang
+`OutcomeUnknown`, lưu audit trên attempt đã xác nhận và dừng poll; không gửi lại video task. Không
+dùng nhiều MPT process/replica chung Redis vì startup một process không thể kết luận task không còn
+worker ở process khác. Recovery smoke với sentinel không chứng minh request MuAPI thật đã xảy ra,
+đã bị hủy hay có thể truy hồi; cổng paid flow vẫn đóng đến khi kiểm chứng đúng runtime/provider.
 
 ## Worker Rails
 

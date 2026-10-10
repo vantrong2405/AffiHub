@@ -4,8 +4,10 @@ require "tempfile"
 
 class AiGenerations::PollService < ApplicationService
   CONFIGURATION = Rails.application.config_for(:money_printer_turbo).deep_symbolize_keys
+  SAFE_ERROR_CODES = CONFIGURATION.fetch(:safe_error_codes)
   COMPLETE_STATE = CONFIGURATION.dig(:task_states, :complete)
   FAILED_STATE = CONFIGURATION.dig(:task_states, :failed)
+  INTERRUPTED_STATE = CONFIGURATION.dig(:task_states, :interrupted)
   PROCESSING_STATE = CONFIGURATION.dig(:task_states, :processing)
 
   attr_reader :ai_generation
@@ -83,6 +85,8 @@ class AiGenerations::PollService < ApplicationService
       step_persist_completed_outputs
     when FAILED_STATE
       step_mark_generation_failed("provider_task_failed")
+    when INTERRUPTED_STATE
+      step_mark_generation_outcome_unknown
     else
       step_mark_generation_failed("invalid_provider_state")
     end
@@ -219,6 +223,37 @@ class AiGenerations::PollService < ApplicationService
     end
 
     return step_finish_terminal_generation if terminal_generation
+
+    step_succeed!
+    success?
+  end
+
+  def step_mark_generation_outcome_unknown
+    workflow_run = ai_generation.workflow_run
+    return step_fail!("Không tìm thấy workflow cần đối soát task MPT.") unless workflow_run
+
+    outbound_attempt = workflow_run.outbound_attempts
+      .for_stage(AiGenerations::SubmitService::SUBMISSION_STAGE)
+      .first
+    return step_fail!("Không tìm thấy submission attempt cần đối soát task MPT.") unless outbound_attempt
+
+    AiGeneration.transaction do
+      ai_generation.lock!
+      workflow_run.lock!
+      outbound_attempt.lock!
+      if ai_generation.processing? && outbound_attempt.confirmed?
+        safe_error_code = SAFE_ERROR_CODES.fetch(:interrupted_on_restart)
+        ai_generation.update!(status: :outcome_unknown, safe_error_code:)
+        outbound_attempt.update!(status: :outcome_unknown, safe_error_code:)
+        workflow_run.update!(status: :reconciliation_required, worker_id: nil, lease_expires_at: nil)
+        workflow_run.workflow_audit_events.create!(
+          outbound_attempt:,
+          event_type: "mpt_video_task_interrupted",
+          stage: outbound_attempt.stage,
+          details: { task_id: ai_generation.task_id }
+        )
+      end
+    end
 
     step_succeed!
     success?

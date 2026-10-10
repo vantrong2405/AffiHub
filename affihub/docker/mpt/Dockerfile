@@ -15,12 +15,15 @@ RUN git init && \
 
 COPY docker/mpt/patches/0001-support-vieneu-wav.patch /tmp/0001-support-vieneu-wav.patch
 COPY docker/mpt/patches/0002-tts-fallback-callback.patch /tmp/0002-tts-fallback-callback.patch
+COPY docker/mpt/patches/0003-interrupted-task-recovery.patch /tmp/0003-interrupted-task-recovery.patch
 
 RUN git apply --check /tmp/0001-support-vieneu-wav.patch && \
     git apply /tmp/0001-support-vieneu-wav.patch && \
     git apply --check /tmp/0002-tts-fallback-callback.patch && \
     git apply /tmp/0002-tts-fallback-callback.patch && \
-    rm -rf .git /tmp/0001-support-vieneu-wav.patch /tmp/0002-tts-fallback-callback.patch
+    git apply --check /tmp/0003-interrupted-task-recovery.patch && \
+    git apply /tmp/0003-interrupted-task-recovery.patch && \
+    rm -rf .git /tmp/0001-support-vieneu-wav.patch /tmp/0002-tts-fallback-callback.patch /tmp/0003-interrupted-task-recovery.patch
 
 RUN pip install --no-cache-dir --retries 3 --timeout 60 -r requirements.txt && \
     useradd --system --create-home --home-dir /home/mpt mpt && \

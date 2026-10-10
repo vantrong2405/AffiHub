@@ -1,0 +1,71 @@
+diff --git a/app/models/const.py b/app/models/const.py
+index 58d354c..9231502 100644
+--- a/app/models/const.py
++++ b/app/models/const.py
+@@ -24,6 +24,7 @@
+ ]
+ 
+ TASK_STATE_FAILED = -1
++TASK_STATE_INTERRUPTED = -2
+ TASK_STATE_COMPLETE = 1
+ TASK_STATE_PROCESSING = 4
+ 
+diff --git a/app/controllers/manager/redis_manager.py b/app/controllers/manager/redis_manager.py
+index f4d435a..1f3ab44 100644
+--- a/app/controllers/manager/redis_manager.py
++++ b/app/controllers/manager/redis_manager.py
+@@ -38,6 +38,41 @@ class RedisTaskManager(TaskManager):
+     def create_queue(self):
+         return "task_queue"
+ 
++    def mark_interrupted_tasks(self):
++        """Mark processing task records that have no persisted queue entry."""
++        queued_task_ids = set()
++        for task_json in self.redis_client.lrange(self.queue, 0, -1):
++            try:
++                task_info = json.loads(task_json)
++                task_id = task_info.get("kwargs", {}).get("task_id")
++            except (json.JSONDecodeError, AttributeError):
++                continue
++            if isinstance(task_id, str) and task_id:
++                queued_task_ids.add(task_id)
++
++        recovered = 0
++        page = 1
++        page_size = 1000
++        while True:
++            tasks, total = sm.state.get_all_tasks(page, page_size)
++            for task in tasks:
++                task_id = task.get("task_id")
++                if task.get("state") != const.TASK_STATE_PROCESSING:
++                    continue
++                if task_id in queued_task_ids or not isinstance(task_id, str):
++                    continue
++                recovered += bool(
++                    sm.state.patch_task(
++                        task_id,
++                        state=const.TASK_STATE_INTERRUPTED,
++                        failed_stage="mpt_restart",
++                        error="MPT restarted while the task was processing",
++                    )
++                )
++            if page * page_size >= total:
++                return recovered
++            page += 1
++
+     def resume_queued_tasks(self):
+         """Dispatch persisted queue entries when a new API process starts.
+ 
+diff --git a/app/asgi.py b/app/asgi.py
+index c392220..8a9e5f4 100644
+--- a/app/asgi.py
++++ b/app/asgi.py
+@@ -50,6 +50,8 @@ async def application_lifespan(_: FastAPI):
+     from app.controllers.v1 import video as video_controller
+ 
+     if isinstance(video_controller.task_manager, RedisTaskManager):
++        interrupted = video_controller.task_manager.mark_interrupted_tasks()
++        logger.warning(f"marked interrupted video tasks after restart: {interrupted}")
+         video_controller.task_manager.resume_queued_tasks()
+     try:
+         yield

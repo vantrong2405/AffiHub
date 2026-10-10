@@ -164,7 +164,7 @@ RSpec.describe "AI generation workflow", type: :system do
 
     it "records a not occurred decision before offering a retry" do
       visit video_project_ai_generation_path(video_project, ai_generation)
-      expect(page).to have_text("Chưa xác định được MPT đã nhận yêu cầu hay chưa.")
+      expect(page).to have_text("Chưa xác định được kết quả yêu cầu MPT.")
       expect(page).to have_select("Kết quả đối soát")
       select "Chắc chắn chưa xảy ra", from: "Kết quả đối soát"
       fill_in "Bằng chứng đối soát", with: "Không tìm thấy task trong danh sách MPT."

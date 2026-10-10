@@ -38,8 +38,11 @@ shared:
     read_timeout_seconds: 120
   task_states:
     failed: -1
+    interrupted: -2
     complete: 1
     processing: 4
+  safe_error_codes:
+    interrupted_on_restart: mpt_interrupted_on_restart
 
 test:
   base_url: http://mpt.test
