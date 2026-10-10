@@ -92,6 +92,9 @@ stored as a `WorkflowRuns::RecoveryDispatch` in the primary database in the same
 expired-lease transition, then removed after Solid Queue accepts the job. A later sweep retries
 pending dispatches if enqueueing fails or the Rails process stops between those steps; duplicate
 queue deliveries remain safe because workers must claim the `WorkflowRun` before continuing.
+An isolated Solid Queue smoke also consumed a persisted sweep job in a new worker process after the
+producer Rails process exited; evidence and the remaining active-worker/MPT limits are recorded in
+`docker/mpt/README.md`.
 
 `Telegram::PollingService` runs the allowlisted bot commands and queues operational alerts through
 the gem-backed client; its runtime settings are in `config/telegram.yml` and its token stays in

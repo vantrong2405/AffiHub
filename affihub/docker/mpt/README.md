@@ -69,6 +69,16 @@ Production Rails dùng Solid Queue trên database `affihub_production_queue`. Do
 Solid Queue supervisor trong Puma; schema queue được quản lý riêng với database chính. Có thể
 kiểm tra cấu hình worker trước deploy bằng:
 
+Smoke runtime ngày 2026-10-11 dùng hai DB development local. Một Rails runner tạo workflow AI
+sentinel có lease hết hạn và enqueue `WorkflowRuns::SweepJob` vào queue cô lập `recovery_smoke`,
+rồi process runner kết thúc. Một `bin/jobs start` process mới, dùng config tạm chỉ nghe queue đó và
+bỏ scheduler recurring, nhận job đã lưu: run chuyển sang `queued`, audit `lease_expired` được ghi,
+outbox được xóa sau khi Solid Queue nhận `AiGenerations::ReconcileJob` vào `default`. Smoke xác
+nhận job và trạng thái qua DB rồi xóa toàn bộ record/queue job sentinel. Không worker nào xử lý
+reconcile job; không gọi MPT hay provider trả phí. Điều này xác nhận job tồn tại qua lúc Rails
+producer đã dừng và được worker process mới xử lý, nhưng chưa xác nhận kill worker giữa khi đang
+thực thi job hoặc resume một provider task đang chạy.
+
 ```sh
 RAILS_ENV=production rtk bin/jobs check --skip-recurring
 ```
