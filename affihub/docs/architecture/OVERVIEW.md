@@ -82,6 +82,10 @@ Sheets sync are independent resource flows backed by their own Services and Soli
 `@googleworkspace/drive-picker-element` package. The Picker browser smoke is recorded separately
 from Drive upload and Sheets write runtime verification in
 `docs/reference-analysis/google-drive-sheets.md`.
+`WorkflowRuns::SweepJob` runs every minute when the Solid Queue recurring scheduler is active;
+`WorkflowRuns::SweepService` recovers expired leases and re-enqueues Drive uploads, publication
+reconciliation, safe auto-replies, or saved MPT submission reconciliation. Upload checkpoints are
+fenced by the current `WorkflowRun` lease before another byte range is sent.
 
 `Telegram::PollingService` runs the allowlisted bot commands and queues operational alerts through
 the gem-backed client; its runtime settings are in `config/telegram.yml` and its token stays in
@@ -98,6 +102,8 @@ khi gọi MPT. `AiGenerations::PollJob` poll task đã lưu qua Solid Queue;
 `AiGenerations::PollService` kiểm tra task/output, tải artifact qua MPT Client vào Active Storage rồi
 tạo `SourceAsset` để inspection job mở nguồn trong editor. Adapter xác nhận artifact thuộc đúng task
 và chuẩn hóa prefix `tasks/` của MPT trước khi gọi download endpoint.
+`AiGenerations::ReconcileJob` chỉ tra lại correlation ID của một submission đã lưu; job không tạo
+MPT request thay thế.
 `POST /internal/mpt/tts_fallback` đi qua `Internal::Mpt::TtsFallbacksController` và
 `AiGenerations::TtsFallbackCallbackService`, xác minh callback rồi mới tạo outbound attempt và gọi
 `AzureSpeech::Client`; `Vieneu::Client` xử lý endpoint VieNeu. Specs dùng WebMock đã pass, và hai patch
@@ -140,7 +146,7 @@ references and smoke evidence are recorded in `docs/reference-analysis/ai-accoun
 | app/controllers/concerns/ | Shared HTML/JSON response concerns |
 | app/forms/main_form.rb, app/operations/main_operation.rb, app/serializers/ | Generated HMVC scaffold |
 | app/models/ | Video projects, source/discovery assets, immutable renders, preflight, publications/schedules, Google sync, social connections, AI generation/provider accounts, auto-reply, and durable workflow records |
-| app/jobs/ | Source inspection/download, rendering, AI polling, publishing/scheduling, Google sync, Telegram alerts, and auto-reply processing |
+| app/jobs/ | Source inspection/download, rendering, AI polling/reconciliation, publishing/scheduling, Google sync, Telegram alerts, auto-reply processing, and recurring workflow recovery |
 | app/services/video_projects/, app/services/source_discoveries/, app/services/source_assets/, app/services/render_versions/, app/services/preflight_reports/, app/services/publications/, app/services/schedules/, app/services/social_connections/, app/services/social_destinations/, app/services/google_connections/, app/services/drive_exports/, app/services/sheet_syncs/, app/services/telegram/, app/services/auto_responder/, app/services/auto_reply_rules/, app/services/auto_reply_logs/, app/services/ai_generations/, app/services/ai_generation_estimates/, app/services/ai_provider_connections/, app/services/ai_provider_callbacks/, app/services/workflow_runs/, app/services/outbound_attempts/, app/services/meta/ | Product orchestration, provider APIs, OAuth, media work, external sync, and durable workflow recovery |
 | app/services/ai_provider_connections/access_token_service.rb | AI inference gate; rejects connections without provider-specific verification |
 | app/clients/azure_speech/, app/clients/vieneu/, app/clients/codex/, app/clients/gemini/, docker/mpt/ | Speech and AI provider clients, plus pinned MoneyPrinterTurbo image patches |

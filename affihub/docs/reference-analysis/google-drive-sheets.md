@@ -61,6 +61,13 @@ Nguồn: [OAuth web server flow](https://developers.google.com/identity/protocol
 
 Nguồn: [Drive upload protocol](https://developers.google.com/workspace/drive/api/guides/manage-uploads), [Drive custom properties](https://developers.google.com/workspace/drive/api/guides/properties), [Drive search](https://developers.google.com/workspace/drive/api/guides/search-files), [Drive sharing and inherited permissions](https://developers.google.com/workspace/drive/api/guides/manage-sharing).
 
+AffiHub tiếp tục một session đã lưu bằng `Google::Client#upload_file(resume: true)`: client hỏi trạng
+thái bằng PUT rỗng trước khi gửi bytes, rồi dùng `Range` server xác nhận. Callback checkpoint lưu offset
+vào `DriveExport` và `WorkflowRun::checkpoint` dưới fencing lease qua
+`DriveExports::UploadService#step_save_upload_checkpoint`; worker mất lease dừng trước range kế tiếp.
+RSpec dùng WebMock kiểm tra resume từ offset đã nhận, `503` retry có giới hạn và fencing. Đây là kiểm
+chứng client/service, không phải upload thật bằng tài khoản Google.
+
 ### Sheets Values API và `RAW`
 
 - `spreadsheets.values.append` tìm logical table trong A1 range rồi thêm sau hàng cuối của table; nó không nhận khóa unique và không tự làm upsert. `spreadsheets.values.update` ghi vào range A1 cụ thể, phù hợp khi đã biết số hàng cần cập nhật.
