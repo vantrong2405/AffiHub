@@ -26,6 +26,13 @@ không tạo output hoặc job trùng. Smoke dùng file sentinel và rollback d�
 không gọi provider trả phí. Chưa xác minh MPT tự tiếp tục video đang chạy, callback Azure thật,
 VieNeu/Azure thật hoặc MoviePy xử lý WAV.
 
+Đã lặp lại phần recovery không phát sinh phí ngày 2026-10-11: task sentinel hoàn tất vẫn đọc được
+qua API sau khi restart MPT và Redis; một Rails process mới reconcile generation trong test DB,
+tải/attach đủ output và tạo đúng một `SourceAsset`. Poll lần nữa giữ nguyên attachment và source
+asset. Test DB hiện dùng không có bảng Solid Queue nên lần lặp này không xác minh durable enqueue;
+khẳng định enqueue đúng một inspection job ở trên thuộc smoke 2026-10-07. Không có video job trả
+phí nào được gửi.
+
 ## Cấu hình runtime
 
 - `MPT_API_KEY`: bắt buộc để xác thực request Rails tới MPT.

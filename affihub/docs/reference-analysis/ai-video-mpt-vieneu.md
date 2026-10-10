@@ -1,7 +1,7 @@
 # MoneyPrinterTurbo, MuAPI và VieNeu-TTS — Porting Note
 
-Ngày đối chiếu: 2026-10-07  
-Phạm vi: MPT v1.3.8, tạo script/terms/video, MuAPI text-to-video, LLM, stock Pexels, VieNeu-TTS và fallback giọng đọc. Ghi chú gồm contract/source research, kết quả RSpec dùng WebMock, kiểm tra hai patch trên source MPT đã pin, build image và smoke MPT/Redis. Chưa chạy Rails/Azure trong topology AffiHub.
+Ngày đối chiếu nguồn: 2026-10-07; xác minh recovery bổ sung: 2026-10-11  
+Phạm vi: MPT v1.3.8, tạo script/terms/video, MuAPI text-to-video, LLM, stock Pexels, VieNeu-TTS và fallback giọng đọc. Ghi chú gồm contract/source research, kết quả RSpec dùng WebMock, kiểm tra hai patch trên source MPT đã pin, build image, smoke MPT/Redis và Rails reconciliation với task sentinel hoàn tất. Chưa chạy Azure thật hoặc xác minh toàn bộ topology triển khai.
 
 ## Nguồn đã đọc
 
@@ -72,7 +72,7 @@ MPT đã có Edge TTS và Azure TTS path trong `app/services/voice.py` cùng con
 
 MPT gửi JSON `{ "correlation_id", "scene_index", "narration", "voice" }`, timestamp epoch seconds trong `X-MPT-Timestamp`, và `X-MPT-Signature` là HMAC-SHA256 của chuỗi `timestamp + "." + raw_body` bằng secret dùng chung từ environment. Correlation ID là `request_id` MPT lưu từ header `X-Task-ID`; scene index `0` đại diện toàn bộ `video_script`, vì pinned `task.py` gọi TTS một lần cho script này. Thành công trả raw WAV với `Content-Type: audio/wav`; lỗi trả non-2xx để MPT dừng TTS stage, không dùng Edge và không đánh dấu task hoàn tất. RSpec service/request bao phủ xác thực, quote/consent, replay và timeout; đã chạy xanh bằng `RAILS_ENV=test`. Bằng chứng này không thay cho build image hoặc kiểm tra runtime.
 
-Image MPT yêu cầu Redis để bật Redis task manager/state và volume bền tại `/MoneyPrinterTurbo/storage`. Redis giữ queued task/state, nhưng source đã pin không tự resume tác vụ đang xử lý sau khi process chết. Chưa thử restart Rails/MPT/Redis trong Docker; do đó không kết luận task processing hoặc side effect MuAPI có thể được resume. Giữ OpenSpec task 4.6 chưa hoàn tất tới khi có kiểm tra restart/reconcile trên topology thật.
+Image MPT yêu cầu Redis để bật Redis task manager/state và volume bền tại `/MoneyPrinterTurbo/storage`. Redis giữ queued task/state, nhưng source đã pin không tự resume tác vụ đang xử lý sau khi process chết. Smoke ngày 2026-10-11 ghi task sentinel đã hoàn tất vào Redis/storage riêng, restart MPT và Redis, rồi xác nhận task/output còn đọc được. Một Rails process mới dùng `AiGenerations::PollService` reconcile generation `processing` từ task đó, tải/attach đủ output, tạo đúng một `SourceAsset`; lần poll tiếp theo không tạo bản ghi hoặc attachment trùng. Smoke không gửi video job trả phí; DB test không có bảng Solid Queue nên lần lặp này không xác minh enqueue bền vững. Đây chỉ chứng minh reconciliation từ task đã hoàn tất sau restart, không chứng minh task đang xử lý tự tiếp tục, lease/fencing hoặc side effect MuAPI không bị lặp. OpenSpec task 13.4 vẫn mở cho tới khi hoàn tất các kịch bản reliability còn lại (worker/sender, checkpoint upload, Google timeout, Telegram outage, local export và lịch missed).
 
 ## License, giá và mức tin cậy
 
