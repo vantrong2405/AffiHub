@@ -31,9 +31,11 @@ Telegram chỉ dùng cho cảnh báo vận hành và các lệnh emergency contr
 
 ## Gem reference đã xác minh
 
-README ở tag `v2.8.1` minh họa `Telegram::Bot::Client.run(token)`, `bot.listen`, và `bot.api.send_message(chat_id:, text:)`. Source của `Client#listen` gọi `getUpdates`, cập nhật offset theo `update_id`, rồi chuyển message cho block; logger mặc định là `NullLogger`. `bot.api` bọc các method Bot API; ứng dụng không cần tự viết HTTP wrapper. README nói muốn dùng webhook thì ứng dụng phải tự cung cấp webhook callback server; gem không cung cấp sẵn Rails webhook route/controller. Gem có `bot.stop` để dừng long-poll listener một cách graceful.
+README ở tag `v2.8.1` minh họa `Telegram::Bot::Client.run(token)`, `bot.listen`, và `bot.api.send_message(chat_id:, text:)`. Source của `Client#listen` gọi `getUpdates`, cập nhật offset theo `update_id`, rồi chuyển message cho block; logger mặc định là `NullLogger`. `bot.api` cũng cung cấp trực tiếp các method Bot API như `get_updates`; ứng dụng không cần tự viết HTTP wrapper. README nói muốn dùng webhook thì ứng dụng phải tự cung cấp webhook callback server; gem không cung cấp sẵn Rails webhook route/controller. Gem có `bot.stop` để dừng long-poll listener một cách graceful.
 
-OpenSpec hiện chưa yêu cầu webhook route. Với AffiHub local-first, long polling là lựa chọn phù hợp để task 12.3 đánh giá vì không đòi public HTTPS callback server; đây là khuyến nghị kiến trúc, không phải bảo đảm runtime đã được thử. Nếu chọn webhook sau này, phải cập nhật design/routes trước khi thêm endpoint.
+OpenSpec không yêu cầu webhook route. AffiHub dùng `get_updates` qua `bot.api` trong một runner process riêng để mỗi lần long poll trả về còn có thể kiểm tra heartbeat worker; không chạy vòng polling trong Solid Queue worker vì monitor sẽ phụ thuộc vào chính worker cần theo dõi. Khi xử lý batch, offset kế tiếp là `update_id` lớn nhất cộng một. Lệnh pause/resume đặt trạng thái nên an toàn nếu update cuối bị gửi lại sau khi runner khởi động lại. Runner được khởi động từ thư mục `affihub` bằng `rtk bin/rails runner 'Telegram::PollingService.new.call'`. Cách này theo long polling và không cần public HTTPS callback server. Nếu chọn webhook sau này, phải cập nhật design/routes trước khi thêm endpoint.
+
+Worker monitor chỉ báo trạng thái queue khi runner Rails, PostgreSQL queue registry và Bot API còn truy cập được. Task này không tuyên bố gửi Telegram alert khi toàn bộ ứng dụng Rails hoặc máy chủ đã dừng.
 
 ## Contract bắt buộc của AffiHub
 
