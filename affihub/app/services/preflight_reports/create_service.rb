@@ -113,7 +113,7 @@ class PreflightReports::CreateService < ApplicationService
     )
     return step_result(:blocked, "RenderVersion ##{@render_version.id}", validator.errors.full_messages.to_sentence.presence || "Timeline hoặc asset được tham chiếu không hợp lệ.", "Mở editor, sửa timeline/asset rồi render version mới.") unless validator.call
     return step_result(:unavailable, "RenderVersion ##{@render_version.id}", "Metadata đầu ra chưa đủ để xác minh profile render.", "Kiểm tra lại file render bằng ffprobe.") unless render_metadata_valid?
-    return step_result(:blocked, "RenderVersion ##{@render_version.id}", "Thông số MP4 không khớp profile render MVP.", "Render lại theo profile MP4 H.264/AAC 1080×1920 30 fps.", measured: render_metadata_summary)
+    return step_result(:blocked, "RenderVersion ##{@render_version.id}", "Thông số MP4 không khớp profile render MVP.", "Render lại theo profile MP4 H.264/AAC 1080×1920 30 fps.", measured: render_metadata_summary) unless render_metadata_valid?
 
     step_result(:passed, "RenderVersion ##{@render_version.id}", "File render và timeline khớp profile MVP.", "Không cần khắc phục.", measured: render_metadata_summary)
   end

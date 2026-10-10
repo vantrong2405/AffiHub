@@ -71,6 +71,22 @@ RSpec.describe Schedules::CreateService, type: :service do
       expect(ActiveJob::Base.queue_adapter.enqueued_jobs.first.fetch(:job)).to eq(SheetSyncs::SyncJob)
     end
 
+    it 'returns true and saves the schedule when the Drive side job cannot be enqueued' do
+      ActiveJob::Base.queue_adapter.enqueued_jobs.clear
+      google_connection = create(:google_connection, integration: "drive")
+      render_version.update!(status: "ready")
+      render_version.file.attach(io: StringIO.new("render bytes"), filename: "render.mp4", content_type: "video/mp4")
+      allow(DriveExports::UploadJob).to receive(:perform_later).and_raise(ActiveJob::EnqueueError)
+      expect(service.call).to eq(true)
+
+      expect(service.schedule).to be_persisted
+      expect(DriveExport.find_by!(render_version:, google_connection:).attributes.slice("status", "safe_error_code")).to eq(
+        "status" => "failed",
+        "safe_error_code" => "google_drive_job_enqueue_failed"
+      )
+      expect(ActiveJob::Base.queue_adapter.enqueued_jobs.map { |job| job.fetch(:job) }.count(DriveExports::UploadJob)).to eq(0)
+    end
+
     it "returns the machine timezone when the user does not choose one" do
       allow(ENV).to receive(:[]).and_call_original
       allow(ENV).to receive(:[]).with("TZ").and_return("Asia/Ho_Chi_Minh")

@@ -40,6 +40,7 @@ class Schedules::CreateService < ApplicationService
 
     step_create_schedule
     step_enqueue_sheet_syncs
+    step_enqueue_drive_exports
     step_succeed!
     success?
   rescue ActiveRecord::RecordInvalid => error
@@ -173,6 +174,16 @@ class Schedules::CreateService < ApplicationService
 
   def step_enqueue_sheet_syncs
     SheetSyncs::EnqueueForScheduleService.new(schedule_id: schedule.id).call
+  end
+
+  def step_enqueue_drive_exports
+    GoogleConnection.where(integration: "drive", status: :connected).find_each do |google_connection|
+      DriveExports::CreateService.new(
+        video_project_id: @video_project.id,
+        render_version_id: @render_version.id,
+        google_connection_id: google_connection.id
+      ).call
+    end
   end
 
   def step_create_schedule_destinations

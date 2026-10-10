@@ -25,6 +25,7 @@ class Publications::ConfirmService < ApplicationService
     return false unless step_approve_publication
 
     step_enqueue_publish_job
+    step_enqueue_drive_exports
     step_succeed!
     success?
   rescue ActiveRecord::RecordInvalid => error
@@ -80,6 +81,16 @@ class Publications::ConfirmService < ApplicationService
 
   def step_enqueue_publish_job
     Publications::PublishJob.perform_later(workflow_run.id)
+  end
+
+  def step_enqueue_drive_exports
+    GoogleConnection.where(integration: "drive", status: :connected).find_each do |google_connection|
+      DriveExports::CreateService.new(
+        video_project_id: video_project.id,
+        render_version_id: publication.render_version_id,
+        google_connection_id: google_connection.id
+      ).call
+    end
   end
 
   def destination_ready?

@@ -128,8 +128,8 @@
 
 ## 13. Kiểm tra tích hợp và nghiệm thu MVP
 
-- [ ] 13.1 Viết một RSpec integration spec cho source → edit/render → preflight → manual/scheduled publication cùng side integrations; chạy riêng với `RAILS_ENV=test` và xác nhận đỏ ở contract tích hợp.
-- [ ] 13.2 Ghép các Service/job đã có để toàn bộ integration spec xanh; không thêm contract behavior mới ở bước này. Kiểm chứng: một file integration spec pass và không chạy full suite.
+- [x] 13.1 Viết một RSpec integration spec cho source → edit/render → preflight → manual/scheduled publication cùng side integrations; chạy riêng với `RAILS_ENV=test` và xác nhận đỏ ở contract tích hợp.
+- [x] 13.2 Ghép các Service/job đã có để toàn bộ integration spec xanh; không thêm contract behavior mới ở bước này. Kiểm chứng: một file integration spec pass và không chạy full suite.
 - [ ] 13.3 Chạy smoke flow tuần tự trên tài khoản test cho TikTok, Instagram và YouTube sau khi publisher hoàn tất. Kiểm chứng trạng thái cuối theo API, đúng destination/render version, lưu ID/permalink chỉ khi provider trả về và thời điểm xác nhận; TikTok test theo `SELF_ONLY` phải lưu `publish_id`/`PUBLISH_COMPLETE` nhưng giữ public post ID/permalink trống nếu TikTok không trả.
 - [ ] 13.4 Thử restart Rails/worker/MPT giữa job, worker lease hết hạn/fencing, sender cũ bị dừng trước khi retry thủ công, upload checkpoint, Google timeout và Telegram outage; kiểm chứng task tiếp tục hoặc reconcile từ checkpoint, không double-submit, local export vẫn chạy và lịch lỡ không tự đăng muộn.
 - [ ] 13.5 Cập nhật `docs/architecture/OVERVIEW.md` và Porting Notes theo code thực tế; kiểm chứng navigation khớp tên file/model/Service/Client đã tạo và nêu rõ khác biệt với design.

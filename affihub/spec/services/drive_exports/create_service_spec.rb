@@ -34,6 +34,18 @@ RSpec.describe "DriveExports::CreateService", type: :service do
       expect(ActiveJob::Base.queue_adapter.enqueued_jobs.length).to eq(1)
     end
 
+    it 'returns false and marks the export failed when its upload job cannot be enqueued' do
+      allow(DriveExports::UploadJob).to receive(:perform_later).and_raise(ActiveJob::EnqueueError)
+
+      expect(service.call).to eq(false)
+
+      expect(service.drive_export.reload.attributes.slice("status", "safe_error_code")).to eq(
+        "status" => "failed",
+        "safe_error_code" => "google_drive_job_enqueue_failed"
+      )
+      expect(ActiveJob::Base.queue_adapter.enqueued_jobs).to eq([])
+    end
+
     it "does not enqueue a duplicate while the export is already queued" do
       service.call
       service.call

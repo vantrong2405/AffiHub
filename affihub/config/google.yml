@@ -53,6 +53,7 @@ shared:
       api_error: google_drive_api_error
       retry_exhausted: google_drive_rate_limit_retries_exhausted
       reconnect_required: google_drive_reconnect_required
+      enqueue_failed: google_drive_job_enqueue_failed
     audit_events:
       uploaded: drive_export_uploaded
       quota_wait: drive_export_waiting_for_quota

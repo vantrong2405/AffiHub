@@ -36,6 +36,22 @@ RSpec.describe Publications::ConfirmService, type: :service do
       expect(WorkflowRun.find_by!(workflowable: publication)).to have_attributes(status: "queued")
     end
 
+    it 'returns true and queues publication when the Drive side job cannot be enqueued' do
+      google_connection = create(:google_connection, integration: "drive")
+      render_version.update!(status: "ready")
+      render_version.file.attach(io: StringIO.new("render bytes"), filename: "render.mp4", content_type: "video/mp4")
+      allow(DriveExports::UploadJob).to receive(:perform_later).and_raise(ActiveJob::EnqueueError)
+
+      expect(service.call).to eq(true)
+
+      expect(publication.reload.status).to eq("approved")
+      expect(DriveExport.find_by!(render_version: render_version, google_connection:).attributes.slice("status", "safe_error_code")).to eq(
+        "status" => "failed",
+        "safe_error_code" => "google_drive_job_enqueue_failed"
+      )
+      expect(ActiveJob::Base.queue_adapter.enqueued_jobs.map { |job| job.fetch(:job) }).to eq([ Publications::PublishJob ])
+    end
+
     context "when a scheduled Publication needs manual confirmation again" do
       it "returns the existing workflow to the queue without creating another workflow" do
         schedule = create(:schedule, render_version:, recurrence: "daily", status: "paused")

@@ -29,6 +29,8 @@ class DriveExports::CreateService < ApplicationService
     step_enqueue_upload if @enqueue_upload
     step_succeed!
     success?
+  rescue ActiveJob::EnqueueError
+    step_mark_enqueue_failed
   rescue ActiveRecord::RecordNotUnique
     step_fail!("Yêu cầu đồng bộ Drive đã được tạo ở một thao tác khác.")
   rescue ActiveRecord::RecordInvalid
@@ -98,5 +100,14 @@ class DriveExports::CreateService < ApplicationService
 
   def step_enqueue_upload
     DriveExports::UploadJob.perform_later(drive_export.id)
+  end
+
+  def step_mark_enqueue_failed
+    drive_export.update!(
+      status: :failed,
+      safe_error_code: DRIVE_CONFIGURATION.fetch(:safe_error_codes).fetch(:enqueue_failed)
+    )
+    Rails.logger.error("Google Drive export could not be queued.")
+    step_fail!("Không thể đưa bản render vào hàng đợi Google Drive.")
   end
 end
