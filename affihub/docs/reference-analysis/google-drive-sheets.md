@@ -4,7 +4,7 @@ Ngày đối chiếu: 2026-10-09
 
 ## Phạm vi
 
-Tài liệu này ghi lại contract đã kiểm chứng cho task 11 của `affihub-mvp-video-workflow`. Đây là note thiết kế/porting, không phải bằng chứng OAuth, upload hay đồng bộ đã chạy với tài khoản Google thật.
+Tài liệu này ghi lại contract đã kiểm chứng cho task 11 của `affihub-mvp-video-workflow`. Browser smoke đã xác minh luồng Google Picker chọn Spreadsheet/tab; nó không phải bằng chứng Drive upload hay Sheets sync đã chạy với tài khoản Google thật.
 
 Rails database tiếp tục là nguồn trạng thái chính. Google là tích hợp tùy chọn; lỗi Drive hoặc Sheets không được khởi chạy lại render hay Publication. Theo OpenSpec hiện hành, Drive upload và Sheets sync là hai side job riêng, có trạng thái và retry riêng. Khi người dùng xác nhận đăng thủ công hoặc lưu lịch auto-publish đã xác nhận, hai nhánh được xếp độc lập với Publication; kết nối Google muộn chỉ backfill project/render mà người dùng chọn.
 
@@ -15,7 +15,7 @@ Rails database tiếp tục là nguồn trạng thái chính. Google là tích h
 - [`samples/cli/lib/samples/drive.rb`](https://github.com/googleapis/google-api-ruby-client/blob/0402ef3053bd88046a0423f022a12bf2d15ede22/samples/cli/lib/samples/drive.rb) minh họa khởi tạo Drive service với OAuth credentials và thao tác file qua API client, gồm truy vấn danh sách có query/pagination/fields.
 - [`samples/cli/lib/samples/sheets.rb`](https://github.com/googleapis/google-api-ruby-client/blob/0402ef3053bd88046a0423f022a12bf2d15ede22/samples/cli/lib/samples/sheets.rb) minh họa khởi tạo Sheets service và gọi Values API.
 
-Đây là nguồn tham khảo cách dùng client, không phải runtime dependency hay contract thay cho tài liệu API. `affihub/Gemfile` hiện có `googleauth`, chưa khai báo Google API Ruby service client cho Drive/Sheets; việc chọn client/gem cụ thể thuộc task implementation.
+Đây là nguồn tham khảo cách dùng client, không phải runtime dependency hay contract thay cho tài liệu API. Runtime AffiHub hiện dùng `Google::Client` trong `app/services/google/client.rb` để gọi REST API qua một private request method chung; `googleauth` có trong Gemfile nhưng API client Ruby được tham khảo không phải runtime dependency.
 
 Đã đọc repo code tham khảo chính thức của Google Workspace [`googleworkspace/drive-picker-element`](https://github.com/googleworkspace/drive-picker-element) tại commit `5869186e996b8b0b4786d8ecf9e8ed1c0e5bd8e2` ngày 2026-10-09. `packages/drive-picker-element/package.json` xác nhận package `@googleworkspace/drive-picker-element` phiên bản `0.7.3`, giấy phép Apache-2.0. Các file đã đọc:
 
@@ -80,6 +80,11 @@ Nguồn: [Sheets append](https://developers.google.com/workspace/sheets/api/refe
 Nguồn: [Drive error handling](https://developers.google.com/workspace/drive/api/guides/handle-errors), [Sheets usage limits](https://developers.google.com/workspace/sheets/api/limits), [OAuth token response and storage](https://developers.google.com/identity/protocols/oauth2/web-server).
 
 ## Ánh xạ sang AffiHub
+
+- OAuth/cấu hình đi qua `GoogleConnectionsController` và `GoogleConnections::*Service`; provider endpoints, scope, retry, status và error keys nằm trong `config/google.yml`.
+- Google Picker dùng package đã pin qua Importmap, cùng Stimulus controller để nhận chọn/hủy/lỗi; Service xác minh spreadsheet và tab bằng credential server-side trước khi lưu.
+- Drive dùng `DriveExports::CreateService`, `DriveExports::UploadService`, `DriveExports::UploadJob` và `Google::Client`; Sheets dùng `SheetSyncs::*Service`, `SheetSyncs::SyncJob` và cùng Client. Hai side job có trạng thái/retry riêng và không gọi lại publisher.
+- RSpec specs bao phủ HTTP contract, persistence, idempotency và lỗi quota/timeout. Browser Picker smoke không xác minh upload file Drive hoặc ghi/upsert hàng Sheets thật.
 
 1. **Drive side job:** dùng project/video làm khóa folder ổn định; dùng render version/export làm khóa file. Sau timeout, reconcile `appProperties` và trạng thái resumable trước khi tạo lại. Lưu Drive folder/file ID và URL cùng trạng thái upload trong Rails.
 2. **Sheets side job:** upsert một hàng hiện trạng cho project/render/destination, có publication status, `platform_post_id`, permalink, `published_at`, link Drive, lỗi liên quan và thời điểm cập nhật. Các Publication occurrence lặp vẫn được lưu đầy đủ trong Rails; Sheets chỉ phản ánh trạng thái mới nhất của cùng hàng.

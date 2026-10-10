@@ -3,6 +3,19 @@
 Ngày đối chiếu: 2026-10-06
 Phạm vi: kết nối Facebook Page và đăng Facebook Reel bằng Page Access Token. Instagram Reels là API/luồng riêng, không nằm trong note này.
 
+## Ánh xạ code AffiHub và ranh giới kiểm chứng (2026-10-10)
+
+Facebook connection/Page selection đi qua `SocialConnectionsController`,
+`SocialDestinationsController` và các Service cùng tên. `Meta::Client` đọc `config/meta.yml`;
+`Publications::MetaGraphPublisher` điều phối Facebook Reels, upload/status và final Publication
+state. Request/service specs xác minh contract HTTP và trạng thái cục bộ; chúng không xác minh
+Meta App Review, access tier hoặc quyền của một Page thật.
+
+Local preflight gọi API để kiểm tra Page có task tạo nội dung và Facebook publisher xử lý upload
+đến trạng thái cuối. Các phép kiểm tra này không tiết lộ liệu app đã được duyệt cho người dùng ngoài
+app role hay chưa. Tính đến task 13.8, chưa có bằng chứng smoke publish trên Meta Page test; không
+coi OAuth callback hoặc RSpec/WebMock là app-review approval hay live publish.
+
 ## Nguồn đã đọc và cách dùng
 
 ### Contract API chính thức của Meta

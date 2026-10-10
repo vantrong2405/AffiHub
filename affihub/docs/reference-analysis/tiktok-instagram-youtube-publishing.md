@@ -3,6 +3,19 @@
 Ngày đối chiếu tài liệu: 2026-10-09  
 Phạm vi: OAuth, chọn account/channel, consent, media upload, polling, lỗi, quota và review gate cho ba publisher. Đây là contract tham khảo để implement; chưa phải bằng chứng rằng tích hợp AffiHub đã chạy.
 
+## Ánh xạ code AffiHub và giới hạn nghiệm thu (2026-10-10)
+
+| Provider | Code thực tế | Cổng bên ngoài và bằng chứng còn thiếu |
+|---|---|---|
+| Facebook Page/Reels | `Publications::MetaGraphPublisher`, `Meta::Client`, `SocialConnectionsController`, `SocialDestinationsController`; config ở `config/meta.yml` | Code/spec không chứng minh App Review, access tier hoặc publish trên Page test. Còn cần smoke bằng app-role/Page test ở task 13.8. |
+| Instagram Reels | `Publications::InstagramPublisher` và `Meta::Client`; MVP dùng Facebook Login for Business, chọn Page rồi lưu Instagram Business account; config ở `config/meta.yml` | Preflight đọc content publishing limit hiện hành, nhưng không đọc trạng thái App Review. Còn cần tài khoản/app-role test và provider final state ở task 13.3. |
+| TikTok Direct Post | `Publications::TikTokPublisher` và `TikTok::Client`; config ở `config/tiktok.yml` | `content_posting_audited: false` hiện giữ privacy ở `SELF_ONLY` và yêu cầu người dùng xác nhận creator account private. RSpec không thay cho Direct Post smoke trên tài khoản test ở task 13.3. |
+| YouTube | `Publications::YoutubePublisher`, `Youtube::Client`, `Youtube::QuotaReservationService`; config ở `config/youtube.yml` | Publisher gửi privacy đã xác nhận và đối chiếu trạng thái API cuối; preflight chỉ có counter request do AffiHub ghi nhận. Chưa có bằng chứng publish trên channel test ở task 13.3 hoặc quota Console cho mọi request dùng chung project. |
+
+Preflight hiện báo kết quả kỹ thuật theo destination (kết nối/scope, quyền hoặc quota đọc được, cấu hình chuyển file và khả năng publish theo các check hiện có). Trạng thái `ready` không có nghĩa Meta đã duyệt app, TikTok đã audit để đăng public, hoặc YouTube đã cấp quota mở rộng. TikTok publisher tự chặn privacy ngoài giới hạn chưa audit; App Review Meta và YouTube compliance/quota là trạng thái bên ngoài chưa được lấy từ provider bởi preflight. Task 13.6 phải giữ rõ ranh giới này trong báo cáo trước khi coi phần nghiệm thu production gates hoàn tất.
+
+Tác vụ publication chạy qua `Publications::PublishJob`; Scheduled Publication đi qua `Schedules::ProcessOccurrenceService` rồi dùng cùng publisher và durable workflow records. Các Client specs dùng HTTP stub xác minh request contract; chúng không khẳng định tài khoản, quyền, review hoặc trạng thái cuối của nền tảng thật.
+
 ## Kết luận theo từng provider
 
 | Provider | OAuth và đích đăng | Transfer và trạng thái cuối | Giới hạn/review cần giữ |
