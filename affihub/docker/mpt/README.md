@@ -33,6 +33,14 @@ asset. Test DB hiện dùng không có bảng Solid Queue nên lần lặp này 
 khẳng định enqueue đúng một inspection job ở trên thuộc smoke 2026-10-07. Không có video job trả
 phí nào được gửi.
 
+Smoke runtime riêng ngày 2026-10-11 chạy image `affihub-mpt-wav:smoke-20261007` và Redis 7 trên
+Docker network cô lập, không publish port ra host. Dùng API key/callback secret giả và tạo một
+Redis task hash sentinel đã hoàn tất; `GET /api/v1/tasks` trả đúng `task_id`, `state=1` và
+`request_id` trước restart, sau restart Redis, rồi sau restart MPT. `/ping` trả `pong` sau khi
+MPT khởi động lại. Không gọi `POST /api/v1/videos` hoặc provider trả phí. Smoke này xác nhận task
+đã hoàn tất có thể tra cứu bền qua Redis/MPT restart; không xác nhận MPT tiếp tục tác vụ provider
+đang chạy, Rails/Solid Queue worker restart, hay enqueue bền giữa hai database.
+
 ## Cấu hình runtime
 
 - `MPT_API_KEY`: bắt buộc để xác thực request Rails tới MPT.

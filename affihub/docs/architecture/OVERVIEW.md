@@ -51,8 +51,10 @@ YouTube compliance audit. It marks external review state as unverified when pref
 technical readiness does not imply public access or approval. Technically ready destinations remain
 eligible for `Publications#new` draft creation. The report adds no publish route and starts no post.
 Request and system specs cover persistence, nested project scope, filtering, and draft handoff.
-The paid AI branch remains gated because restart/reconcile verification has not been recorded in
-`config/money_printer_turbo.yml`.
+The paid AI branch remains gated because the restart smoke confirms lookup of a completed MPT task
+after Redis/MPT restart, but does not prove recovery of an in-flight provider task or durable
+Solid Queue enqueue across Rails/worker restart. Keep
+`config/money_printer_turbo.yml`'s restart verification disabled until the full runtime gate passes.
 `Meta::Client` loads provider settings from
 `config/meta.yml`, uses one private request method, and covers OAuth token exchange, Page listing,
 Page video source probing, and Facebook Reels upload/status calls. Request specs stub the HTTP
