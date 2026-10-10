@@ -1,6 +1,6 @@
 # Telegram operations — Porting Note
 
-Ngày đối chiếu: 2026-10-09
+Ngày đối chiếu: 2026-10-10
 
 ## Phạm vi
 
@@ -10,8 +10,8 @@ Telegram chỉ dùng cho cảnh báo vận hành và các lệnh emergency contr
 
 - [Telegram Bot API](https://core.telegram.org/bots/api), tài liệu hiện hành ghi Bot API 10.3 (2026-08-24). Đây là nguồn sự thật cho request, response và giới hạn API.
 - [Telegram Bots FAQ](https://core.telegram.org/bots/faq), đối chiếu long polling, xác nhận update và giới hạn gửi tin.
-- [`atipugin/telegram-bot-ruby` tại tag `v2.7.0`](https://github.com/atipugin/telegram-bot-ruby/tree/v2.7.0), đọc `README.md` và metadata hiển thị của repo. RubyGems hiện liệt kê `2.8.1` (2026-08-02), nên tag này chỉ là source reference đã kiểm tra; task 12.3 phải kiểm tra lại đúng phiên bản trước khi thêm dependency.
-- [RubyGems metadata của `telegram-bot-ruby` 2.8.1](https://rubygems.org/gems/telegram-bot-ruby/versions/2.8.1) ghi `Licenses: No License`. GitHub tag page `v2.7.0` hiển thị nhãn `WTFPL`; file `LICENSE` không tải được trong lần đối chiếu này. Vì vậy thông tin `MIT` trong `PROJECT_SPEC.md` không có căn cứ và đã được thay bằng ghi chú về chênh lệch metadata. Cần xem xét license trước khi khóa gem làm runtime dependency.
+- [`atipugin/telegram-bot-ruby` tại tag `v2.8.1`](https://github.com/atipugin/telegram-bot-ruby/tree/v2.8.1), đối chiếu `README.md`, `lib/telegram/bot/client.rb`, `telegram-bot-ruby.gemspec` và `LICENSE`. RubyGems công bố `2.8.1` ngày 2026-08-02, Ruby tối thiểu `>= 2.7`; gem dùng Faraday 2, `dry-struct` và Zeitwerk. Gem README dùng `Telegram::Bot::Client.new(token)`, `bot.listen` và `bot.api.send_message(chat_id:, text:)`.
+- Có chênh lệch metadata license: file `LICENSE` trong tag `v2.8.1` ghi WTFPL v2, nhưng gemspec không khai báo `spec.license` nên RubyGems hiển thị `Licenses: No License`. Không coi `MIT` trong `PROJECT_SPEC.md` là căn cứ; thông tin đó đã được thay bằng ghi chú chênh lệch. Task 12.3 dùng gem theo quyết định OpenSpec, pin dependency `~> 2.8.1`, và giữ rõ trạng thái metadata này để chủ dự án xem xét.
 
 ## Bot API đã xác minh
 
@@ -31,7 +31,7 @@ Telegram chỉ dùng cho cảnh báo vận hành và các lệnh emergency contr
 
 ## Gem reference đã xác minh
 
-README ở tag `v2.7.0` minh họa `Telegram::Bot::Client.run(token)`, `bot.listen`, và `bot.api.send_message(chat_id:, text:)`. `bot.api` bọc các method Bot API; gem dùng Faraday và mặc định dùng `NullLogger`. README nói muốn dùng webhook thì ứng dụng phải tự cung cấp webhook callback server; gem không cung cấp sẵn Rails webhook route/controller. Gem có `bot.stop` để dừng long-poll listener một cách graceful.
+README ở tag `v2.8.1` minh họa `Telegram::Bot::Client.run(token)`, `bot.listen`, và `bot.api.send_message(chat_id:, text:)`. Source của `Client#listen` gọi `getUpdates`, cập nhật offset theo `update_id`, rồi chuyển message cho block; logger mặc định là `NullLogger`. `bot.api` bọc các method Bot API; ứng dụng không cần tự viết HTTP wrapper. README nói muốn dùng webhook thì ứng dụng phải tự cung cấp webhook callback server; gem không cung cấp sẵn Rails webhook route/controller. Gem có `bot.stop` để dừng long-poll listener một cách graceful.
 
 OpenSpec hiện chưa yêu cầu webhook route. Với AffiHub local-first, long polling là lựa chọn phù hợp để task 12.3 đánh giá vì không đòi public HTTPS callback server; đây là khuyến nghị kiến trúc, không phải bảo đảm runtime đã được thử. Nếu chọn webhook sau này, phải cập nhật design/routes trước khi thêm endpoint.
 
@@ -49,7 +49,7 @@ Allowlist `chat_id` là gate bảo mật bắt buộc theo OpenSpec. Nếu cấu
 ## Phần không suy diễn và cách kiểm chứng
 
 - Không khẳng định Telegram webhook retry chính xác bao nhiêu lần; tài liệu chỉ nói một số lần hợp lý.
-- README được kiểm tra ở tag `v2.7.0`, còn RubyGems có `2.8.1`; không suy ra tag nào sẽ được khóa trong Gemfile.
+- `telegram-bot-ruby` gemspec không khai báo license metadata mặc dù source tag có `LICENSE`; RubyGems hiển thị `No License`. Đây là khác biệt metadata đã xác minh, không phải suy đoán license.
 - Không dùng Postiz làm nguồn contract: `telegram.provider.ts` là adapter publish Telegram dựa trên `node-telegram-bot-api`, không phải bot operations Ruby của AffiHub.
 - Chưa có token bot để gọi `getMe`, gửi/nhận update thật hoặc kiểm tra log runtime. Đây là kiểm chứng thuộc task implementation/smoke sau; note này chỉ xác nhận contract tài liệu và source đã đọc.
 
