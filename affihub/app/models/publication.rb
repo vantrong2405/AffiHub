@@ -16,6 +16,7 @@ class Publication < ApplicationRecord
   has_many :workflow_runs, as: :workflowable, inverse_of: :workflowable, dependent: :restrict_with_exception
 
   after_commit :enqueue_sheet_sync_for_current_state, on: %i[create update]
+  after_commit :enqueue_telegram_alert_for_status_change, on: :update
 
   scope :for_destination, proc { |social_destination| where(social_destination:) }
   scope :recent_first, proc { order(created_at: :desc, id: :desc) }
@@ -31,5 +32,20 @@ class Publication < ApplicationRecord
     return unless SHEETS_CONFIGURATION.fetch(:publication_trigger_statuses).include?(status)
 
     SheetSyncs::EnqueueForPublicationService.new(publication_id: id).call
+  end
+
+  def enqueue_telegram_alert_for_status_change
+    return unless saved_change_to_status?
+
+    event = if outcome_unknown?
+      :publication_outcome_unknown
+    elsif failed?
+      schedule_occurrence_id.present? ? :auto_publish_failed : :publication_failed
+    elsif published? && schedule_occurrence_id.present?
+      :auto_publish_succeeded
+    end
+    return unless event
+
+    Telegram::Alerts::EnqueueService.new(event:, record: self).call
   end
 end

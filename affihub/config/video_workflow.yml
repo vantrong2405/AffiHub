@@ -97,6 +97,7 @@ shared:
       - once
       - daily
       - weekly
+    auto_publish_paused_by_default: false
     jitter_min_seconds: 300
     jitter_max_seconds: 1800
     max_execution_window_seconds: 1800

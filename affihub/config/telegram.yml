@@ -1,0 +1,44 @@
+shared: &shared
+  enabled: false
+  allowed_chat_ids: []
+  worker_process_kind: Worker
+  worker_heartbeat_timeout_seconds: 300
+  worker_down_alerted_by_default: false
+  polling:
+    timeout_seconds: 20
+    retry_delay_seconds: 5
+  alert_events:
+    - worker_down
+    - publication_failed
+    - publication_outcome_unknown
+    - api_error
+    - api_rate_limited
+    - auto_reply_failed
+    - auto_reply_outcome_unknown
+    - sheet_sync_retries_exhausted
+    - auto_publish_succeeded
+    - auto_publish_failed
+  commands:
+    status: /status
+    pause_auto_publish: /pause_auto_publish
+    resume_auto_publish: /resume_auto_publish
+    pause_auto_reply: /pause_auto_reply
+    resume_auto_reply: /resume_auto_reply
+  statuses:
+    worker_status:
+      running: running
+      stopped: stopped
+      unavailable: unavailable
+    publication_scheduled: scheduled
+    publication_failed: failed
+    publication_outcome_unknown: outcome_unknown
+    publication_published: published
+    auto_reply_failed: failed
+    sheet_sync_failed: failed
+    telegram_worker_down: worker_down
+
+test:
+  <<: *shared
+  enabled: true
+  allowed_chat_ids:
+    - "1001"

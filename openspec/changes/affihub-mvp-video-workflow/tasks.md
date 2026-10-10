@@ -123,8 +123,8 @@
 ## 12. Telegram operations
 
 - [x] 12.1 Viết Porting Note từ Telegram Bot API và gem reference; ghi webhook/long polling, sendMessage, command parsing và cách bảo vệ token. Kiểm chứng: note xác định allowlist `chat_id` là gate bắt buộc.
-- [ ] 12.2 Viết RSpec cho cảnh báo worker down, Publication Failed/OutcomeUnknown, lỗi/giới hạn API, auto-reply và sync hết retry; kết quả auto-publish cuối; `/status`, bốn lệnh pause/resume, allowlist, chat không được phép, lỗi Bot API và việc token không xuất hiện trong log; xác nhận đỏ.
-- [ ] 12.3 Implement Telegram bot/alerts bằng gem `telegram-bot-ruby`; cấu hình không bí mật qua YAML/`Rails.application.config_for`, token qua credentials, bọc lời gọi gem trong method riêng dùng chung mà không tự viết HTTP wrapper, không log secret, cờ pause được Scheduler/AutoResponder đọc trước claim. Kiểm chứng: RSpec xanh và lệnh từ chat ngoài allowlist không gây side effect.
+- [x] 12.2 Viết RSpec cho cảnh báo worker down, Publication Failed/OutcomeUnknown, lỗi/giới hạn API, auto-reply và sync hết retry; kết quả auto-publish cuối; `/status`, bốn lệnh pause/resume, allowlist, chat không được phép, lỗi Bot API và việc token không xuất hiện trong log; xác nhận đỏ.
+- [x] 12.3 Implement Telegram bot/alerts bằng gem `telegram-bot-ruby`; cấu hình không bí mật qua YAML/`Rails.application.config_for`, token qua credentials, bọc lời gọi gem trong method riêng dùng chung mà không tự viết HTTP wrapper, không log secret, cờ pause được Scheduler/AutoResponder đọc trước claim. Kiểm chứng: RSpec xanh và lệnh từ chat ngoài allowlist không gây side effect.
 
 ## 13. Kiểm tra tích hợp và nghiệm thu MVP
 

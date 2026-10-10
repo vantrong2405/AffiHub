@@ -8,6 +8,7 @@ class Publications::PublishJob < ApplicationJob
   def perform(workflow_run_id)
     workflow_run = WorkflowRun.includes(:workflowable).find_by(id: workflow_run_id)
     return false unless workflow_run&.workflowable.is_a?(Publication)
+    return false if step_auto_publish_paused?(workflow_run.workflowable)
 
     resolver = Publications::PublisherResolver.new(
       provider: workflow_run.workflowable.social_destination.provider
@@ -15,5 +16,11 @@ class Publications::PublishJob < ApplicationJob
     return false unless resolver.call
 
     resolver.publisher_class.new(workflow_run_id:).call
+  end
+
+  private
+
+  def step_auto_publish_paused?(publication)
+    publication.schedule_occurrence_id.present? && AutomationControl.current.auto_publish_paused?
   end
 end

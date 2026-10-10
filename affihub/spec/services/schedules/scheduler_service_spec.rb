@@ -50,6 +50,25 @@ RSpec.describe Schedules::SchedulerService, type: :service do
       expect(service.success?).to eq(true)
     end
 
+    it "returns success without enqueuing queued Publication workflows while auto-publish is paused" do
+      automation_control = AutomationControl.current
+      automation_control.update!(auto_publish_paused: true)
+      publication = create(:publication, schedule_occurrence: create(:schedule_occurrence))
+      workflow_run = create(
+        :workflow_run,
+        workflowable: publication,
+        operation: "publication_publish",
+        stage: "publish",
+        status: "queued"
+      )
+      service = described_class.new
+
+      expect { service.call }.not_to have_enqueued_job(Publications::PublishJob)
+
+      expect(service.success?).to eq(true)
+      expect(workflow_run.reload.status).to eq("queued")
+    end
+
     it "returns without queuing non-publication workflows" do
       workflow_run = create(:workflow_run, status: "queued")
       service = described_class.new

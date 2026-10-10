@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_09_150001) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_10_130000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -134,6 +134,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_09_150001) do
     t.boolean "auto_responder_paused", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.boolean "auto_publish_paused", default: false, null: false
+    t.boolean "telegram_worker_down_alerted", default: false, null: false
     t.index ["scope_key"], name: "index_automation_controls_on_scope_key", unique: true
   end
 

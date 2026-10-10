@@ -2,6 +2,24 @@ require "rails_helper"
 
 RSpec.describe Publications::PublishJob, type: :job do
   describe "#perform" do
+    it "returns false without resolving a scheduled Publication while auto-publish is paused" do
+      schedule_occurrence = create(:schedule_occurrence)
+      publication = create(:publication, schedule_occurrence:)
+      workflow_run = create(
+        :workflow_run,
+        workflowable: publication,
+        operation: "publication_publish",
+        stage: "publish",
+        status: "queued"
+      )
+      AutomationControl.current.update!(auto_publish_paused: true)
+
+      expect(Publications::PublisherResolver).not_to receive(:new)
+
+      expect(described_class.perform_now(workflow_run.id)).to eq(false)
+      expect(workflow_run.reload.status).to eq("queued")
+    end
+
     it "returns true from the publisher configured for a YouTube Publication" do
       social_connection = create(:social_connection, provider: "youtube")
       social_destination = create(

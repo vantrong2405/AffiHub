@@ -26,6 +26,8 @@ class Schedules::SchedulerService < ApplicationService
   private
 
   def step_process_due_occurrences
+    return true if AutomationControl.current.auto_publish_paused?
+
     due_occurrences = ScheduleOccurrence.scheduled.where(dispatch_at: ..Time.current).order(:dispatch_at, :id)
     due_occurrences.find_each do |schedule_occurrence|
       service = Schedules::ProcessOccurrenceService.new(schedule_occurrence_id: schedule_occurrence.id)
@@ -36,6 +38,8 @@ class Schedules::SchedulerService < ApplicationService
   end
 
   def step_enqueue_queued_publications
+    return true if AutomationControl.current.auto_publish_paused?
+
     queued_publication_workflows.find_each do |workflow_run|
       job = Publications::PublishJob.perform_later(workflow_run.id)
       return step_fail!("Không thể khôi phục Publication workflow vào hàng đợi.") unless job&.successfully_enqueued?
