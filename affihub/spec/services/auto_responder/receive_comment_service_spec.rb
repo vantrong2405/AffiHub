@@ -1,18 +1,18 @@
 require "rails_helper"
 
-RSpec.describe "AutoResponder::ReceiveCommentService", type: :service do
+RSpec.describe AutoResponder::ReceiveCommentService, type: :service do
   describe "#call" do
     let(:destination) { create(:social_destination, provider: "facebook") }
 
     it "persists one event and workflow when the provider replays a public comment" do
-      first_service = AutoResponder::ReceiveCommentService.new(
+      first_service = described_class.new(
         social_destination_id: destination.id,
         source: "facebook",
         event_type: "comment",
         provider_comment_id: "fb-comment-100",
         comment_text: "Mẫu này còn hàng không?"
       )
-      replayed_service = AutoResponder::ReceiveCommentService.new(
+      replayed_service = described_class.new(
         social_destination_id: destination.id,
         source: "facebook",
         event_type: "comment",
@@ -30,7 +30,7 @@ RSpec.describe "AutoResponder::ReceiveCommentService", type: :service do
     end
 
     it "returns failure without creating an event for an unsupported conversation type" do
-      service = AutoResponder::ReceiveCommentService.new(
+      service = described_class.new(
         social_destination_id: destination.id,
         source: "facebook",
         event_type: "message",

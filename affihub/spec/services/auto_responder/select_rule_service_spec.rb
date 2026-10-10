@@ -1,10 +1,10 @@
 require "rails_helper"
 
-RSpec.describe "AutoResponder::SelectRuleService", type: :service do
+RSpec.describe AutoResponder::SelectRuleService, type: :service do
   describe "#call" do
     let(:destination) { create(:social_destination, provider: "facebook") }
     let(:default_rule) do
-      AutoReplyRule.create!(
+      create(:auto_reply_rule,
         social_destination: destination,
         rule_type: "default",
         reply_text: "Cảm ơn bạn đã quan tâm."
@@ -13,7 +13,7 @@ RSpec.describe "AutoResponder::SelectRuleService", type: :service do
 
     it "returns the default response when no active keyword matches" do
       default_rule
-      AutoReplyRule.create!(
+      create(:auto_reply_rule,
         social_destination: destination,
         rule_type: "keyword",
         keyword: "vận chuyển",
@@ -31,7 +31,7 @@ RSpec.describe "AutoResponder::SelectRuleService", type: :service do
 
     it "returns the static reply for an active matching keyword" do
       default_rule
-      keyword_rule = AutoReplyRule.create!(
+      keyword_rule = create(:auto_reply_rule,
         social_destination: destination,
         rule_type: "keyword",
         keyword: "vận chuyển",
@@ -49,7 +49,7 @@ RSpec.describe "AutoResponder::SelectRuleService", type: :service do
 
     it "returns the default response when a matching keyword rule is disabled" do
       default_rule
-      AutoReplyRule.create!(
+      create(:auto_reply_rule,
         social_destination: destination,
         rule_type: "keyword",
         keyword: "vận chuyển",
@@ -68,13 +68,13 @@ RSpec.describe "AutoResponder::SelectRuleService", type: :service do
 
     it "returns the response for the longest matching keyword" do
       default_rule
-      AutoReplyRule.create!(
+      create(:auto_reply_rule,
         social_destination: destination,
         rule_type: "keyword",
         keyword: "giao hang",
         reply_text: "Thông tin giao hàng chung."
       )
-      longest_keyword_rule = AutoReplyRule.create!(
+      longest_keyword_rule = create(:auto_reply_rule,
         social_destination: destination,
         rule_type: "keyword",
         keyword: "giao hang nhanh",
@@ -92,13 +92,13 @@ RSpec.describe "AutoResponder::SelectRuleService", type: :service do
 
     it "returns the response for the earliest created rule when matching keyword lengths are equal" do
       default_rule
-      earliest_keyword_rule = AutoReplyRule.create!(
+      earliest_keyword_rule = create(:auto_reply_rule,
         social_destination: destination,
         rule_type: "keyword",
         keyword: "ho tro",
         reply_text: "Hỗ trợ câu một."
       )
-      AutoReplyRule.create!(
+      create(:auto_reply_rule,
         social_destination: destination,
         rule_type: "keyword",
         keyword: "tro ho",

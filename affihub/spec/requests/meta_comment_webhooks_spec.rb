@@ -6,7 +6,7 @@ RSpec.describe "Meta comment webhooks", type: :request do
     create(:social_destination, external_id: "facebook-page-1")
   end
   let(:facebook_default_rule) do
-    AutoReplyRule.create!(
+    create(:auto_reply_rule,
       social_destination: facebook_destination,
       rule_type: "default",
       reply_text: "Cảm ơn bạn đã quan tâm."
@@ -57,7 +57,7 @@ RSpec.describe "Meta comment webhooks", type: :request do
       workflow_run = WorkflowRun.find_by!(workflowable: event)
 
       expect(response).to have_http_status(:ok)
-      expect(queued_job_descriptors).to eq([["AutoResponder::ProcessJob", [workflow_run.id]]])
+      expect(queued_job_descriptors).to eq([ [ "AutoResponder::ProcessJob", [ workflow_run.id ] ] ])
     end
 
     it "returns HTTP 200 and queues only one workflow when Meta retries a Facebook comment" do
@@ -103,7 +103,7 @@ RSpec.describe "Meta comment webhooks", type: :request do
         provider: "instagram",
         external_id: "instagram-business-1"
       )
-      AutoReplyRule.create!(
+      create(:auto_reply_rule,
         social_destination: destination,
         rule_type: "default",
         reply_text: "Cảm ơn bạn đã quan tâm."
@@ -116,7 +116,7 @@ RSpec.describe "Meta comment webhooks", type: :request do
       workflow_run = WorkflowRun.find_by!(workflowable: event)
 
       expect(response).to have_http_status(:ok)
-      expect(queued_job_descriptors).to eq([["AutoResponder::ProcessJob", [workflow_run.id]]])
+      expect(queued_job_descriptors).to eq([ [ "AutoResponder::ProcessJob", [ workflow_run.id ] ] ])
     end
 
     it "returns HTTP 200 without creating a reply workflow for an Instagram reply comment" do
@@ -126,12 +126,33 @@ RSpec.describe "Meta comment webhooks", type: :request do
         provider: "instagram",
         external_id: "instagram-business-1"
       )
-      AutoReplyRule.create!(
+      create(:auto_reply_rule,
         social_destination: destination,
         rule_type: "default",
         reply_text: "Cảm ơn bạn đã quan tâm."
       )
       body = instagram_notification(parent_id: "instagram-parent-comment-1").to_json
+
+      post "/webhooks/meta/comments", params: body, headers: signed_headers(body)
+
+      expect(response).to have_http_status(:ok)
+      expect(AutoReplyEvent.count).to eq(0)
+      expect(queued_job_descriptors).to eq([])
+    end
+
+    it "returns HTTP 200 without creating a reply workflow for an Instagram account's own comment" do
+      destination = create(
+        :social_destination,
+        social_connection: create(:social_connection, provider: "instagram"),
+        provider: "instagram",
+        external_id: "instagram-business-1"
+      )
+      create(
+        :auto_reply_rule,
+        social_destination: destination,
+        rule_type: "default"
+      )
+      body = instagram_notification(author_id: "instagram-business-1").to_json
 
       post "/webhooks/meta/comments", params: body, headers: signed_headers(body)
 
@@ -243,7 +264,7 @@ RSpec.describe "Meta comment webhooks", type: :request do
 
   def queued_job_descriptors
     ActiveJob::Base.queue_adapter.enqueued_jobs.map do |job|
-      [job.fetch(:job).name, job.fetch(:args)]
+      [ job.fetch(:job).name, job.fetch(:args) ]
     end
   end
 end

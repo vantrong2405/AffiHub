@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_09_150000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_09_150001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -99,6 +99,42 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_09_150000) do
     t.datetime "updated_at", null: false
     t.index ["provider", "provider_client_id", "provider_subject"], name: "index_ai_provider_connections_on_provider_client_and_subject", unique: true
     t.index ["provider", "status"], name: "index_ai_provider_connections_on_provider_and_status"
+  end
+
+  create_table "auto_reply_events", force: :cascade do |t|
+    t.bigint "social_destination_id", null: false
+    t.string "source", null: false
+    t.string "event_type", null: false
+    t.string "provider_comment_id", null: false
+    t.text "comment_text", null: false
+    t.string "status", null: false
+    t.string "safe_error_code"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["social_destination_id", "provider_comment_id"], name: "index_auto_reply_events_on_destination_and_provider_comment", unique: true
+    t.index ["social_destination_id"], name: "index_auto_reply_events_on_social_destination_id"
+    t.index ["status"], name: "index_auto_reply_events_on_status"
+  end
+
+  create_table "auto_reply_rules", force: :cascade do |t|
+    t.bigint "social_destination_id", null: false
+    t.string "rule_type", null: false
+    t.string "keyword"
+    t.text "reply_text", null: false
+    t.boolean "enabled", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["social_destination_id", "keyword"], name: "index_auto_reply_rules_on_keyword_per_destination", unique: true, where: "((rule_type)::text = 'keyword'::text)"
+    t.index ["social_destination_id"], name: "index_auto_reply_rules_on_one_default_per_destination", unique: true, where: "((rule_type)::text = 'default'::text)"
+    t.index ["social_destination_id"], name: "index_auto_reply_rules_on_social_destination_id"
+  end
+
+  create_table "automation_controls", force: :cascade do |t|
+    t.string "scope_key", null: false
+    t.boolean "auto_responder_paused", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["scope_key"], name: "index_automation_controls_on_scope_key", unique: true
   end
 
   create_table "drive_exports", force: :cascade do |t|
@@ -457,6 +493,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_09_150000) do
   add_foreign_key "ai_generation_scenes", "ai_generations"
   add_foreign_key "ai_generations", "source_assets"
   add_foreign_key "ai_generations", "video_projects"
+  add_foreign_key "auto_reply_events", "social_destinations"
+  add_foreign_key "auto_reply_rules", "social_destinations"
   add_foreign_key "drive_exports", "google_connections"
   add_foreign_key "drive_exports", "render_versions"
   add_foreign_key "outbound_attempts", "workflow_runs"

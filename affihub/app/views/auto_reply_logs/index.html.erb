@@ -1,0 +1,55 @@
+<% content_for :title, "Nhật ký tự trả lời" %>
+
+<section class="space-y-6">
+  <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+    <div class="space-y-2">
+      <h1 class="text-3xl font-bold">Nhật ký tự trả lời</h1>
+      <p class="max-w-2xl text-sm text-base-content/70">
+        Theo dõi bình luận công khai đã nhận và kết quả tự trả lời trên Facebook hoặc Instagram.
+      </p>
+    </div>
+    <%= link_to "Quản lý quy tắc", auto_reply_rules_path, class: "btn btn-outline w-full sm:w-auto" %>
+  </div>
+
+  <% if auto_reply_events_present?(@auto_reply_events) %>
+    <section class="card border border-base-300 bg-base-100" aria-labelledby="auto-reply-log-list-heading">
+      <div class="card-body gap-0 p-0">
+        <h2 id="auto-reply-log-list-heading" class="px-4 py-4 font-semibold sm:px-5">Bình luận gần đây</h2>
+        <ul class="divide-y divide-base-300 border-t border-base-300">
+          <% @auto_reply_events.each do |auto_reply_event| %>
+            <li class="flex min-w-0 flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+              <div class="min-w-0 space-y-2">
+                <div class="flex min-w-0 flex-wrap items-center gap-2">
+                  <h3 class="min-w-0 break-words font-semibold">
+                    <%= auto_reply_destination_label(auto_reply_event.social_destination) %>
+                  </h3>
+                  <span class="badge <%= auto_reply_event_status_badge_class(auto_reply_event.status) %>">
+                    <%= auto_reply_event_status_label(auto_reply_event.status) %>
+                  </span>
+                  <time class="text-xs text-base-content/60" datetime="<%= auto_reply_event.created_at.iso8601 %>">
+                    <%= l(auto_reply_event.created_at, format: :short) %>
+                  </time>
+                </div>
+                <p class="line-clamp-2 break-words text-sm text-base-content/70"><%= auto_reply_event.comment_text %></p>
+                <% if auto_reply_event_error_present?(auto_reply_event) %>
+                  <p class="text-sm text-warning"><%= auto_reply_safe_error_message(auto_reply_event.safe_error_code) %></p>
+                <% end %>
+              </div>
+              <%= link_to "Mở chi tiết", auto_reply_log_path(auto_reply_event), class: "btn btn-outline w-full sm:w-auto" %>
+            </li>
+          <% end %>
+        </ul>
+      </div>
+    </section>
+  <% else %>
+    <section class="card border border-base-300 bg-base-100">
+      <div class="card-body items-start gap-3 p-4 sm:p-6">
+        <h2 class="card-title">Chưa có bình luận trong nhật ký</h2>
+        <p class="max-w-2xl text-sm text-base-content/70">
+          Nhật ký xuất hiện khi Meta gửi bình luận công khai mới tới một đích đang bật câu trả lời mặc định.
+        </p>
+        <%= link_to "Cấu hình câu trả lời", auto_reply_rules_path, class: "btn btn-primary w-full sm:w-auto" %>
+      </div>
+    </section>
+  <% end %>
+</section>

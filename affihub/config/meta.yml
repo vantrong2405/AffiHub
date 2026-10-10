@@ -33,6 +33,12 @@ shared:
         - pages_show_list
         - pages_read_engagement
         - pages_manage_posts
+        - pages_manage_engagement
+        - pages_manage_metadata
+      comment_reply_edge: comments
+      comment_webhook_subscription_edge: subscribed_apps
+      comment_webhook_object: page
+      comment_webhook_field: feed
       page_fields:
         - id
         - name
@@ -75,6 +81,12 @@ shared:
         - pages_read_engagement
         - instagram_basic
         - instagram_content_publish
+        - instagram_manage_comments
+        - pages_manage_metadata
+      comment_reply_edge: replies
+      comment_webhook_subscription_edge: subscribed_apps
+      comment_webhook_object: instagram
+      comment_webhook_field: comments
       page_fields:
         - id
         - name

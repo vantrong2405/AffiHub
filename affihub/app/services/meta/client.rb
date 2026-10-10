@@ -58,6 +58,52 @@ class Meta::Client
     response.fetch("data", [])
   end
 
+  # Publishes a fixed reply to one Facebook Page or Instagram comment.
+  #
+  # @param comment_id [String] the provider comment identifier
+  # @param page_access_token [String] the Page token authorized for comment management
+  # @param message [String] the user-approved fixed reply text
+  # @return [Hash] the provider acknowledgement containing the reply ID
+  def reply_to_comment(comment_id:, page_access_token:, message:)
+    encoded_comment_id = URI.encode_www_form_component(comment_id)
+    request(
+      method: :post,
+      url: "#{graph_api_base_url}/#{encoded_comment_id}/#{@configuration.fetch(:comment_reply_edge)}",
+      params: { message:, access_token: page_access_token }
+    )
+  end
+
+  # Subscribes one Page or Instagram Business account to its configured comment webhook field.
+  #
+  # @param external_id [String] the provider Page or Instagram Business account ID
+  # @param page_access_token [String] the token authorized for the selected destination
+  # @return [Hash] the provider subscription acknowledgement
+  def subscribe_to_comment_webhooks(external_id:, page_access_token:)
+    encoded_external_id = URI.encode_www_form_component(external_id)
+    request(
+      method: :post,
+      url: "#{graph_api_base_url}/#{encoded_external_id}/#{@configuration.fetch(:comment_webhook_subscription_edge)}",
+      params: {
+        subscribed_fields: @configuration.fetch(:comment_webhook_field),
+        access_token: page_access_token
+      }
+    )
+  end
+
+  # Removes the comment webhook subscription for one Page or Instagram Business account.
+  #
+  # @param external_id [String] the provider Page or Instagram Business account ID
+  # @param page_access_token [String] the token authorized for the selected destination
+  # @return [Hash] the provider unsubscription acknowledgement
+  def unsubscribe_from_comment_webhooks(external_id:, page_access_token:)
+    encoded_external_id = URI.encode_www_form_component(external_id)
+    request(
+      method: :delete,
+      url: "#{graph_api_base_url}/#{encoded_external_id}/#{@configuration.fetch(:comment_webhook_subscription_edge)}",
+      params: { access_token: page_access_token }
+    )
+  end
+
   # Reads the current Instagram content publishing quota for a Business account.
   #
   # @param instagram_user_id [String] the selected Instagram Business account ID

@@ -30,7 +30,8 @@ Rails.application.routes.draw do
   resources :ai_provider_connections, only: %i[index show create update destroy]
   resources :google_connections, only: %i[index show new create edit update destroy]
   resources :auto_reply_rules, only: %i[index show new create edit update destroy]
-  resources :auto_reply_logs, only: %i[index show]
+  resources :auto_reply_logs, only: %i[index show update]
+  resource :meta_comment_webhook, only: %i[show create], path: "webhooks/meta/comments"
 
   get "/auth/:provider/callback",
       to: "connection_callbacks#show",

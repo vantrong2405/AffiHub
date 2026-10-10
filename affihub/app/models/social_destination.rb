@@ -11,6 +11,8 @@ class SocialDestination < ApplicationRecord
   has_many :sheet_syncs, inverse_of: :social_destination, dependent: :restrict_with_exception
   has_many :publication_quota_reservations, inverse_of: :social_destination, dependent: :restrict_with_exception
   has_many :schedule_destinations, inverse_of: :social_destination, dependent: :restrict_with_exception
+  has_many :auto_reply_rules, inverse_of: :social_destination, dependent: :destroy
+  has_many :auto_reply_events, inverse_of: :social_destination, dependent: :restrict_with_exception
 
   validates :provider, :external_id, :name, :access_token, presence: true
   validates :provider, inclusion: { in: PROVIDERS }

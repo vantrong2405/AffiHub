@@ -1,10 +1,10 @@
 require "rails_helper"
 
-RSpec.describe "AutoResponder::ResolveOutcomeService", type: :service do
+RSpec.describe AutoResponder::ResolveOutcomeService, type: :service do
   describe "#call" do
     let(:destination) { create(:social_destination, provider: "facebook") }
     let(:event) do
-      AutoReplyEvent.create!(
+      create(:auto_reply_event,
         social_destination: destination,
         source: "facebook",
         event_type: "comment",
@@ -14,7 +14,7 @@ RSpec.describe "AutoResponder::ResolveOutcomeService", type: :service do
       )
     end
     let(:workflow_run) do
-      WorkflowRun.create!(
+      create(:workflow_run,
         workflowable: event,
         operation_id: "auto-reply-#{SecureRandom.uuid}",
         operation: "auto_reply",

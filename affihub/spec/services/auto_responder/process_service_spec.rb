@@ -1,17 +1,17 @@
 require "rails_helper"
 
-RSpec.describe "AutoResponder::ProcessService", type: :service do
+RSpec.describe AutoResponder::ProcessService, type: :service do
   describe "#call" do
     let(:destination) { create(:social_destination, provider: "facebook") }
     let(:rule) do
-      AutoReplyRule.create!(
+      create(:auto_reply_rule,
         social_destination: destination,
         rule_type: "default",
         reply_text: "Cảm ơn bạn đã quan tâm."
       )
     end
     let(:event) do
-      AutoReplyEvent.create!(
+      create(:auto_reply_event,
         social_destination: destination,
         source: "facebook",
         event_type: "comment",
@@ -21,7 +21,7 @@ RSpec.describe "AutoResponder::ProcessService", type: :service do
       )
     end
     let(:workflow_run) do
-      WorkflowRun.create!(
+      create(:workflow_run,
         workflowable: event,
         operation_id: "auto-reply-#{SecureRandom.uuid}",
         operation: "auto_reply",
@@ -39,12 +39,51 @@ RSpec.describe "AutoResponder::ProcessService", type: :service do
       workflow_run
       AutomationControl.current.update!(auto_responder_paused: true)
       expect(WorkflowRuns::ClaimService).not_to receive(:new)
+      expect(client).not_to receive(:reply_to_comment)
 
       expect(service.call).to eq(false)
 
       expect(workflow_run.reload.status).to eq("queued")
       expect(event.reload.status).to eq("queued")
-      expect(client).not_to have_received(:reply_to_comment)
+    end
+
+    it "returns a failed result when the default rule is disabled before processing" do
+      rule.update!(enabled: false)
+      workflow_run
+      expect(client).not_to receive(:reply_to_comment)
+
+      expect(service.call).to eq(false)
+
+      expect(event.reload.status).to eq("failed")
+      expect(event.safe_error_code).to eq("auto_reply_default_rule_missing")
+      expect(workflow_run.reload.status).to eq("failed")
+      expect(workflow_run.worker_id).to be_nil
+      expect(workflow_run.outbound_attempts).to be_empty
+      expect(workflow_run.workflow_audit_events.order(:created_at).last.details).to eq(
+        "source" => "facebook",
+        "event_type" => "comment",
+        "social_destination_id" => destination.id,
+        "rule_snapshot" => nil,
+        "reply_text" => nil,
+        "provider_reply_id" => nil,
+        "status" => "failed",
+        "safe_error_code" => "auto_reply_default_rule_missing",
+        "manual_evidence" => nil
+      )
+    end
+
+    it "returns a failed result when the destination is disconnected before processing" do
+      rule
+      workflow_run
+      destination.update!(status: :revoked)
+      expect(client).not_to receive(:reply_to_comment)
+
+      expect(service.call).to eq(false)
+
+      expect(event.reload.status).to eq("failed")
+      expect(event.safe_error_code).to eq("auto_reply_comment_destination_missing")
+      expect(workflow_run.reload.status).to eq("failed")
+      expect(workflow_run.outbound_attempts).to be_empty
     end
 
     it "returns an unknown result after a reply request times out and does not send a second reply" do
