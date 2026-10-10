@@ -1,0 +1,199 @@
+--- a/app/services/task.py
++++ b/app/services/task.py
+@@ -1,3 +1,5 @@
++import hashlib
++import hmac
+ import json
+ import math
+ import os
+@@ -9,8 +11,10 @@
+ from concurrent.futures import CancelledError, Future, ThreadPoolExecutor
+ from functools import partial
+ from os import path
++from urllib.parse import urlparse
+ from uuid import uuid4
+ 
++import requests
+ from loguru import logger
+ 
+ from app.config import config
+@@ -519,6 +523,87 @@
+         f"using full voice preview audio, task_id: {task_id}, duration: {duration:.2f}s"
+     )
+     return preview_file, math.ceil(duration), sub_maker
++
++
++def _request_rails_tts_fallback(request_id, narration, voice_name):
++    """Request approved Azure fallback audio from the Rails callback."""
++    callback_url = os.getenv("MPT_TTS_FALLBACK_CALLBACK_URL", "").strip()
++    callback_secret = os.getenv("MPT_TTS_CALLBACK_SECRET", "")
++    if not callback_url or not callback_secret or not request_id:
++        logger.warning(
++            "skip TTS fallback because callback configuration or request ID is missing"
++        )
++        return None
++
++    parsed_url = urlparse(callback_url)
++    if (
++        parsed_url.scheme not in {"http", "https"}
++        or not parsed_url.netloc
++        or parsed_url.username
++        or parsed_url.password
++        or parsed_url.fragment
++    ):
++        logger.warning("skip TTS fallback because callback URL is invalid")
++        return None
++
++    payload = {
++        "correlation_id": request_id,
++        "scene_index": 0,
++        "narration": narration,
++        "voice": voice_name,
++    }
++    raw_body = json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode(
++        "utf-8"
++    )
++    timestamp = str(int(time.time()))
++    signature = hmac.new(
++        callback_secret.encode("utf-8"),
++        timestamp.encode("utf-8") + b"." + raw_body,
++        hashlib.sha256,
++    ).hexdigest()
++
++    try:
++        response = requests.post(
++            callback_url,
++            data=raw_body,
++            headers={
++                "Content-Type": "application/json",
++                "X-MPT-Timestamp": timestamp,
++                "X-MPT-Signature": signature,
++            },
++            timeout=180,
++            allow_redirects=False,
++        )
++    except requests.RequestException as error:
++        logger.warning(
++            "TTS fallback callback request failed: "
++            f"request_id={request_id}, error={type(error).__name__}"
++        )
++        return None
++
++    content_type = (
++        response.headers.get("Content-Type", "").split(";", 1)[0].strip().lower()
++    )
++    if response.status_code != 200 or content_type != "audio/wav":
++        logger.warning(
++            "TTS fallback callback did not return audio: "
++            f"request_id={request_id}, status={response.status_code}, "
++            f"content_type={content_type or 'missing'}"
++        )
++        return None
++
++    audio_data = response.content
++    if (
++        len(audio_data) < 12
++        or audio_data[:4] != b"RIFF"
++        or audio_data[8:12] != b"WAVE"
++    ):
++        logger.warning(
++            f"TTS fallback callback returned invalid WAV: request_id={request_id}"
++        )
++        return None
++
++    return audio_data
+ 
+ 
+ def generate_audio(
+@@ -527,6 +612,7 @@
+     video_script,
+     voice_preview=None,
+     *,
++    request_id: str | None = None,
+     allow_server_file_input: bool = False,
+     voxcpm_reference_audio: bytes | None = None,
+     voxcpm_prompt_audio: bytes | None = None,
+@@ -589,6 +675,26 @@
+             tts_kwargs["voxcpm_prompt_audio"] = voxcpm_prompt_audio
+             tts_kwargs["voxcpm_prompt_text"] = voxcpm_prompt_text
+         sub_maker = voice.tts(**tts_kwargs)
++        if sub_maker is None and getattr(params, "tts_fallback_voice", None):
++            fallback_audio = _request_rails_tts_fallback(
++                request_id=request_id,
++                narration=video_script,
++                voice_name=params.tts_fallback_voice,
++            )
++            if fallback_audio:
++                with open(audio_file, "wb") as audio_output:
++                    audio_output.write(fallback_audio)
++
++                fallback_duration = voice.get_audio_duration(audio_file)
++                if fallback_duration > 0:
++                    sub_maker = voice.ensure_legacy_submaker_fields(voice.SubMaker())
++                    sub_maker = voice.populate_legacy_submaker_with_full_text(
++                        sub_maker=sub_maker,
++                        text=video_script,
++                        audio_duration_seconds=fallback_duration,
++                    )
++                    return audio_file, math.ceil(fallback_duration), sub_maker
++
+         if sub_maker is None:
+             _mark_task_failed(
+                 task_id,
+@@ -1488,6 +1594,7 @@
+     voxcpm_reference_audio: bytes | None = None,
+     voxcpm_prompt_audio: bytes | None = None,
+     voxcpm_prompt_text: str = "",
++    request_id: str | None = None,
+ ):
+     logger.info(f"start task: {task_id}, stop_at: {stop_at}")
+     sm.state.update_task(
+@@ -1661,6 +1768,7 @@
+     generate_audio_kwargs = {
+         "voice_preview": voice_preview,
+         "allow_server_file_input": allow_server_file_input,
++        "request_id": request_id,
+     }
+     if voxcpm_reference_audio is not None:
+         generate_audio_kwargs["voxcpm_reference_audio"] = voxcpm_reference_audio
+@@ -1857,6 +1965,7 @@
+     voxcpm_reference_audio: bytes | None = None,
+     voxcpm_prompt_audio: bytes | None = None,
+     voxcpm_prompt_text: str = "",
++    request_id: str | None = None,
+ ):
+     """
+     执行任务流水线，并确保未预期异常也会转换成可查询的失败状态。
+@@ -1875,6 +1984,7 @@
+             voxcpm_reference_audio=voxcpm_reference_audio,
+             voxcpm_prompt_audio=voxcpm_prompt_audio,
+             voxcpm_prompt_text=voxcpm_prompt_text,
++            request_id=request_id,
+         )
+     except Exception as exc:
+         logger.exception(
+--- a/app/models/schema.py
++++ b/app/models/schema.py
+@@ -126,6 +126,7 @@
+     video_language: Optional[str] = ""  # auto detect
+ 
+     voice_name: Optional[str] = ""
++    tts_fallback_voice: Optional[str] = None
+     voice_volume: Optional[float] = 1.0
+     voice_rate: Optional[float] = 1.0
+     bgm_type: Optional[str] = "random"
+--- a/app/controllers/v1/video.py
++++ b/app/controllers/v1/video.py
+@@ -251,7 +251,11 @@
+         sm.state.update_task(task_id)
+         try:
+             task_manager.add_task(
+-                tm.start, task_id=task_id, params=body, stop_at=stop_at
++                tm.start,
++                task_id=task_id,
++                params=body,
++                stop_at=stop_at,
++                request_id=request_id,
+             )
+         except Exception:
+             # 状态记录在调度前创建，默认标记为 processing。如果调度器没能

@@ -1,0 +1,106 @@
+<div class="space-y-4 rounded-box border border-base-300 p-4">
+  <div class="space-y-2">
+    <h4 class="font-semibold">Giới hạn đăng TikTok</h4>
+    <% cap_message = presenter.tiktok_cap_message %>
+    <div role="<%= cap_message.fetch(:role) %>" class="alert <%= cap_message.fetch(:alert_class) %>">
+      <span><%= cap_message.fetch(:text) %></span>
+    </div>
+  </div>
+
+  <% if presenter.tiktok_privacy_warning.present? %>
+    <div role="alert" class="alert alert-warning">
+      <span><%= presenter.tiktok_privacy_warning %></span>
+    </div>
+  <% end %>
+
+  <label class="form-control w-full">
+    <span class="label-text mb-1">Quyền riêng tư TikTok</span>
+    <%= select_tag "publication[consent_attributes][privacy_level]",
+                   options_for_select(presenter.tiktok_privacy_options, presenter.tiktok_privacy_choice),
+                   class: "select select-bordered w-full",
+                   required: true %>
+  </label>
+
+  <fieldset class="space-y-3">
+    <legend class="font-medium">Tương tác với bài đăng</legend>
+    <% if presenter.tiktok_creator_settings_warning.present? %>
+      <div role="alert" class="alert alert-warning">
+        <span><%= presenter.tiktok_creator_settings_warning %></span>
+      </div>
+    <% end %>
+    <% presenter.tiktok_interactions.each do |interaction| %>
+      <div class="space-y-1">
+        <label for="<%= interaction.fetch(:field) %>" class="flex items-center gap-3">
+          <%= hidden_field_tag "publication[consent_attributes][#{interaction.fetch(:field)}]", "0", id: nil %>
+          <%= check_box_tag "publication[consent_attributes][#{interaction.fetch(:field)}]",
+                            "1",
+                            interaction.fetch(:checked),
+                            id: interaction.fetch(:field),
+                            disabled: interaction.fetch(:disabled),
+                            class: "checkbox checkbox-primary" %>
+          <span><%= interaction.fetch(:label) %></span>
+        </label>
+        <% if interaction.fetch(:show_disabled_note) %>
+          <p class="pl-8 text-sm text-base-content/60">Creator đã tắt lựa chọn này.</p>
+        <% end %>
+      </div>
+    <% end %>
+  </fieldset>
+
+  <fieldset class="space-y-3 border-t border-base-300 pt-4">
+    <legend class="font-medium">Nội dung thương mại</legend>
+    <label for="brand_organic_toggle" class="flex items-start gap-3">
+      <%= hidden_field_tag "publication[consent_attributes][brand_organic_toggle]", "0", id: nil %>
+      <%= check_box_tag "publication[consent_attributes][brand_organic_toggle]",
+                        "1",
+                        presenter.tiktok_brand_organic_selected?,
+                        id: "brand_organic_toggle",
+                        class: "checkbox checkbox-primary mt-1" %>
+      <span>Tôi đang quảng bá thương hiệu hoặc sản phẩm của chính mình</span>
+    </label>
+    <label for="brand_content_toggle" class="flex items-start gap-3">
+      <%= hidden_field_tag "publication[consent_attributes][brand_content_toggle]", "0", id: nil %>
+      <%= check_box_tag "publication[consent_attributes][brand_content_toggle]",
+                        "1",
+                        presenter.tiktok_brand_content_selected?,
+                        id: "brand_content_toggle",
+                        disabled: presenter.tiktok_brand_content_disabled?,
+                        class: "checkbox checkbox-primary mt-1" %>
+      <span>Nội dung được tài trợ hoặc quảng bá cho thương hiệu khác</span>
+    </label>
+    <% if presenter.tiktok_brand_content_guidance.present? %>
+      <p class="text-sm text-base-content/60"><%= presenter.tiktok_brand_content_guidance %></p>
+    <% end %>
+  </fieldset>
+
+  <label class="form-control w-full border-t border-base-300 pt-4">
+    <span class="label-text mb-1">Video có nội dung do AI tạo hoặc chỉnh sửa</span>
+    <%= select_tag "publication[consent_attributes][is_aigc]",
+                   options_for_select(presenter.disclosure_options, presenter.tiktok_ai_disclosure_choice),
+                   class: "select select-bordered w-full",
+                   required: true %>
+  </label>
+
+  <div class="space-y-3 border-t border-base-300 pt-4">
+    <label for="creator_account_private" class="flex items-start gap-3">
+      <%= hidden_field_tag "publication[consent_attributes][creator_account_private]", "0", id: nil %>
+      <%= check_box_tag "publication[consent_attributes][creator_account_private]",
+                        "1",
+                        presenter.tiktok_private_account_confirmed?,
+                        id: "creator_account_private",
+                        required: true,
+                        class: "checkbox checkbox-primary mt-1" %>
+      <span>Tôi xác nhận tài khoản TikTok đang ở chế độ riêng tư</span>
+    </label>
+    <label for="music_usage_confirmed" class="flex items-start gap-3">
+      <%= hidden_field_tag "publication[consent_attributes][music_usage_confirmed]", "0", id: nil %>
+      <%= check_box_tag "publication[consent_attributes][music_usage_confirmed]",
+                        "1",
+                        presenter.tiktok_music_usage_confirmed?,
+                        id: "music_usage_confirmed",
+                        required: true,
+                        class: "checkbox checkbox-primary mt-1" %>
+      <span>Tôi xác nhận có quyền sử dụng nhạc trong video</span>
+    </label>
+  </div>
+</div>

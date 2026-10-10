@@ -1,0 +1,207 @@
+<% generation_inputs = @ai_generation.input_snapshot %>
+<% generation_scenes = generation_inputs.fetch("scenes", []) %>
+<% scene_inputs = @scene_inputs || generation_scenes %>
+<% estimate_snapshot = @ai_generation.estimate_snapshot %>
+<% cost_breakdown = estimate_snapshot.fetch("cost_breakdown", {}) %>
+<% tts_fallback_cost = cost_breakdown.fetch("tts_fallback", {}) %>
+<% required_costs_known = estimate_snapshot["required_costs_known"] == true %>
+<% estimate_matches_inputs = estimate_snapshot["input_snapshot"] == generation_inputs %>
+<% manual_retry_available = @ai_generation.outcome_unknown? && @outbound_attempt&.manual_outcome_not_occurred? && @outbound_attempt.sender_stopped_at.present? && @outbound_attempt.request_timeout_at <= Time.current %>
+<% generation_ready_to_submit = @ai_generation.prompts_ready? || manual_retry_available %>
+<% submission_ready = !@editing_script && generation_ready_to_submit && required_costs_known && estimate_matches_inputs %>
+<% content_for :title, @editing_script ? "Duyệt kịch bản | AffiHub" : "Duyệt cảnh và báo giá | AffiHub" %>
+
+<section class="space-y-6">
+  <div class="space-y-3">
+    <%= link_to "← #{@video_project.name}", video_project_path(@video_project), class: "link link-hover text-sm" %>
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <h1 class="text-3xl font-bold"><%= @editing_script ? "Duyệt kịch bản" : "Duyệt cảnh và báo giá" %></h1>
+        <p class="mt-2 text-base-content/70"><%= generation_inputs["video_subject"] %></p>
+      </div>
+      <%= workflow_status_badge(@ai_generation.status, resource: "ai_generation") %>
+    </div>
+  </div>
+
+  <ul class="steps steps-horizontal w-full overflow-x-auto">
+    <li class="step step-primary">Chủ đề</li>
+    <li class="step step-primary">Kịch bản</li>
+    <li class="step <%= "step-primary" unless @editing_script %>">Cảnh</li>
+    <li class="step <%= "step-primary" if estimate_snapshot.present? %>">Báo giá</li>
+    <li class="step">Tạo video</li>
+  </ul>
+
+  <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+    <section class="space-y-4">
+      <% if @editing_script %>
+        <article class="card border border-base-300 bg-base-100">
+          <div class="card-body gap-4">
+            <div class="space-y-1">
+              <h2 class="card-title">Kịch bản nháp</h2>
+              <p class="text-sm text-base-content/70">Đọc và chỉnh sửa nội dung trước khi dùng tài khoản AI đang chọn để tạo gợi ý cảnh.</p>
+            </div>
+            <%= form_with scope: :ai_generation,
+                          url: video_project_ai_generation_path(@video_project, @ai_generation),
+                          method: :patch,
+                          class: "space-y-4" do |form| %>
+              <%= form.hidden_field :step, value: "create_prompts" %>
+              <div class="space-y-2">
+                <%= form.label :video_script, "Nội dung kịch bản", class: "label font-medium" %>
+                <%= form.text_area :video_script,
+                                   value: @video_script || generation_inputs["video_script"],
+                                   required: true,
+                                   class: "textarea textarea-bordered min-h-64 w-full" %>
+              </div>
+              <label class="label cursor-pointer justify-start gap-3">
+                <%= form.check_box :script_approved,
+                                   {
+                                     checked: @script_approved.nil? ? generation_inputs["script_approved"] : @script_approved,
+                                     required: true,
+                                     class: "checkbox checkbox-primary"
+                                   },
+                                   "1",
+                                   "0" %>
+                <span>Tôi đã đọc và duyệt kịch bản này.</span>
+              </label>
+              <%= form.submit "Duyệt kịch bản và tạo gợi ý cảnh", class: "btn btn-primary w-full sm:w-auto" %>
+            <% end %>
+          </div>
+        </article>
+      <% else %>
+        <article class="card border border-base-300 bg-base-100">
+          <div class="card-body gap-4">
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div class="space-y-1">
+                <h2 class="card-title">Gợi ý cảnh</h2>
+                <p class="text-sm text-base-content/70">Kiểm tra mô tả từng cảnh. Tất cả cảnh dùng cùng thời lượng để phù hợp với MPT.</p>
+              </div>
+              <%= link_to "Sửa kịch bản", edit_video_project_ai_generation_path(@video_project, @ai_generation, step: "script"), class: "btn btn-outline btn-sm" %>
+            </div>
+
+            <%= form_with scope: :ai_generation,
+                          url: video_project_ai_generation_path(@video_project, @ai_generation),
+                          method: :patch,
+                          class: "space-y-4" do %>
+              <%= hidden_field_tag "ai_generation[step]", "create_estimate" %>
+              <% scene_inputs.each_with_index do |scene, scene_index| %>
+                <% scene = scene.to_h %>
+                <% scene_prompt = scene["prompt"] || scene[:prompt] %>
+                <% scene_duration = scene["duration"] || scene[:duration] %>
+                <% scene_approved = ActiveModel::Type::Boolean.new.cast(scene["approved"] || scene[:approved]) %>
+                <% prompt_field_id = "ai_generation_scene_#{scene_index}_prompt" %>
+                <% approval_field_id = "ai_generation_scene_#{scene_index}_approved" %>
+                <article class="card border border-base-300 bg-base-100">
+                  <div class="card-body gap-4">
+                    <div class="flex items-center justify-between gap-3">
+                      <h3 class="font-semibold">Cảnh <%= scene_index + 1 %></h3>
+                      <span class="badge badge-neutral"><%= scene_duration %> giây</span>
+                    </div>
+                    <div class="space-y-2">
+                      <%= label_tag prompt_field_id, "Mô tả cảnh #{scene_index + 1}", class: "label font-medium" %>
+                      <%= text_area_tag "ai_generation[scenes][][prompt]",
+                                        scene_prompt,
+                                        id: prompt_field_id,
+                                        required: true,
+                                        class: "textarea textarea-bordered min-h-24 w-full" %>
+                    </div>
+                    <%= hidden_field_tag "ai_generation[scenes][][duration]", scene_duration %>
+                    <label class="label cursor-pointer justify-start gap-3">
+                      <%= check_box_tag "ai_generation[scenes][][approved]",
+                                        "1",
+                                        scene_approved,
+                                        id: approval_field_id,
+                                        class: "checkbox checkbox-primary" %>
+                      <span>Tôi đã kiểm tra và duyệt cảnh này.</span>
+                    </label>
+                  </div>
+                </article>
+              <% end %>
+              <%= submit_tag "Duyệt cảnh và lấy báo giá", class: "btn btn-primary w-full sm:w-auto" %>
+            <% end %>
+          </div>
+        </article>
+      <% end %>
+    </section>
+
+    <aside class="card h-fit border border-base-300 bg-base-100">
+      <div class="card-body gap-4">
+        <h2 class="card-title text-base">Báo giá và ngân sách</h2>
+        <p class="text-sm text-base-content/70">Chỉ gửi job trả phí sau khi mọi khoản bắt buộc có báo giá hiện hành và bạn xác nhận ngân sách.</p>
+
+        <% if cost_breakdown.present? %>
+          <dl class="divide-y divide-base-300">
+            <% [["MuAPI", "muapi"], ["LLM", "llm"], ["Stock", "stock"], ["TTS fallback", "tts_fallback"], ["Khoản chưa rõ", "unknown"]].each do |cost_label, cost_key| %>
+              <% cost = cost_breakdown.fetch(cost_key, {}) %>
+              <% if cost["amount"].present? %>
+                <% cost_amount = "#{cost["amount"]} #{cost["currency"]}" %>
+              <% else %>
+                <% cost_amount = "Chưa có báo giá" %>
+              <% end %>
+              <div class="space-y-1 py-3 first:pt-0 last:pb-0">
+                <dt class="text-sm font-medium"><%= cost_label %></dt>
+                <dd class="text-sm"><%= cost_amount %></dd>
+                <dd class="text-xs text-base-content/60"><%= cost["provider"] %> · <%= cost["source"] %></dd>
+                <% if cost["estimated_at"].present? %>
+                  <dd class="text-xs text-base-content/60">Báo giá lúc <%= l(Time.zone.parse(cost["estimated_at"]), format: :short) %></dd>
+                <% end %>
+              </div>
+            <% end %>
+          </dl>
+          <div class="rounded-box bg-base-200 p-4">
+            <p class="text-sm font-medium">TTS</p>
+            <p class="mt-1 text-sm">VieNeu-TTS là giọng đọc mặc định.</p>
+            <p class="text-sm">Azure Speech chỉ dùng khi cần fallback: <%= tts_fallback_cost["amount"].present? ? "#{tts_fallback_cost["amount"]} #{tts_fallback_cost["currency"]}" : "chưa có báo giá" %>.</p>
+          </div>
+          <% if submission_ready %>
+            <div role="status" class="alert alert-success">
+              <span>Tổng: <%= estimate_snapshot["total_amount"] %> <%= estimate_snapshot["currency"] %>. Nhập ngân sách tối đa và xác nhận để gửi job.</span>
+            </div>
+            <%= form_with scope: :ai_generation,
+                          url: video_project_ai_generation_path(@video_project, @ai_generation),
+                          method: :patch,
+                          class: "space-y-4 border-t border-base-300 pt-4" do |form| %>
+              <%= form.hidden_field :step, value: "submit" %>
+              <div class="space-y-2">
+                <%= form.label :budget, "Ngân sách tối đa (#{estimate_snapshot["currency"]})", class: "label font-medium" %>
+                <%= form.number_field :budget,
+                                      min: "0.01",
+                                      step: "0.01",
+                                      required: true,
+                                      class: "input input-bordered w-full" %>
+              </div>
+              <label class="label flex w-full cursor-pointer items-start justify-start gap-3 whitespace-normal">
+                <%= form.check_box :confirmed,
+                                   { required: true, class: "checkbox checkbox-primary mt-1" },
+                                   "1",
+                                   "0" %>
+                <span class="min-w-0 flex-1 whitespace-normal">Tôi duyệt báo giá và cho phép gửi job trả phí trong ngân sách này.</span>
+              </label>
+              <%= form.submit manual_retry_available ? "Xác nhận ngân sách và gửi lại video" : "Xác nhận ngân sách và tạo video", class: "btn btn-primary w-full" %>
+            <% end %>
+          <% elsif !required_costs_known %>
+            <div role="alert" class="alert alert-warning">
+              <span>Job đang bị chặn vì còn khoản phí bắt buộc chưa có báo giá. AffiHub không tự ước đoán chi phí.</span>
+            </div>
+          <% elsif !estimate_matches_inputs %>
+            <div role="alert" class="alert alert-warning">
+              <span>Báo giá không còn khớp với kịch bản hoặc gợi ý cảnh hiện tại. Hãy cập nhật báo giá trước khi gửi job.</span>
+            </div>
+          <% else %>
+            <div role="status" class="alert alert-info">
+              <span>Lần tạo video này đã được gửi hoặc chưa sẵn sàng để gửi.</span>
+            </div>
+          <% end %>
+        <% else %>
+          <div role="status" class="alert alert-info">
+            <span>Chưa có báo giá. Báo giá sẽ được lấy riêng cho từng cảnh sau khi bạn duyệt.</span>
+          </div>
+          <div class="rounded-box bg-base-200 p-4 text-sm">
+            <p class="font-medium">TTS</p>
+            <p class="mt-1">VieNeu-TTS là mặc định; Azure Speech là provider fallback.</p>
+            <p class="text-base-content/70">Chi phí fallback sẽ hiện sau khi có báo giá hiện hành.</p>
+          </div>
+        <% end %>
+      </div>
+    </aside>
+  </div>
+</section>

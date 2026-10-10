@@ -1,0 +1,164 @@
+<% content_for :title, "Chi tiết nhật ký tự trả lời" %>
+
+<section class="space-y-6">
+  <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+    <div class="space-y-2">
+      <%= link_to "← Nhật ký tự trả lời", auto_reply_logs_path, class: "link link-hover text-sm" %>
+      <div class="flex flex-wrap items-center gap-2">
+        <h1 class="text-3xl font-bold">Bình luận trên <%= @auto_reply_event.social_destination.name %></h1>
+        <span class="badge <%= auto_reply_event_status_badge_class(@auto_reply_event.status) %>">
+          <%= auto_reply_event_status_label(@auto_reply_event.status) %>
+        </span>
+      </div>
+      <p class="break-all text-sm text-base-content/60">
+        <%= social_provider_name(@auto_reply_event.source) %> · Mã bình luận: <%= @auto_reply_event.provider_comment_id %>
+      </p>
+    </div>
+    <%= link_to "Mở quy tắc", auto_reply_rules_path(social_destination_id: @auto_reply_event.social_destination_id), class: "btn btn-outline w-full sm:w-auto" %>
+  </div>
+
+  <% if auto_reply_outcome_unknown?(@auto_reply_event) %>
+    <div role="alert" class="alert alert-warning items-start">
+      <div class="min-w-0">
+        <h2 class="font-semibold">Kết quả gửi chưa xác định</h2>
+        <p class="mt-1 text-sm">
+          <%= auto_reply_safe_error_message(@auto_reply_event.safe_error_code) || "Meta có thể đã nhận câu trả lời nhưng AffiHub chưa nhận được xác nhận." %>
+          Kiểm tra bình luận trên nền tảng trước khi ghi quyết định; không gửi lại khi chưa xác định.
+        </p>
+      </div>
+    </div>
+  <% end %>
+
+  <section class="grid min-w-0 gap-4 lg:grid-cols-2">
+    <article class="card min-w-0 border border-base-300 bg-base-100">
+      <div class="card-body gap-3 p-4 sm:p-5">
+        <h2 class="card-title">Bình luận nhận được</h2>
+        <p class="whitespace-pre-wrap break-words rounded-box border border-base-300 bg-base-200 p-4"><%= @auto_reply_event.comment_text %></p>
+        <dl class="grid gap-3 sm:grid-cols-2">
+          <div>
+            <dt class="text-sm text-base-content/60">Nguồn</dt>
+            <dd class="font-medium"><%= social_provider_name(@auto_reply_event.source) %></dd>
+          </div>
+          <div>
+            <dt class="text-sm text-base-content/60">Nhận lúc</dt>
+            <dd class="font-medium"><%= l(@auto_reply_event.created_at, format: :short) %></dd>
+          </div>
+        </dl>
+      </div>
+    </article>
+
+    <article class="card min-w-0 border border-base-300 bg-base-100">
+      <div class="card-body gap-3 p-4 sm:p-5">
+        <h2 class="card-title">Yêu cầu trả lời</h2>
+        <% if auto_reply_attempt_present?(@outbound_attempt) %>
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="badge <%= auto_reply_attempt_status_badge_class(@outbound_attempt.status) %>">
+              <%= auto_reply_attempt_status_label(@outbound_attempt.status) %>
+            </span>
+            <span class="text-sm text-base-content/60">Lần thử <%= @outbound_attempt.attempt_number %></span>
+          </div>
+          <p class="break-all text-xs text-base-content/60">Mã lần gửi: <%= @outbound_attempt.attempt_id %></p>
+        <% else %>
+          <p class="text-sm text-base-content/70">Chưa có yêu cầu gửi câu trả lời tới Meta.</p>
+        <% end %>
+        <% if auto_reply_event_error_present?(@auto_reply_event) %>
+          <div role="alert" class="alert alert-error">
+            <span><%= auto_reply_safe_error_message(@auto_reply_event.safe_error_code) || "Cần kiểm tra kết quả xử lý." %></span>
+          </div>
+        <% end %>
+      </div>
+    </article>
+  </section>
+
+  <% if auto_reply_resolution_available?(@auto_reply_event, @outbound_attempt) %>
+    <section class="card border border-warning/40 bg-base-100" aria-labelledby="auto-reply-resolution-heading">
+      <div class="card-body gap-4 p-4 sm:p-6">
+        <div class="space-y-1">
+          <h2 id="auto-reply-resolution-heading" class="card-title">Đối soát kết quả</h2>
+          <p class="text-sm text-base-content/70">Ghi quyết định cùng bằng chứng. Xác nhận “chưa xảy ra” chỉ mở retry sau khi request cũ đã dừng và hết thời hạn.</p>
+        </div>
+
+        <%= form_with url: auto_reply_log_path(@auto_reply_event),
+                      method: :patch,
+                      scope: :outcome_resolution,
+                      class: "space-y-4" do |form| %>
+          <label class="form-control w-full">
+            <span class="label-text mb-1">Quyết định</span>
+            <%= form.select :decision,
+                            options_for_select(
+                              auto_reply_manual_decision_options,
+                              @outcome_resolution_params&.[](:decision)
+                            ),
+                            { prompt: "Chọn kết quả đã kiểm tra" },
+                            required: true,
+                            class: "select select-bordered w-full text-base" %>
+          </label>
+
+          <label class="form-control w-full">
+            <span class="label-text mb-1">Bằng chứng đối soát</span>
+            <%= form.text_area :evidence,
+                               value: @outcome_resolution_params&.[](:evidence),
+                               rows: 3,
+                               required: true,
+                               class: "textarea textarea-bordered w-full text-base" %>
+          </label>
+
+          <label class="form-control w-full">
+            <span class="label-text mb-1">Mã hoặc đường dẫn phản hồi</span>
+            <%= form.text_field :provider_reference,
+                                value: @outcome_resolution_params&.[](:provider_reference),
+                                class: "input input-bordered w-full text-base" %>
+            <span class="label-text-alt mt-1">Bắt buộc khi xác nhận câu trả lời đã xảy ra.</span>
+          </label>
+
+          <label class="flex items-start gap-3 rounded-box border border-base-300 p-3">
+            <%= form.check_box :risk_confirmed,
+                               { checked: @outcome_resolution_params&.[](:risk_confirmed) == "1", class: "checkbox checkbox-warning mt-0.5" },
+                               "1",
+                               "0" %>
+            <span class="min-w-0 text-sm">
+              Tôi đã kiểm tra kỹ và chấp nhận rủi ro có thể gửi câu trả lời trùng lặp nếu chọn “Chắc chắn chưa xảy ra”.
+            </span>
+          </label>
+
+          <%= form.submit "Ghi nhận quyết định",
+                          class: "btn btn-primary min-h-11 w-full md:min-h-10 sm:w-auto",
+                          data: { turbo_submits_with: "Đang lưu…" } %>
+        <% end %>
+      </div>
+    </section>
+  <% end %>
+
+  <section class="space-y-3" aria-labelledby="auto-reply-audit-heading">
+    <div>
+      <h2 id="auto-reply-audit-heading" class="text-xl font-bold">Lịch sử xử lý</h2>
+      <p class="text-sm text-base-content/60">Các mốc này được lưu nối tiếp để đối chiếu lần gửi.</p>
+    </div>
+
+    <% if auto_reply_audit_events_present?(@audit_events) %>
+      <div class="card border border-base-300 bg-base-100">
+        <ol class="divide-y divide-base-300">
+          <% @audit_events.each do |audit_event| %>
+            <li class="space-y-2 px-4 py-4 sm:px-5">
+              <div class="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                <p class="font-medium"><%= auto_reply_audit_description(audit_event) %></p>
+                <time class="text-xs text-base-content/60" datetime="<%= audit_event.created_at.iso8601 %>">
+                  <%= l(audit_event.created_at, format: :short) %>
+                </time>
+              </div>
+              <% auto_reply_audit_display_fields(audit_event).each do |audit_display_field| %>
+                <p class="<%= audit_display_field.fetch(:css_class) %>"><%= audit_display_field.fetch(:prefix) %><%= audit_display_field.fetch(:value) %></p>
+              <% end %>
+            </li>
+          <% end %>
+        </ol>
+      </div>
+    <% else %>
+      <div class="card border border-base-300 bg-base-100">
+        <div class="card-body p-4 sm:p-5">
+          <p class="text-sm text-base-content/70">Chưa có mốc xử lý được ghi nhận.</p>
+        </div>
+      </div>
+    <% end %>
+  </section>
+</section>

@@ -1,0 +1,176 @@
+<% content_for :title, "#{@video_project.name} | AffiHub" %>
+
+<section class="space-y-8">
+  <div class="space-y-4">
+    <%= link_to "← Dự án video", video_projects_path, class: "link link-hover text-sm" %>
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <div class="space-y-2">
+        <div class="flex flex-wrap items-center gap-3">
+          <h1 class="text-3xl font-bold"><%= @video_project.name %></h1>
+          <%= workflow_status_badge(@video_project.status, resource: "video_project") %>
+        </div>
+        <p class="text-base-content/70">Nguồn và các bản render của project được giữ riêng, kể cả khi bạn tạo version mới.</p>
+      </div>
+      <div class="flex flex-col gap-2 sm:flex-row">
+        <%= link_to "Đổi tên", edit_video_project_path(@video_project), class: "btn btn-outline" %>
+        <% if @source_assets.empty? && @render_versions.empty? %>
+          <%= button_to "Xóa project", video_project_path(@video_project), method: :delete, class: "btn btn-ghost text-error", form: { data: { turbo_confirm: "Xóa project này?" } } %>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+    <article class="card border border-primary/20 bg-primary/5">
+      <div class="card-body justify-between gap-4 sm:flex-row sm:items-center">
+        <div class="space-y-1">
+          <h2 class="card-title">Tạo video bằng AI</h2>
+          <p class="text-sm text-base-content/70">Duyệt kịch bản, cảnh và báo giá trước khi gửi job text-to-video.</p>
+        </div>
+        <%= link_to "Tạo video AI", new_video_project_ai_generation_path(@video_project), class: "btn btn-primary w-full sm:w-auto" %>
+      </div>
+    </article>
+
+    <article class="card border border-base-300 bg-base-100">
+      <div class="card-body justify-between gap-4 sm:flex-row sm:items-center">
+        <div class="space-y-1">
+          <h2 class="card-title">Bài đăng</h2>
+          <p class="text-sm text-base-content/70">Xem caption, kiểm tra bản render và xác nhận từng Page riêng.</p>
+        </div>
+        <%= link_to "Mở bài đăng", video_project_publications_path(@video_project), class: "btn btn-outline w-full sm:w-auto" %>
+      </div>
+    </article>
+
+    <article class="card border border-base-300 bg-base-100">
+      <div class="card-body justify-between gap-4 sm:flex-row sm:items-center">
+        <div class="space-y-1">
+          <h2 class="card-title">Lịch đăng</h2>
+          <p class="text-sm text-base-content/70">Xem lần chạy tiếp theo, timezone, quota và các lần bị lỡ.</p>
+        </div>
+        <%= link_to "Mở lịch đăng", video_project_schedules_path(@video_project), class: "btn btn-outline w-full sm:w-auto" %>
+      </div>
+    </article>
+
+    <article class="card border border-base-300 bg-base-100">
+      <div class="card-body gap-4 p-4 sm:p-5">
+        <div class="space-y-1">
+          <h2 class="card-title">Google Drive &amp; Sheets</h2>
+          <p class="text-sm text-base-content/70">Theo dõi bản sao Drive và chọn render để đồng bộ trạng thái Sheets.</p>
+        </div>
+        <div class="flex flex-col gap-2 sm:flex-row">
+          <%= link_to "Trạng thái Drive", video_project_drive_exports_path(@video_project), class: "btn btn-outline w-full sm:w-auto" %>
+          <%= link_to "Trạng thái Sheets", video_project_sheet_syncs_path(@video_project), class: "btn btn-outline w-full sm:w-auto" %>
+        </div>
+      </div>
+    </article>
+
+    <article class="card border border-base-300 bg-base-100">
+      <div class="card-body justify-between gap-4 sm:flex-row sm:items-center">
+        <div class="space-y-1">
+          <h2 class="card-title">Thêm nguồn video</h2>
+          <p class="text-sm text-base-content/70">Nhập file MP4/MOV, URL cụ thể hoặc tìm metadata YouTube.</p>
+        </div>
+        <%= link_to "Chọn nguồn", new_video_project_source_asset_path(@video_project), class: "btn btn-outline w-full sm:w-auto" %>
+      </div>
+    </article>
+  </div>
+
+  <% if @ai_generations.any? %>
+    <section class="space-y-4" aria-labelledby="ai-generations-heading">
+      <div>
+        <h2 id="ai-generations-heading" class="text-xl font-bold">Lịch sử video AI</h2>
+        <p class="text-sm text-base-content/60">Các lần tạo video AI text-to-video thuộc project này.</p>
+      </div>
+      <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <% @ai_generations.each do |ai_generation| %>
+          <article class="card border border-base-300 bg-base-100">
+            <div class="card-body gap-3">
+              <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0 space-y-1">
+                  <h3 class="card-title text-base"><%= ai_generation.input_snapshot["video_subject"].presence || "Video AI" %></h3>
+                  <p class="text-sm text-base-content/60"><%= l(ai_generation.created_at, format: :short) %></p>
+                </div>
+                <%= workflow_status_badge(ai_generation.status, resource: "ai_generation") %>
+              </div>
+              <div class="card-actions justify-end">
+                <%= link_to "Xem trạng thái",
+                            video_project_ai_generation_path(@video_project, ai_generation),
+                            class: "btn btn-outline btn-sm" %>
+                <% if ai_generation.script_ready? || ai_generation.prompts_ready? %>
+                  <%= link_to "Tiếp tục",
+                              edit_video_project_ai_generation_path(@video_project, ai_generation),
+                              class: "btn btn-primary btn-sm" %>
+                <% end %>
+              </div>
+            </div>
+          </article>
+        <% end %>
+      </div>
+    </section>
+  <% end %>
+
+  <section class="space-y-4" aria-labelledby="source-assets-heading">
+    <div class="flex items-center justify-between gap-3">
+      <div>
+        <h2 id="source-assets-heading" class="text-xl font-bold">Nguồn video</h2>
+        <p class="text-sm text-base-content/60"><%= @source_assets.length %> nguồn</p>
+      </div>
+      <% if @source_assets.any? %>
+        <%= link_to "Xem tất cả", video_project_source_assets_path(@video_project), class: "link link-hover text-sm" %>
+      <% end %>
+    </div>
+
+    <% if @source_assets.any? %>
+      <ul class="divide-y divide-base-300 rounded-box border border-base-300 bg-base-100">
+        <% @source_assets.each do |source_asset| %>
+          <li class="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+            <div class="min-w-0 space-y-1">
+              <h3 class="break-all font-semibold"><%= source_asset.file.attached? ? source_asset.file.filename : source_asset.source_url.presence || "Video import" %></h3>
+              <p class="text-sm text-base-content/60"><%= l(source_asset.created_at, format: :short) %></p>
+            </div>
+            <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <%= workflow_status_badge(source_asset.status, resource: "source_asset") %>
+              <%= link_to "Chi tiết", video_project_source_asset_path(@video_project, source_asset), class: "btn btn-outline btn-sm w-full sm:w-auto" %>
+              <% if source_asset.ready? %>
+                <%= link_to "Biên tập", new_video_project_render_version_path(@video_project, source_asset_id: source_asset.id), class: "btn btn-primary btn-sm w-full sm:w-auto" %>
+              <% end %>
+            </div>
+          </li>
+        <% end %>
+      </ul>
+    <% else %>
+      <div class="rounded-box border border-dashed border-base-300 bg-base-100 p-6 text-sm text-base-content/70">
+        Chưa có video nguồn. Nhập file MP4/MOV, dán URL hoặc tìm metadata YouTube.
+      </div>
+    <% end %>
+  </section>
+
+  <section class="space-y-4" aria-labelledby="render-versions-heading">
+    <div>
+      <h2 id="render-versions-heading" class="text-xl font-bold">Bản render</h2>
+      <p class="text-sm text-base-content/60">Mỗi lần render tạo một version riêng.</p>
+    </div>
+    <% if @render_versions.any? %>
+      <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <% @render_versions.each do |render_version| %>
+          <article class="card border border-base-300 bg-base-100">
+            <div class="card-body flex-row items-center justify-between gap-3">
+              <div>
+                <h3 class="font-semibold">Version <%= render_version.version_number %></h3>
+                <p class="text-sm text-base-content/60"><%= l(render_version.created_at, format: :short) %></p>
+              </div>
+              <div class="flex items-center gap-2">
+                <%= workflow_status_badge(render_version.status, resource: "render_version") %>
+                <%= link_to "Xem", video_project_render_version_path(@video_project, render_version), class: "btn btn-outline btn-sm" %>
+              </div>
+            </div>
+          </article>
+        <% end %>
+      </div>
+    <% else %>
+      <div class="rounded-box border border-dashed border-base-300 bg-base-100 p-6 text-sm text-base-content/70">
+        Chưa có bản render. Source được giữ nguyên khi bạn tạo bản chỉnh sửa sau này.
+      </div>
+    <% end %>
+  </section>
+</section>

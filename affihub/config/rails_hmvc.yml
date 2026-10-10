@@ -4,7 +4,7 @@
 
 # Project type: "api" or "web"
 # Affects templates and generators
-type: api
+type: web
 
 # ─────────────────────────────────────────────────────────────────────────────
 # API configuration

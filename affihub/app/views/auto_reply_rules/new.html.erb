@@ -1,0 +1,24 @@
+<% content_for :title, "Thêm quy tắc tự trả lời" %>
+
+<section class="mx-auto max-w-3xl space-y-6">
+  <div class="space-y-2">
+    <%= link_to "← Tự trả lời bình luận", auto_reply_rules_path, class: "link link-hover text-sm" %>
+    <h1 class="text-3xl font-bold">Thêm quy tắc</h1>
+    <p class="text-sm text-base-content/70">Câu trả lời được gửi nguyên văn theo loại quy tắc bạn chọn.</p>
+  </div>
+
+  <% if auto_reply_destinations_present?(@social_destinations) %>
+    <%= render "form",
+               auto_reply_rule: @auto_reply_rule,
+               social_destinations: @social_destinations,
+               editing: false %>
+  <% else %>
+    <section class="card border border-base-300 bg-base-100">
+      <div class="card-body items-start gap-3 p-4 sm:p-6">
+        <h2 class="card-title">Chưa có Page Facebook hoặc tài khoản Instagram Business đang kết nối</h2>
+        <p class="text-sm text-base-content/70">Kết nối Page Facebook hoặc tài khoản Instagram Business trước khi bật tự trả lời bình luận.</p>
+        <%= link_to "Mở kết nối social", social_connections_path, class: "btn btn-primary w-full sm:w-auto" %>
+      </div>
+    </section>
+  <% end %>
+</section>

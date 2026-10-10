@@ -31,11 +31,18 @@ threads threads_count, threads_count
 # Specifies the `port` that Puma will listen on to receive requests; default is 3000.
 port ENV.fetch("PORT", 3000)
 
+if Rails.env.development?
+  codex_configuration = Rails.application.config_for(:ai_providers).deep_symbolize_keys.fetch(:providers).fetch(:codex)
+  codex_callback_uri = URI(codex_configuration.fetch(:redirect_uri))
+  application_port = ENV.fetch("PORT", 3000).to_i
+  bind "tcp://#{codex_callback_uri.host}:#{codex_callback_uri.port}" if codex_callback_uri.port != application_port
+end
+
 # Allow puma to be restarted by `bin/rails restart` command.
 plugin :tmp_restart
 
 # Run the Solid Queue supervisor inside of Puma for single-server deployments.
-plugin :solid_queue if ENV["SOLID_QUEUE_IN_PUMA"]
+plugin :solid_queue if ENV["SOLID_QUEUE_IN_PUMA"] || Rails.env.development?
 
 # Specify the PID file. Defaults to tmp/pids/server.pid in development.
 # In other environments, only set the PID file if requested.

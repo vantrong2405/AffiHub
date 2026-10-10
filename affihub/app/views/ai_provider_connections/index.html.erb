@@ -1,0 +1,86 @@
+<% content_for :title, "Tài khoản AI | AffiHub" %>
+<% provider_options_presentation = ai_provider_options_presentation(provider_options: @provider_options) %>
+<% accounts_presentation = ai_provider_accounts_presentation(
+     connections: @ai_provider_connections,
+     provider_presentations: @provider_presentations
+   ) %>
+
+<section class="space-y-8">
+  <div class="space-y-2">
+    <%= link_to "← Quay lại project", video_projects_path, class: "link link-hover text-sm" %>
+    <h1 class="text-3xl font-bold">Tài khoản AI</h1>
+    <p class="max-w-3xl text-base-content/70">
+      Kết nối tài khoản để tạo kịch bản và gợi ý cảnh. AffiHub lưu token mã hóa trên máy này; token không hiển thị trong trang hoặc nhật ký.
+    </p>
+  </div>
+
+  <section class="space-y-4" aria-labelledby="ai-provider-options-heading">
+    <div>
+      <h2 id="ai-provider-options-heading" class="text-xl font-semibold">Chọn tài khoản</h2>
+      <p class="mt-1 text-sm text-base-content/60">Mở đúng địa chỉ callback trong từng thẻ để giữ cùng phiên đăng nhập.</p>
+    </div>
+
+    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <% provider_options_presentation.each do |provider_option| %>
+        <% action = provider_option.fetch(:action) %>
+        <article class="card border border-base-300 bg-base-100 shadow-sm">
+          <div class="card-body gap-4">
+            <div class="flex items-start justify-between gap-2">
+              <h3 class="card-title text-base"><%= provider_option.fetch(:label) %></h3>
+              <span class="badge badge-neutral badge-outline"><%= provider_option.fetch(:availability_label) %></span>
+            </div>
+            <p class="min-h-12 text-sm text-base-content/70"><%= provider_option.fetch(:note) %></p>
+
+            <% if action.fetch(:kind) == :button %>
+              <%= button_to action.fetch(:label), action.fetch(:path),
+                            params: action.fetch(:params),
+                            class: "btn btn-primary w-full" %>
+            <% elsif action.fetch(:kind) == :link %>
+              <%= link_to action.fetch(:label), action.fetch(:href),
+                          class: "btn btn-outline w-full" %>
+              <p class="text-xs text-base-content/60">Callback: <code class="break-all"><%= action.fetch(:callback_origin) %></code></p>
+            <% else %>
+              <button type="button" class="btn btn-disabled w-full" disabled><%= action.fetch(:label) %></button>
+            <% end %>
+          </div>
+        </article>
+      <% end %>
+    </div>
+  </section>
+
+  <section class="space-y-4" aria-labelledby="connected-ai-accounts-heading">
+    <div>
+      <h2 id="connected-ai-accounts-heading" class="text-xl font-semibold">Tài khoản đã kết nối</h2>
+      <p class="mt-1 text-sm text-base-content/60">Mỗi nhà cung cấp có trạng thái quyền và hạn mức riêng. Thông tin kết nối được lưu riêng cho từng tài khoản.</p>
+    </div>
+
+    <% if accounts_presentation.fetch(:has_accounts) %>
+      <div class="grid gap-4 md:grid-cols-2">
+        <% accounts_presentation.fetch(:accounts).each do |account| %>
+          <article class="card border border-base-300 bg-base-100 shadow-sm">
+            <div class="card-body gap-4">
+              <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0 space-y-1">
+                  <h3 class="card-title break-words text-base"><%= account.fetch(:account_name) %></h3>
+                  <p class="break-all text-sm text-base-content/60"><%= account.fetch(:account_label) %></p>
+                </div>
+                <%= workflow_status_badge(account.fetch(:status), resource: "ai_provider_connection") %>
+              </div>
+              <p class="text-sm text-base-content/70"><%= account.fetch(:summary) %></p>
+              <div class="card-actions justify-end">
+                <%= link_to(account.fetch(:action_label), account.fetch(:path), class: "btn btn-outline btn-sm") %>
+              </div>
+            </div>
+          </article>
+        <% end %>
+      </div>
+    <% else %>
+      <div class="card border border-dashed border-base-300 bg-base-100">
+        <div class="card-body items-start">
+          <h3 class="card-title"><%= accounts_presentation.dig(:empty_state, :heading) %></h3>
+          <p class="text-base-content/70"><%= accounts_presentation.dig(:empty_state, :detail) %></p>
+        </div>
+      </div>
+    <% end %>
+  </section>
+</section>

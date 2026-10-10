@@ -30,17 +30,38 @@ repo-specific (test framework, commands, domain model, coding language). When a 
 is added, the same applies to it — load its own `CLAUDE.md`, don't assume `affihub`'s rules carry
 over.
 
-## 3. Git push safety — never force push
+## 3. Git push safety
 
-Never use `git push --force`, `git push -f`, or `git push --force-with-lease` in any repo/branch.
-Never `git push` to a protected branch (`main`/`master`) on your own initiative — ask first.
-If a pushed commit needs correction, add a follow-up commit; don't amend + force-push.
+`git push --force` / `-f` / `--force-with-lease` is allowed when the user explicitly asks for it
+in the moment — do not use it on your own initiative, and still name what it will overwrite before
+running it. Use `develop` as the integration branch for day-to-day development: create it from
+`main` when it does not exist, make feature commits there, and push development work to
+`origin/develop`. **Never push commits directly to `main`/`master`.** Promote verified work from
+`develop` to `main` through a pull request or an explicit merge/release step.
 
 ## 4. Commit messages
 
-Before the first commit of a task, ask the user whether to append `[skip ci]`. Apply that choice
-to every commit for that task across repos in this workspace. Never rewrite an already-pushed
-commit to add/remove it — use a follow-up commit instead.
+Don't append `[skip ci]` by default; add it only if the user asks for it in the moment.
+
+### Required commits for major features
+
+- A major feature (a complete capability or vertical slice, usually involving multiple layers/files)
+  must be committed once its implementation is complete and its required self-checks pass. For
+  `affihub`, run the relevant RSpec specs with the explicit `RAILS_ENV=test` command above and
+  perform any required manual verification before committing. Do not leave a verified major
+  feature sitting uncommitted while moving on to another feature.
+- Implement larger work as stable feature slices. Commit each completed and verified slice before
+  starting the next one, with one coherent behavior change per commit instead of accumulating files
+  from several features.
+- Commit coherent documentation/specification work in its own `docs:` commit before implementing
+  the behavior it defines. For OpenSpec work, include the related proposal, design, specs, tasks, and
+  reference notes in that documentation slice when they belong together.
+- Before committing in a dirty worktree, inspect the exact staged paths and commit only files for
+  the current slice. Keep unrelated staged and unstaged changes out of the commit.
+- Report the passing verification and the commit hash to the user. If verification fails, fix the
+  feature and rerun the relevant checks before committing.
+- Small unrelated edits can still be grouped by judgment. Preserve the `[skip ci]` choice rule above
+  for every commit in the task.
 
 ### Required commits for major features
 
@@ -56,12 +77,12 @@ commit to add/remove it — use a follow-up commit instead.
 
 ## 5. Database setup (affihub)
 
-`affihub` uses two local Postgres databases, both local/disposable for this POC (not shared team DBs):
+`affihub` uses three local Postgres databases, all local/disposable for this POC (not shared team DBs):
 
 ```bash
 cd affihub
-rtk bin/rails db:create    # creates affihub_development and affihub_test if missing
-rtk bin/rails db:prepare   # create + migrate + seed, idempotent
+rtk bin/rails db:create    # creates affihub_development, affihub_development_queue, and affihub_test if missing
+rtk bin/rails db:prepare   # create + migrate primary/queue databases + seed, idempotent
 ```
 
 ## 6. Running RSpec (affihub)

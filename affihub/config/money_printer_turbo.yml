@@ -1,0 +1,51 @@
+shared:
+  base_url: <%= ENV.fetch("MONEY_PRINTER_TURBO_BASE_URL", "http://money-printer-turbo:8080") %>
+  api_key: <%= Rails.application.credentials.dig(:money_printer_turbo, :api_key).to_s %>
+  version: 1.3.8
+  commit: fafec0fbf3142ad5ad7212c2e17996bf247c360a
+  open_timeout_seconds: 10
+  read_timeout_seconds: 60
+  download_max_bytes: 1073741824
+  poll_interval_seconds: 15
+  endpoints:
+    scripts: /api/v1/scripts
+    terms: /api/v1/terms
+    videos: /api/v1/videos
+    tasks: /api/v1/tasks
+    download: /api/v1/download
+  task_list_page_size: 1000
+  preflight:
+    restart_recovery_verified: false
+    restart_recovery_verified_at: null
+    restart_recovery_verified_for: {}
+  generation_profile:
+    video_source: muapi
+    model_id: seedance-lite-t2v
+    resolution: 480p
+    video_aspect: "9:16"
+    scene_count: 5
+    scene_duration: 6
+    min_scene_duration: 3
+    max_scene_duration: 12
+    video_count: 1
+  tts:
+    provider: chatterbox
+    model_id: vieneu-v3-turbo
+    voice_name: Mai Anh
+    response_format: wav
+    speed: 1.0
+    open_timeout_seconds: 10
+    read_timeout_seconds: 120
+  task_states:
+    failed: -1
+    interrupted: -2
+    complete: 1
+    processing: 4
+  safe_error_codes:
+    interrupted_on_restart: mpt_interrupted_on_restart
+
+test:
+  base_url: http://mpt.test
+  api_key: affihub-test-key
+  task_list_page_size: 2
+  download_max_bytes: 1024

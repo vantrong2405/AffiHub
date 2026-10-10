@@ -1,0 +1,91 @@
+<% content_for :title, sheet_sync_page_title(@sheet_sync) %>
+
+<section class="mx-auto max-w-3xl space-y-6">
+  <div class="space-y-2">
+    <%= link_to "← Trạng thái Sheets", video_project_sheet_syncs_path(@video_project), class: "link link-hover text-sm" %>
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div class="space-y-1">
+        <h1 class="text-3xl font-bold">Render v<%= @sheet_sync.render_version.version_number %></h1>
+        <p class="text-sm text-base-content/70"><%= @sheet_sync.social_destination.name %> · <%= @video_project.name %></p>
+      </div>
+      <span class="badge <%= sheet_sync_badge_class(@sheet_sync.status) %>"><%= sheet_sync_status_label(@sheet_sync.status) %></span>
+    </div>
+  </div>
+
+  <% if @has_safe_error %>
+    <div role="alert" class="alert alert-warning"><span><%= google_safe_error_message(@safe_error_code) %></span></div>
+  <% end %>
+
+  <% if @outcome_unknown %>
+    <div role="note" class="alert border border-warning/30 bg-warning/5 text-sm">
+      <span>Sheets có thể đã ghi hàng trước khi timeout. Có thể thử lại an toàn: AffiHub tìm row key ổn định rồi cập nhật hàng đó trước khi append.</span>
+    </div>
+  <% end %>
+
+  <article class="card border border-base-300 bg-base-100">
+    <div class="card-body gap-4 p-4 sm:p-5">
+      <h2 class="card-title">Đích đồng bộ</h2>
+      <dl class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div class="space-y-1">
+          <dt class="text-sm text-base-content/60">Tài khoản Google</dt>
+          <dd class="break-all font-medium"><%= @sheet_sync.google_connection.email %></dd>
+        </div>
+        <div class="space-y-1">
+          <dt class="text-sm text-base-content/60">Spreadsheet ID</dt>
+          <dd class="break-all font-medium"><%= @sheet_sync.google_connection.spreadsheet_id %></dd>
+        </div>
+        <div class="space-y-1">
+          <dt class="text-sm text-base-content/60">Tab</dt>
+          <dd class="font-medium"><%= @sheet_sync.google_connection.worksheet_title %></dd>
+        </div>
+        <div class="space-y-1">
+          <dt class="text-sm text-base-content/60">Cập nhật Sheets gần nhất</dt>
+          <dd class="font-medium"><%= google_local_time(@sheet_sync.last_synced_at) %></dd>
+        </div>
+      </dl>
+    </div>
+  </article>
+
+  <article class="card border border-base-300 bg-base-100">
+    <div class="card-body gap-4 p-4 sm:p-5">
+      <h2 class="card-title">Trạng thái bài đăng trong AffiHub</h2>
+      <% if @has_publication %>
+        <div class="flex flex-wrap items-center gap-3">
+          <%= workflow_status_badge(@publication.status, resource: "publication") %>
+          <span class="text-sm text-base-content/60">Cập nhật <%= google_local_time(@publication.updated_at) %></span>
+        </div>
+        <dl class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div class="space-y-1">
+            <dt class="text-sm text-base-content/60">Mã bài đăng</dt>
+            <dd class="break-all font-medium"><%= google_display_value(@publication.platform_post_id) %></dd>
+          </div>
+          <div class="space-y-1">
+            <dt class="text-sm text-base-content/60">Thời gian đăng</dt>
+            <dd class="font-medium"><%= google_local_time(@publication.published_at) %></dd>
+          </div>
+          <div class="space-y-1 sm:col-span-2">
+            <dt class="text-sm text-base-content/60">Permalink</dt>
+            <dd class="break-all font-medium"><%= google_display_value(@publication.permalink) %></dd>
+          </div>
+          <% if @has_publication_error %>
+            <div class="space-y-1 sm:col-span-2">
+              <dt class="text-sm text-base-content/60">Lỗi liên quan</dt>
+              <dd class="font-medium"><%= @publication.safe_error_code %></dd>
+            </div>
+          <% end %>
+        </dl>
+      <% else %>
+        <p class="text-sm text-base-content/70">Hàng Sheets được tạo từ một lịch đăng đã lưu; chưa có lần Publication nào.</p>
+      <% end %>
+    </div>
+  </article>
+
+  <% if @can_retry %>
+    <%= button_to "Thử đồng bộ hàng này lại",
+                  video_project_sheet_syncs_path(@video_project),
+                  method: :post,
+                  params: { google_connection_id: @sheet_sync.google_connection_id,
+                            render_version_ids: [ @sheet_sync.render_version_id ] },
+                  class: "btn btn-primary w-full sm:w-auto" %>
+  <% end %>
+</section>

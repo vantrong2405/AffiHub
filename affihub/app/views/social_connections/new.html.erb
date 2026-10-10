@@ -1,0 +1,54 @@
+<% provider_name = social_provider_name(@provider) %>
+<% oauth_provider_name = @provider == "instagram" ? "Facebook" : (@provider == "youtube" ? "Google" : provider_name) %>
+<% content_for :title, "Kết nối #{provider_name}" %>
+
+<section class="mx-auto max-w-3xl space-y-6">
+  <div class="space-y-2">
+    <%= link_to "← Danh sách tài khoản", social_connections_path, class: "link link-hover text-sm" %>
+    <h1 class="text-3xl font-bold">Kết nối <%= provider_name %></h1>
+    <p class="text-base-content/70">
+      <% if @provider == "instagram" %>
+        Bạn sẽ dùng Facebook Login for Business để cấp quyền cho Instagram, sau đó chọn Page liên kết Instagram Business.
+      <% else %>
+        Bạn sẽ xác nhận quyền truy cập tại <%= oauth_provider_name %>, sau đó chọn đích đăng video.
+      <% end %>
+    </p>
+  </div>
+
+  <article class="card border border-base-300 bg-base-100 shadow-sm">
+    <div class="card-body gap-4">
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <h2 class="card-title"><%= provider_name %></h2>
+          <p class="text-sm text-base-content/60">AffiHub chỉ lưu credential đã mã hóa và không hiển thị token.</p>
+        </div>
+        <% if @provider_configured %>
+          <span class="badge badge-success">Sẵn sàng kết nối</span>
+        <% else %>
+          <span class="badge badge-warning">Chưa cấu hình</span>
+        <% end %>
+      </div>
+
+      <% if @provider_configured %>
+        <div role="status" class="alert alert-info">
+          <% if @provider == "instagram" %>
+            <span>Bạn sẽ được chuyển sang Facebook Login for Business để xác nhận quyền truy cập.</span>
+          <% else %>
+            <span>Bạn sẽ được chuyển sang <%= oauth_provider_name %> để xác nhận quyền truy cập.</span>
+          <% end %>
+        </div>
+        <%= button_to "Tiếp tục với #{oauth_provider_name}",
+                      social_connections_path(provider: @provider),
+                      method: :post,
+                      class: "btn btn-primary w-full sm:w-auto" %>
+      <% else %>
+        <div role="alert" class="alert alert-warning">
+          <span>Chưa có OAuth Client ID cho <%= oauth_provider_name %>. Hãy cấu hình ứng dụng OAuth để bắt đầu kết nối.</span>
+        </div>
+        <button type="button" class="btn btn-primary w-full sm:w-auto" disabled aria-disabled="true">
+          Tiếp tục với <%= oauth_provider_name %>
+        </button>
+      <% end %>
+    </div>
+  </article>
+</section>

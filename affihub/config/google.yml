@@ -1,0 +1,175 @@
+shared:
+  oauth_state_ttl_seconds: 600
+  token_refresh_skew_seconds: 60
+  oauth:
+    authorization_url: https://accounts.google.com/o/oauth2/v2/auth
+    token_url: https://oauth2.googleapis.com/token
+    profile_url: https://openidconnect.googleapis.com/v1/userinfo
+    client_id: <%= Rails.application.credentials.dig(:google, :client_id).to_s %>
+    client_secret: <%= Rails.application.credentials.dig(:google, :client_secret).to_s %>
+    redirect_uri: http://127.0.0.1:3000/auth/google/callback
+    allowed_redirect_uris:
+      - http://127.0.0.1:3000/auth/google/callback
+    integrations:
+      drive:
+        identifier: drive
+        scopes:
+          - openid
+          - email
+          - https://www.googleapis.com/auth/drive.file
+      sheets:
+        identifier: sheets
+        scopes:
+          - openid
+          - email
+          - https://www.googleapis.com/auth/drive.file
+  picker:
+    app_id: <%= Rails.application.credentials.dig(:google, :project_number).to_s %>
+    developer_key: <%= Rails.application.credentials.dig(:google, :picker_api_key).to_s %>
+    scope: https://www.googleapis.com/auth/drive.file
+    spreadsheet_mime_type: application/vnd.google-apps.spreadsheet
+  drive:
+    api_base_url: https://www.googleapis.com/drive/v3
+    upload_base_url: https://www.googleapis.com/upload/drive/v3
+    folder_mime_type: application/vnd.google-apps.folder
+    folder_fields: id,name,mimeType,webViewLink
+    folder_page_size: 100
+    file_mime_type: video/mp4
+    upload_content_type: video/mp4
+    folder_app_property_key: affihubFolderKey
+    file_app_property_key: affihubFileKey
+    file_name_prefix: render-
+    max_upload_resume_attempts: 3
+    folder_key_prefix: affihub-project-
+    file_key_prefix: affihub-drive-export-
+    worker_id_prefix: drive-export-upload
+    workflow_operation: drive_export_upload
+    workflow_stage: upload
+    safe_error_codes:
+      daily_quota: google_drive_daily_quota_exhausted
+      storage_quota: google_drive_storage_quota_exceeded
+      rate_limit: google_drive_rate_limit
+      upload_outcome_unknown: google_drive_upload_outcome_unknown
+      api_error: google_drive_api_error
+      retry_exhausted: google_drive_rate_limit_retries_exhausted
+      reconnect_required: google_drive_reconnect_required
+      enqueue_failed: google_drive_job_enqueue_failed
+      worker_lease_lost: google_drive_worker_lease_lost
+    audit_events:
+      uploaded: drive_export_uploaded
+      quota_wait: drive_export_waiting_for_quota
+      storage_quota: drive_export_storage_quota_exceeded
+      retrying: drive_export_retrying
+      outcome_unknown: drive_export_outcome_unknown
+      failed: drive_export_failed
+      manual_outcome: drive_export_manual_outcome
+      upload_started: drive_export_upload_started
+      retry_exhausted: drive_export_retries_exhausted
+    allowed_upload_hosts:
+      - www.googleapis.com
+    fields: id,name,mimeType,webViewLink,appProperties
+    page_size: 1
+  sheets:
+    api_base_url: https://sheets.googleapis.com/v4
+    spreadsheet_fields: sheets.properties(sheetId,title,index)
+    row_lookup_column: A:A
+    row_first_column: A
+    row_last_column: M
+    row_value_input_option: RAW
+    row_insert_data_option: INSERT_ROWS
+    row_key_prefix: affihub-project-
+    rate_limit:
+      attempts: 4
+      initial_wait_seconds: 5
+      maximum_wait_seconds: 60
+    publication_trigger_statuses:
+      - approved
+      - scheduled
+      - uploading
+      - processing
+      - published
+      - failed
+      - outcome_unknown
+      - manual_outcome_confirmed
+      - manual_outcome_not_occurred
+    safe_error_codes:
+      daily_quota: google_sheets_daily_quota_exhausted
+      rate_limit: google_sheets_rate_limit
+      sync_outcome_unknown: google_sheets_sync_outcome_unknown
+      api_error: google_sheets_api_error
+      reconnect_required: google_sheets_reconnect_required
+      retry_exhausted: google_sheets_retries_exhausted
+  requests:
+    open_timeout_seconds: 10
+    read_timeout_seconds: 30
+    upload_timeout_seconds: 1800
+  rate_limit:
+    attempts: 4
+    initial_wait_seconds: 5
+    maximum_wait_seconds: 60
+  drive_export:
+    manual_evidence_max_characters: 2000
+    outcome_decisions:
+      - occurred
+      - not_occurred
+      - unknown
+  oauth_errors:
+    invalid_grant: invalid_grant
+    reconnect_required: google_reauth_required
+  client_errors:
+    invalid_upload_session_uri: invalid_upload_session_uri
+    invalid_json_response: invalid_json_response
+    network_request_failed: network_request_failed
+    invalid_api_request: invalid_api_request
+    upload_session_not_complete: upload_session_not_complete
+    upload_resume_limit_reached: upload_resume_limit_reached
+    invalid_upload_range: invalid_upload_range
+    http_error_prefix: google_http_
+  api_errors:
+    daily_quota: dailyLimitExceeded
+    quota_exhausted: quotaExceeded
+    storage_quota: storageQuotaExceeded
+    server_errors:
+      - 500
+      - 502
+      - 503
+      - 504
+    rate_limits:
+      - rateLimitExceeded
+      - userRateLimitExceeded
+  statuses:
+    google_connection:
+      default: connected
+      values:
+        connected: connected
+        reauth_required: reauth_required
+        revoked: revoked
+        failed: failed
+    drive_export:
+      default: queued
+      values:
+        queued: queued
+        retrying: retrying
+        uploading: uploading
+        succeeded: succeeded
+        waiting_for_quota: waiting_for_quota
+        storage_quota_exceeded: storage_quota_exceeded
+        outcome_unknown: outcome_unknown
+        manual_outcome_confirmed: manual_outcome_confirmed
+        manual_outcome_not_occurred: manual_outcome_not_occurred
+        failed: failed
+    sheet_sync:
+      default: queued
+      values:
+        queued: queued
+        syncing: syncing
+        succeeded: succeeded
+        retrying: retrying
+        waiting_for_quota: waiting_for_quota
+        outcome_unknown: outcome_unknown
+        failed: failed
+
+test:
+  oauth:
+    client_id: affihub-test-google-client
+    client_secret: affihub-test-google-secret

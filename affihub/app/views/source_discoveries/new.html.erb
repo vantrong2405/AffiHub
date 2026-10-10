@@ -1,0 +1,60 @@
+<% content_for :title, "Tìm video YouTube | #{@video_project.name}" %>
+
+<section class="mx-auto max-w-4xl space-y-6">
+  <div class="space-y-2">
+    <%= link_to "← #{@video_project.name}", video_project_path(@video_project), class: "link link-hover text-sm" %>
+    <h1 class="text-3xl font-bold">Tìm video YouTube</h1>
+    <p class="text-base-content/70">AffiHub tìm metadata bằng API chính thức. Việc tìm kiếm không tải media.</p>
+  </div>
+
+  <div class="alert alert-warning items-start" role="note">
+    <span>Kết quả có attribution tới video gốc. Chỉ chọn video khi bạn có quyền sử dụng và đã kiểm tra điều khoản nguồn. Chọn kết quả sẽ tạo yêu cầu tải riêng.</span>
+  </div>
+
+  <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+    <section class="min-w-0 space-y-3" aria-labelledby="keyword-search-heading">
+      <div>
+        <h2 id="keyword-search-heading" class="text-xl font-bold">Tìm theo từ khóa</h2>
+        <p class="text-sm text-base-content/70">Tìm video YouTube khớp với nội dung bạn nhập.</p>
+      </div>
+
+      <%= form_with url: video_project_source_discoveries_path(@video_project), scope: :source_discovery, class: "card border border-base-300 bg-base-100" do |form| %>
+        <div class="card-body gap-4 p-4 sm:p-5">
+          <%= form.hidden_field :search_type, value: "keyword" %>
+          <div class="form-control w-full">
+            <%= form.label :search_query, "Từ khóa", class: "label font-medium" %>
+            <%= form.search_field :search_query, value: @source_discovery.search_query, required: true, maxlength: 100, placeholder: "Ví dụ: quay video đẹp bằng điện thoại", class: "input input-bordered h-11 min-h-11 w-full md:h-10 md:min-h-10" %>
+          </div>
+          <%= form.submit "Tìm video", class: "btn btn-primary h-11 min-h-11 w-full md:h-10 md:min-h-10", data: { turbo_submits_with: "Đang tìm…" } %>
+        </div>
+      <% end %>
+    </section>
+
+    <section class="min-w-0 space-y-3" aria-labelledby="popular-chart-heading">
+      <div>
+        <h2 id="popular-chart-heading" class="text-xl font-bold">Video phổ biến theo khu vực</h2>
+        <p class="text-sm text-base-content/70">Đây là chart YouTube theo khu vực, có thể lọc danh mục; không phải xu hướng toàn cầu.</p>
+      </div>
+
+      <%= form_with url: video_project_source_discoveries_path(@video_project), scope: :source_discovery, class: "card border border-base-300 bg-base-100" do |form| %>
+        <div class="card-body gap-4 p-4 sm:p-5">
+          <%= form.hidden_field :search_type, value: "regional_popular" %>
+          <div class="form-control w-full">
+            <%= form.label :region_code, "Khu vực", class: "label font-medium" %>
+            <%= form.select :region_code, @regions.map { |code, label| [label, code.to_s] }, { selected: @source_discovery.region_code.presence || @default_region_code }, class: "select select-bordered h-11 min-h-11 w-full md:h-10 md:min-h-10" %>
+          </div>
+          <div class="form-control w-full">
+            <%= form.label :video_category_id, "Danh mục", class: "label font-medium" %>
+            <%= form.select :video_category_id,
+                            [["Tất cả danh mục", ""]] + @video_categories.map { |category_id, label| [label, category_id.to_s] },
+                            { selected: @source_discovery.video_category_id },
+                            class: "select select-bordered h-11 min-h-11 w-full md:h-10 md:min-h-10" %>
+          </div>
+          <%= form.submit "Xem video phổ biến", class: "btn btn-outline h-11 min-h-11 w-full md:h-10 md:min-h-10", data: { turbo_submits_with: "Đang tìm…" } %>
+        </div>
+      <% end %>
+    </section>
+  </div>
+
+  <p class="text-sm text-base-content/60">Instagram và TikTok chưa bật discovery. Bạn vẫn có thể nhập URL cụ thể từ các nguồn được cấu hình.</p>
+</section>

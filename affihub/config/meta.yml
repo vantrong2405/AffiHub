@@ -1,0 +1,175 @@
+shared:
+  oauth_state_ttl_seconds: 600
+  statuses:
+    social_connection:
+      default: connected
+      values:
+        connected: connected
+        reauth_required: reauth_required
+        revoked: revoked
+        failed: failed
+    social_destination:
+      default: connected
+      values:
+        connected: connected
+        reauth_required: reauth_required
+        revoked: revoked
+        unavailable: unavailable
+  providers:
+    facebook:
+      destination_kind: page
+      destination_selection_supported: true
+      publisher_service: Publications::MetaGraphPublisher
+      media_transfer_protocol: pages_reels_upload_session
+      client_id: <%= ENV.fetch("META_APP_ID", "") %>
+      client_secret: <%= Rails.application.credentials.dig(:meta, :app_secret) %>
+      api_version: v26.0
+      authorization_base_url: https://www.facebook.com
+      graph_api_base_url: https://graph.facebook.com
+      redirect_uri: http://localhost:3000/auth/facebook/callback
+      allowed_redirect_uris:
+        - http://localhost:3000/auth/facebook/callback
+      scopes:
+        - pages_show_list
+        - pages_read_engagement
+        - pages_manage_posts
+        - pages_manage_engagement
+        - pages_manage_metadata
+      comment_reply_edge: comments
+      comment_webhook_subscription_edge: subscribed_apps
+      comment_webhook_object: page
+      comment_webhook_field: feed
+      page_fields:
+        - id
+        - name
+        - access_token
+        - tasks
+      page_create_content_tasks:
+        - CREATE_CONTENT
+        - PROFILE_PLUS_CREATE_CONTENT
+      pkce_enabled: false
+      open_timeout_seconds: 10
+      read_timeout_seconds: 30
+      upload_timeout_seconds: 900
+      reel_status_poll_interval_seconds: 30
+      reel_status_max_poll_attempts: 20
+    instagram:
+      oauth_flow: instagram_business_login
+      destination_kind: meta_page
+      destination_selection_supported: true
+      requires_linked_business_account: true
+      publisher_service: Publications::InstagramPublisher
+      media_transfer_protocol: instagram_resumable_binary
+      publication_operation: publication_publish
+      publish_stage: publish
+      worker_id_prefix: instagram-publish
+      client_id: <%= ENV.fetch("META_APP_ID", "") %>
+      client_secret: <%= Rails.application.credentials.dig(:meta, :app_secret) %>
+      api_version: v26.0
+      authorization_base_url: https://www.facebook.com
+      graph_api_base_url: https://graph.facebook.com
+      redirect_uri: http://localhost:3000/auth/instagram/callback
+      allowed_redirect_uris:
+        - http://localhost:3000/auth/instagram/callback
+      authorization_params:
+        config_id: <%= ENV.fetch("META_INSTAGRAM_LOGIN_CONFIG_ID", "") %>
+      required_authorization_parameters:
+        - config_id
+      include_scopes_in_authorization_request: false
+      scopes:
+        - pages_show_list
+        - pages_read_engagement
+        - instagram_basic
+        - instagram_content_publish
+        - instagram_manage_comments
+        - pages_manage_metadata
+      comment_reply_edge: replies
+      comment_webhook_subscription_edge: subscribed_apps
+      comment_webhook_object: instagram
+      comment_webhook_field: comments
+      page_fields:
+        - id
+        - name
+        - access_token
+        - tasks
+        - "instagram_business_account{id,account_type}"
+      page_create_content_tasks:
+        - CREATE_CONTENT
+        - PROFILE_PLUS_CREATE_CONTENT
+      destination_account_field: instagram_business_account
+      supported_destination_account_types:
+        - BUSINESS
+      instagram_media_type: REELS
+      instagram_upload_type: resumable
+      instagram_content_publishing_limit_fields:
+        - quota_usage
+        - config
+      instagram_container_status_fields:
+        - status_code
+        - status
+      instagram_media_fields:
+        - id
+        - permalink
+      instagram_container_statuses:
+        processing:
+          - IN_PROGRESS
+        ready: FINISHED
+        published: PUBLISHED
+        failed:
+          - ERROR
+          - EXPIRED
+      instagram_ambiguous_error_codes:
+        - network_request_failed
+        - invalid_json_response
+      instagram_ambiguous_http_error_prefix: graph_api_http_5
+      instagram_client_error_codes:
+        network_request_failed: network_request_failed
+      instagram_max_status_poll_attempts: 20
+      instagram_status_poll_interval_seconds: 30
+      instagram_safe_error_codes:
+        business_account_required: instagram_business_account_required
+        publishing_limit_reached: instagram_publishing_limit_reached
+        publishing_limit_unavailable: instagram_publishing_limit_unavailable
+        upload_not_confirmed: instagram_upload_not_confirmed
+        invalid_container_response: instagram_invalid_container_response
+        container_status_unknown: instagram_container_status_unknown
+        publish_outcome_unknown: instagram_publish_outcome_unknown
+        publish_failed: instagram_publish_failed
+        source_not_ready: instagram_source_not_ready
+        worker_lease_lost: instagram_publish_worker_lease_lost
+      instagram_audit_events:
+        container_created: instagram_container_created
+        upload_confirmed: instagram_upload_confirmed
+        processing: instagram_upload_processing
+        media_publish_started: instagram_media_publish_started
+        published: instagram_publish_completed
+        failed: instagram_publish_failed
+        outcome_unknown: instagram_publish_outcome_unknown
+      permalink_hosts:
+        - instagram.com
+        - www.instagram.com
+      pkce_enabled: false
+      open_timeout_seconds: 10
+      read_timeout_seconds: 30
+      upload_timeout_seconds: 900
+    youtube:
+      destination_kind: channel
+      destination_selection_supported: true
+      configuration_source: youtube
+      publisher_service: Publications::YoutubePublisher
+    tiktok:
+      destination_kind: creator
+      destination_selection_supported: false
+      configuration_source: tiktok
+      publisher_service: Publications::TikTokPublisher
+
+test:
+  providers:
+    facebook:
+      client_id: affihub-test-client
+      client_secret: affihub-test-secret
+    instagram:
+      client_id: affihub-instagram-test-client
+      client_secret: affihub-instagram-test-secret
+      authorization_params:
+        config_id: affihub-instagram-test-login-config

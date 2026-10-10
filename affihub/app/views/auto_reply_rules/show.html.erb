@@ -1,0 +1,60 @@
+<% content_for :title, "Quy tắc tự trả lời" %>
+
+<section class="space-y-6">
+  <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+    <div class="space-y-2">
+      <%= link_to "← Tự trả lời bình luận", auto_reply_rules_path, class: "link link-hover text-sm" %>
+      <div class="flex flex-wrap items-center gap-2">
+        <h1 class="text-3xl font-bold"><%= auto_reply_destination_label(@auto_reply_rule.social_destination) %></h1>
+        <span class="badge badge-outline"><%= auto_reply_rule_type_label(@auto_reply_rule.rule_type) %></span>
+        <span class="badge <%= auto_reply_rule_status_badge_class(@auto_reply_rule) %>">
+          <%= auto_reply_rule_status_label(@auto_reply_rule) %>
+        </span>
+      </div>
+    </div>
+    <div class="flex flex-col gap-2 sm:flex-row">
+      <%= link_to "Xem nhật ký bình luận",
+                  auto_reply_logs_path(social_destination_id: @auto_reply_rule.social_destination_id),
+                  class: "btn btn-outline w-full sm:w-auto" %>
+      <%= link_to "Sửa quy tắc", edit_auto_reply_rule_path(@auto_reply_rule), class: "btn btn-primary w-full sm:w-auto" %>
+    </div>
+  </div>
+
+  <section class="grid gap-4 lg:grid-cols-2">
+    <article class="card border border-base-300 bg-base-100">
+      <div class="card-body gap-3 p-4 sm:p-5">
+        <h2 class="card-title">Điều kiện khớp</h2>
+        <dl class="space-y-3">
+          <div>
+            <dt class="text-sm text-base-content/60">Đích nhận bình luận</dt>
+            <dd class="font-medium"><%= auto_reply_destination_label(@auto_reply_rule.social_destination) %></dd>
+          </div>
+          <div>
+            <dt class="text-sm text-base-content/60">Loại quy tắc</dt>
+            <dd class="font-medium"><%= auto_reply_rule_type_label(@auto_reply_rule.rule_type) %></dd>
+          </div>
+          <div>
+            <dt class="text-sm text-base-content/60">Từ khóa</dt>
+            <dd class="break-words font-medium"><%= auto_reply_rule_keyword_value(@auto_reply_rule) %></dd>
+          </div>
+        </dl>
+      </div>
+    </article>
+
+    <article class="card border border-base-300 bg-base-100">
+      <div class="card-body gap-3 p-4 sm:p-5">
+        <h2 class="card-title">Câu trả lời đã lưu</h2>
+        <p class="whitespace-pre-wrap break-words rounded-box border border-base-300 bg-base-200 p-4"><%= @auto_reply_rule.reply_text %></p>
+        <p class="text-sm text-base-content/70">Câu được gửi nguyên văn. Nếu nhiều keyword cùng khớp, AffiHub chọn keyword dài nhất.</p>
+      </div>
+    </article>
+  </section>
+
+  <div class="flex justify-end">
+    <%= button_to "Xóa quy tắc",
+                  auto_reply_rule_path(@auto_reply_rule),
+                  method: :delete,
+                  class: "btn btn-ghost w-full text-error sm:w-auto",
+                  form: { data: { turbo_confirm: "Xóa quy tắc này? Nếu đây là câu mặc định cuối cùng, AffiHub sẽ yêu cầu Meta dừng webhook." } } %>
+  </div>
+</section>

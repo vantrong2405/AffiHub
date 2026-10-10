@@ -1,0 +1,89 @@
+<% content_for :title, sheet_syncs_page_title(@video_project) %>
+
+<section class="space-y-6">
+  <div class="space-y-2">
+    <%= link_to "← #{@video_project.name}", video_project_path(@video_project), class: "link link-hover text-sm" %>
+    <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+      <div class="space-y-1">
+        <h1 class="text-3xl font-bold">Google Sheets</h1>
+        <p class="text-sm text-base-content/70">Trạng thái đăng mới nhất · <%= @video_project.name %></p>
+      </div>
+      <span class="badge badge-neutral badge-outline">Tùy chọn · không cần thẻ</span>
+    </div>
+  </div>
+
+  <div role="note" class="alert border border-info/30 bg-info/5 text-sm">
+    <span>Sheets là bản đồng bộ phụ; lịch sử Publication trong AffiHub vẫn là nguồn chính. Kết nối muộn chỉ đồng bộ render bạn chọn.</span>
+  </div>
+
+  <% if @has_backfill_form %>
+    <article class="card border border-base-300 bg-base-100">
+      <div class="card-body gap-4 p-4 sm:p-5">
+        <div class="space-y-1">
+          <h2 class="card-title">Đồng bộ render đã chọn</h2>
+          <p class="text-sm text-base-content/70">Chỉ các render được đánh dấu sẽ được đưa vào Sheets; AffiHub không backfill toàn thư viện.</p>
+        </div>
+        <%= form_with url: video_project_sheet_syncs_path(@video_project), method: :post, class: "space-y-4" do |form| %>
+          <div class="space-y-2">
+            <%= form.label :google_connection_id, "Tài khoản Sheets", class: "label-text font-medium" %>
+            <%= form.select :google_connection_id,
+                            google_connection_options(@google_connections, @default_google_connection_id),
+                            {},
+                            class: "select select-bordered h-11 w-full" %>
+          </div>
+          <fieldset class="space-y-2">
+            <legend class="label-text mb-2 font-medium">Render cần đồng bộ</legend>
+            <div class="divide-y divide-base-300 rounded-box border border-base-300">
+              <% @render_versions.each do |render_version| %>
+                <label class="flex min-h-14 items-center gap-3 p-4">
+                  <%= check_box_tag "render_version_ids[]", render_version.id, false, id: "render_version_#{render_version.id}", class: "checkbox checkbox-primary" %>
+                  <span class="text-sm"><%= render_version_option_label(render_version) %></span>
+                </label>
+              <% end %>
+            </div>
+          </fieldset>
+          <%= form.submit "Đồng bộ lựa chọn", class: "btn btn-primary w-full sm:w-auto" %>
+        <% end %>
+      </div>
+    </article>
+  <% elsif !@has_google_connections %>
+    <div class="rounded-box border border-dashed border-base-300 bg-base-100 p-5 sm:p-6">
+      <h2 class="font-semibold">Chưa có Sheets sẵn sàng</h2>
+      <p class="mt-1 text-sm text-base-content/70">Kết nối Google Sheets và chọn spreadsheet/tab trước khi đồng bộ.</p>
+      <%= link_to "Mở kết nối Google", google_connections_path, class: "btn btn-outline mt-4 w-full sm:w-auto" %>
+    </div>
+  <% else %>
+    <div class="rounded-box border border-dashed border-base-300 bg-base-100 p-5 sm:p-6">
+      <h2 class="font-semibold">Chưa có bài đăng để backfill</h2>
+      <p class="mt-1 text-sm text-base-content/70">Khi render có lịch sử destination Publication, nó sẽ xuất hiện ở đây để bạn chọn.</p>
+    </div>
+  <% end %>
+
+  <section class="space-y-3" aria-labelledby="sheet-history-heading">
+    <div>
+      <h2 id="sheet-history-heading" class="text-xl font-semibold">Trạng thái đồng bộ</h2>
+      <p class="text-sm text-base-content/60">Mỗi hàng đại diện trạng thái mới nhất của một destination trên một render.</p>
+    </div>
+    <% if @has_sheet_syncs %>
+      <ul class="divide-y divide-base-300 rounded-box border border-base-300 bg-base-100">
+        <% @sheet_syncs.each do |sheet_sync| %>
+          <li class="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+            <div class="min-w-0 space-y-1">
+              <h3 class="font-semibold">v<%= sheet_sync.render_version.version_number %> · <%= sheet_sync.social_destination.name %></h3>
+              <p class="break-all text-sm text-base-content/60"><%= sheet_sync.google_connection.email %> · <%= google_local_time(sheet_sync.last_synced_at || sheet_sync.updated_at) %></p>
+            </div>
+            <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <span class="badge <%= sheet_sync_badge_class(sheet_sync.status) %>"><%= sheet_sync_status_label(sheet_sync.status) %></span>
+              <%= link_to "Chi tiết", video_project_sheet_sync_path(@video_project, sheet_sync), class: "btn btn-outline btn-sm w-full sm:w-auto" %>
+            </div>
+          </li>
+        <% end %>
+      </ul>
+    <% else %>
+      <div class="rounded-box border border-dashed border-base-300 bg-base-100 p-5 sm:p-6">
+        <h3 class="font-semibold">Chưa có hàng đồng bộ</h3>
+        <p class="mt-1 text-sm text-base-content/70">Chọn render ở phía trên để tạo bản trạng thái đầu tiên.</p>
+      </div>
+    <% end %>
+  </section>
+</section>

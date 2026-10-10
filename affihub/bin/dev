@@ -1,8 +1,8 @@
 #!/usr/bin/env sh
 
-if ! gem list foreman -i --silent; then
-  echo "Installing foreman..."
-  gem install foreman
+if ! command -v foreman >/dev/null 2>&1; then
+  echo "Foreman is required to run Procfile.dev." >&2
+  exit 127
 fi
 
 # Default to port 3000 if not specified

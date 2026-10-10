@@ -1,0 +1,42 @@
+<% content_for :title, "Tạo video AI | #{@video_project.name} | AffiHub" %>
+
+<section class="space-y-6">
+  <div class="space-y-3">
+    <%= link_to "← #{@video_project.name}", video_project_path(@video_project), class: "link link-hover text-sm" %>
+    <div class="space-y-2">
+      <h1 class="text-3xl font-bold">Tạo video AI</h1>
+      <p class="max-w-3xl text-base-content/70">Tạo video text-to-video từ chủ đề. Bạn sẽ duyệt kịch bản và từng cảnh, xem báo giá rồi mới xác nhận job trả phí.</p>
+    </div>
+  </div>
+
+  <ul class="steps steps-horizontal w-full overflow-x-auto">
+    <li class="step step-primary">Chủ đề</li>
+    <li class="step">Kịch bản</li>
+    <li class="step">Cảnh</li>
+    <li class="step">Báo giá</li>
+    <li class="step">Tạo video</li>
+  </ul>
+
+  <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+    <section class="card border border-base-300 bg-base-100">
+      <div class="card-body gap-5">
+        <div class="space-y-1">
+          <h2 class="card-title">Chủ đề và kịch bản</h2>
+          <p class="text-sm text-base-content/60">AffiHub lưu bản nháp trong project này để bạn tiếp tục duyệt.</p>
+        </div>
+
+        <%= render "form" %>
+      </div>
+    </section>
+
+    <aside class="card h-fit border border-base-300 bg-base-100">
+      <div class="card-body gap-4">
+        <h2 class="card-title text-base">Báo giá và ngân sách</h2>
+        <div role="alert" class="alert alert-info">
+          <span>Chưa có báo giá. Báo giá sẽ xuất hiện sau khi bạn duyệt kịch bản và gợi ý cảnh.</span>
+        </div>
+        <p class="text-sm text-base-content/70">Job trả phí chỉ được gửi khi các khoản phí bắt buộc đã có báo giá và bạn xác nhận trong ngân sách.</p>
+      </div>
+    </aside>
+  </div>
+</section>

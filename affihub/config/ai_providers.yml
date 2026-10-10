@@ -1,0 +1,134 @@
+shared:
+  oauth_state_ttl_seconds: 600
+  token_refresh_buffer_seconds: 60
+  statuses:
+    ai_provider_connection:
+      default: pending_verification
+      values:
+        pending_verification: pending_verification
+        ready: ready
+        scope_missing: scope_missing
+        reauth_required: reauth_required
+        revoked: revoked
+        failed: failed
+  providers:
+    codex:
+      enabled: true
+      display_order: 1
+      option_key: codex
+      display_name: Codex
+      model_selection_enabled: false
+      configuration_requirements:
+        shared: []
+        provider: [ client_id ]
+      client_id_validation_mode: fixed
+      oauth_client_requires_client_id: true
+      identity_client_requires_client_id: true
+      list_models_after_callback: false
+      callback_status_with_scopes: pending_verification
+      callback_status_without_scopes: scope_missing
+      callback_status_on_model_list_error: pending_verification
+      capabilities:
+        inference_enabled: false
+        script_generation: false
+        scene_prompt_generation: false
+      clients:
+        oauth: Codex::Client
+        identity: Codex::Client
+      authorization_extra_parameters:
+        codex_cli_simplified_flow: "true"
+      authorization_endpoint: https://auth.openai.com/oauth/authorize
+      token_endpoint: https://auth.openai.com/oauth/token
+      openid_configuration_endpoint: https://auth.openai.com/.well-known/openid-configuration
+      client_id: <%= ENV.fetch("CODEX_OAUTH_CLIENT_ID", "") %>
+      redirect_uri: http://localhost:1455/auth/callback
+      allowed_redirect_uris:
+        - http://localhost:1455/auth/callback
+      scopes:
+        - openid
+        - profile
+        - email
+        - offline_access
+      required_scopes: []
+      pkce_enabled: true
+      nonce_enabled: false
+      connect_timeout_seconds: 10
+      read_timeout_seconds: 30
+    gemini:
+      enabled: true
+      display_order: 2
+      option_key: gemini
+      display_name: Gemini API
+      model_selection_enabled: true
+      configuration_requirements:
+        shared: []
+        provider: [ client_id, client_secret, project_id ]
+      client_id_validation_mode: configured
+      oauth_client_requires_client_id: false
+      identity_client_requires_client_id: false
+      list_models_after_callback: true
+      callback_status_with_scopes: pending_verification
+      callback_status_without_scopes: scope_missing
+      callback_status_on_model_list_error: pending_verification
+      capabilities:
+        inference_enabled: false
+        script_generation: false
+        scene_prompt_generation: false
+      clients:
+        oauth: Gemini::Client
+        identity: Gemini::Client
+        token: Gemini::Client
+        revocation: Gemini::Client
+        generation: Gemini::Client
+      refresh_token_arguments: []
+      revocation_enabled: true
+      revocation_arguments: []
+      authorization_extra_parameters:
+        access_type: offline
+        include_granted_scopes: "true"
+        prompt: consent
+      authorization_endpoint: https://accounts.google.com/o/oauth2/v2/auth
+      token_endpoint: https://oauth2.googleapis.com/token
+      revocation_endpoint: https://oauth2.googleapis.com/revoke
+      api_base_url: https://generativelanguage.googleapis.com/v1
+      generate_content_api_base_url: https://generativelanguage.googleapis.com/v1beta
+      quota_console_url: https://console.cloud.google.com/apis/api/generativelanguage.googleapis.com/quotas
+      pricing_source_url: https://ai.google.dev/gemini-api/docs/pricing
+      redirect_uri: <%= ENV.fetch("GEMINI_OAUTH_REDIRECT_URI", "http://localhost:3000/ai/auth/callback") %>
+      allowed_redirect_uris:
+        - http://localhost:3000/ai/auth/callback
+      pkce_enabled: true
+      nonce_enabled: true
+      client_id: <%= ENV.fetch("GEMINI_OAUTH_CLIENT_ID", "") %>
+      client_secret: <%= ENV.fetch("GEMINI_OAUTH_CLIENT_SECRET", "") %>
+      project_id: <%= ENV.fetch("GEMINI_CLOUD_PROJECT_ID", "") %>
+      required_scopes:
+        - https://www.googleapis.com/auth/generative-language.retriever
+      scopes:
+        - openid
+        - email
+        - profile
+        - https://www.googleapis.com/auth/generative-language.retriever
+      user_project_header: x-goog-user-project
+      connect_timeout_seconds: 10
+      read_timeout_seconds: 30
+    antigravity:
+      enabled: false
+      display_order: 3
+      option_key: antigravity
+      display_name: Antigravity
+      model_selection_enabled: false
+      capabilities:
+        inference_enabled: false
+        script_generation: false
+        scene_prompt_generation: false
+      scopes: []
+
+test:
+  providers:
+    codex:
+      client_id: affihub-test-codex-client
+    gemini:
+      client_id: affihub-test-gemini-client
+      client_secret: affihub-test-gemini-secret
+      project_id: affihub-test-project

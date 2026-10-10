@@ -9,7 +9,29 @@
 #     priority: 2
 #     schedule: at 5am every day
 
+development:
+  recover_expired_workflows:
+    class: WorkflowRuns::SweepJob
+    queue: default
+    schedule: every minute
+  process_schedule_occurrences:
+    class: Schedules::SchedulerJob
+    queue: default
+    schedule: every minute
+
 production:
   clear_solid_queue_finished_jobs:
     command: "SolidQueue::Job.clear_finished_in_batches(sleep_between_batches: 0.3)"
     schedule: every hour at minute 12
+  expire_youtube_discovery_metadata:
+    class: Youtube::ExpireDiscoveryMetadataJob
+    queue: default
+    schedule: every minute
+  recover_expired_workflows:
+    class: WorkflowRuns::SweepJob
+    queue: default
+    schedule: every minute
+  process_schedule_occurrences:
+    class: Schedules::SchedulerJob
+    queue: default
+    schedule: every minute

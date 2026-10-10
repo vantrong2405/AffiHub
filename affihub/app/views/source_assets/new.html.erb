@@ -1,0 +1,49 @@
+<% content_for :title, "Thêm nguồn video | #{@video_project.name}" %>
+
+<section class="mx-auto max-w-5xl space-y-6">
+  <div class="space-y-2">
+    <%= link_to "← #{@video_project.name}", video_project_path(@video_project), class: "link link-hover text-sm" %>
+    <h1 class="text-3xl font-bold">Thêm nguồn video</h1>
+    <p class="text-base-content/70">Chọn file, nhập URL cụ thể hoặc tìm video YouTube. File nguồn được giữ riêng khi biên tập.</p>
+  </div>
+
+  <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+    <section class="min-w-0 space-y-4" aria-labelledby="local-upload-heading">
+      <div>
+        <h2 id="local-upload-heading" class="text-xl font-bold">Nhập file từ máy</h2>
+        <p class="text-sm text-base-content/70">Dùng MP4 hoặc MOV đã xuất từ nguồn mà bạn được phép sử dụng.</p>
+      </div>
+      <%= render "form" %>
+    </section>
+
+    <section class="min-w-0 space-y-4" aria-labelledby="url-import-heading">
+      <div>
+        <h2 id="url-import-heading" class="text-xl font-bold">Thử tải từ URL</h2>
+        <p class="text-sm text-base-content/70">AffiHub xử lý yêu cầu tải trong worker nền.</p>
+      </div>
+
+      <%= form_with url: video_project_source_assets_path(@video_project), scope: :source_asset, class: "card border border-base-300 bg-base-100" do |form| %>
+        <div class="card-body gap-4 p-4 sm:p-5">
+          <div class="form-control w-full">
+            <%= form.label :url, "URL video", class: "label font-medium" %>
+            <%= form.url_field :url, required: true, placeholder: "https://www.youtube.com/watch?v=…", class: "input input-bordered h-11 min-h-11 w-full md:h-10 md:min-h-10" %>
+          </div>
+
+          <div class="alert alert-warning items-start" role="note">
+            <span>Tải video không cấp quyền sử dụng. Hãy kiểm tra quyền của bạn và điều khoản của nguồn trước khi tiếp tục. Nguồn có thể từ chối yêu cầu tải.</span>
+          </div>
+
+          <label class="label min-w-0 cursor-pointer items-start justify-start gap-3">
+            <%= form.check_box :rights_confirmed, { required: true, class: "checkbox checkbox-primary mt-1" }, "1", "0" %>
+            <span class="min-w-0 flex-1 break-words whitespace-normal">Tôi có quyền sử dụng video này và đã kiểm tra điều khoản của nguồn.</span>
+          </label>
+
+          <%= form.submit "Thử tải video", class: "btn btn-primary h-11 min-h-11 w-full md:h-10 md:min-h-10", data: { turbo_submits_with: "Đang gửi yêu cầu…" } %>
+        </div>
+      <% end %>
+
+      <%= link_to "Tìm metadata video YouTube", new_video_project_source_discovery_path(@video_project), class: "btn btn-outline h-11 min-h-11 w-full md:h-10 md:min-h-10" %>
+      <p class="text-sm text-base-content/60">Tìm kiếm hiện dùng API YouTube chính thức. Instagram và TikTok chưa bật discovery; bạn có thể nhập URL cụ thể.</p>
+    </section>
+  </div>
+</section>

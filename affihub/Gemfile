@@ -4,6 +4,7 @@ source "https://rubygems.org"
 gem "rails", "~> 8.1.3"
 # The modern asset pipeline for Rails [https://github.com/rails/propshaft]
 gem "propshaft"
+gem "tailwindcss-rails"
 # Use postgresql as the database for Active Record
 gem "pg", "~> 1.1"
 # Use the Puma web server [https://github.com/puma/puma]
@@ -14,10 +15,10 @@ gem "importmap-rails"
 gem "turbo-rails"
 # Hotwire's modest JavaScript framework [https://stimulus.hotwired.dev]
 gem "stimulus-rails"
-# Use Tailwind CSS [https://github.com/rails/tailwindcss-rails]
-gem "tailwindcss-rails"
 # Build JSON APIs with ease [https://github.com/rails/jbuilder]
 gem "jbuilder"
+gem "googleauth"
+gem "jwt"
 
 # Use Active Model has_secure_password [https://guides.rubyonrails.org/active_model_basics.html#securepassword]
 # gem "bcrypt", "~> 3.1.7"
@@ -42,7 +43,7 @@ gem "thruster", require: false
 # Use Active Storage variants [https://guides.rubyonrails.org/active_storage_overview.html#transforming-images]
 gem "image_processing", "~> 1.2"
 
-# HMVC layers (Controller/Form/Operation/Serializer/Error) [https://github.com/TOMOSIA-VIETNAM/rails_hmvc]
+# HMVC layers (Controller/Form/Operation/Serializer/Error)
 gem "rails_hmvc"
 
 group :development, :test do
@@ -57,11 +58,8 @@ group :development, :test do
 
   # Omakase Ruby styling [https://github.com/rails/rubocop-rails-omakase/]
   gem "rubocop-rails-omakase", require: false
-
-  # RSpec test framework for Rails
+  gem "dotenv-rails"
   gem "rspec-rails"
-
-  # Test data factories, replaces fixtures
   gem "factory_bot_rails"
 end
 
@@ -71,7 +69,13 @@ group :development do
 end
 
 group :test do
-  # Use system testing [https://guides.rubyonrails.org/testing.html#system-testing]
+  gem "webmock"
   gem "capybara"
+  gem "database_cleaner"
+  gem "faker"
   gem "selenium-webdriver"
+  gem "shoulda-matchers"
+  gem "simplecov", require: false
 end
+
+gem "telegram-bot-ruby", "~> 2.8.1"

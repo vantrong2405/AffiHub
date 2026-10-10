@@ -1,0 +1,159 @@
+<% content_for :title, "Review #{@publication.social_destination.name} | #{@video_project.name}" %>
+
+<section class="mx-auto max-w-7xl space-y-6">
+  <div class="space-y-2">
+    <%= link_to "← Bài đăng", video_project_publications_path(@video_project), class: "link link-hover text-sm" %>
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div class="space-y-1">
+        <p class="text-sm text-base-content/60"><%= @video_project.name %> · Version <%= @publication.render_version.version_number %></p>
+        <h1 class="text-3xl font-bold">Review bài đăng</h1>
+      </div>
+      <%= workflow_status_badge(@publication.status, resource: "publication") %>
+    </div>
+  </div>
+
+  <% if @publication.outcome_unknown? %>
+    <div role="alert" class="alert alert-warning">
+      <span>Kết quả đăng trên <%= @publication.social_destination.name %> chưa xác định. Hãy kiểm tra bài trên <%= social_provider_name(@publication.social_destination.provider) %> và ghi nhận bằng chứng; không gửi lại từ nút xác nhận thông thường.</span>
+    </div>
+  <% end %>
+
+  <div class="grid gap-4 lg:grid-cols-2">
+    <article class="card border border-base-300 bg-base-100">
+      <div class="card-body gap-4">
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <h2 class="card-title">Video đã chọn</h2>
+            <p class="text-sm text-base-content/60">Version <%= @publication.render_version.version_number %></p>
+          </div>
+          <%= link_to "Mở render", video_project_render_version_path(@video_project, @publication.render_version), class: "btn btn-ghost btn-sm" %>
+        </div>
+        <% if @publication.render_version.file.attached? %>
+          <video class="w-full rounded-box bg-neutral" controls preload="metadata" aria-label="Preview video đã chọn">
+            <source src="<%= rails_blob_path(@publication.render_version.file, disposition: "inline") %>" type="video/mp4">
+          </video>
+          <%= link_to "Tải video", rails_blob_path(@publication.render_version.file, disposition: "attachment"), class: "link link-hover text-sm" %>
+        <% else %>
+          <div role="alert" class="alert alert-warning">
+            <span>Render version chưa có file preview.</span>
+          </div>
+        <% end %>
+      </div>
+    </article>
+
+    <article class="card border border-base-300 bg-base-100">
+      <div class="card-body gap-4">
+        <div>
+          <h2 class="card-title">Destination</h2>
+          <p class="font-semibold"><%= @publication.social_destination.name %></p>
+          <p class="text-sm text-base-content/60"><%= @publication.social_destination.social_connection.name %></p>
+        </div>
+        <% if @latest_preflight_report.present? %>
+          <% if @preflight_ready %>
+            <div role="status" class="alert alert-success">
+              <span>Preflight gần nhất đạt lúc <%= l(@latest_preflight_report.checked_at, format: :short) %>.</span>
+            </div>
+          <% else %>
+            <div role="alert" class="alert alert-warning">
+              <span>Preflight gần nhất chưa cho phép đăng destination này.</span>
+            </div>
+          <% end %>
+        <% else %>
+          <div role="alert" class="alert alert-warning">
+            <span>Chưa có báo cáo preflight cho render version này.</span>
+          </div>
+        <% end %>
+
+        <div class="space-y-3 border-t border-base-300 pt-4">
+          <div>
+            <h3 class="font-semibold"><%= @publication_consent_presenter.section_title %></h3>
+            <p class="text-sm text-base-content/60"><%= @publication_consent_presenter.section_description %></p>
+          </div>
+          <% if @publication.draft? %>
+            <%= form_with model: @publication,
+                          url: video_project_publication_path(@video_project, @publication),
+                          method: :patch,
+                          class: "space-y-3" do |form| %>
+              <%= form.label :caption, "Caption", class: "label-text font-medium" %>
+              <%= form.text_area :caption, rows: 4, class: "textarea textarea-bordered w-full" %>
+              <%= render_publication_consent_fields(@publication_consent_presenter) %>
+              <div class="flex justify-end">
+                <%= form.submit @publication_consent_presenter.submit_label,
+                                class: "btn btn-outline w-full sm:w-auto" %>
+              </div>
+            <% end %>
+          <% else %>
+            <p class="whitespace-pre-line text-sm"><%= @publication.caption.presence || "Chưa có caption." %></p>
+          <% end %>
+        </div>
+
+        <% if @workflow_run.present? %>
+          <div class="space-y-2 border-t border-base-300 pt-4 text-sm text-base-content/70">
+            <div class="flex flex-wrap items-center gap-2">
+              <span>Workflow</span>
+              <%= workflow_status_badge(@workflow_run.status, resource: "workflow_run") %>
+            </div>
+            <% if @outbound_attempt.present? %>
+              <div class="flex flex-wrap items-center gap-2">
+                <span>Yêu cầu gần nhất</span>
+                <%= workflow_status_badge(@outbound_attempt.status, resource: "outbound_attempt") %>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
+
+        <% if @publication.draft? && @preflight_ready %>
+          <div class="flex flex-col gap-3 border-t border-base-300 pt-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h3 class="font-semibold">Sẵn sàng xác nhận</h3>
+              <p class="text-sm text-base-content/70">Yêu cầu đăng chỉ được gửi sau khi bạn xác nhận tại đây.</p>
+            </div>
+            <%= button_to "Xác nhận đăng",
+                          confirm_video_project_publication_path(@video_project, @publication),
+                          method: :post,
+                          class: "btn btn-primary w-full sm:w-auto" %>
+          </div>
+        <% end %>
+      </div>
+    </article>
+  </div>
+
+  <% if @publication.outcome_unknown? && @outbound_attempt.present? %>
+    <article class="card border border-warning/30 bg-base-100">
+      <div class="card-body gap-4">
+        <div>
+          <h2 class="card-title">Đối soát kết quả đăng</h2>
+          <p class="text-sm text-base-content/70">Ghi rõ bằng chứng bạn đã kiểm tra trên <%= social_provider_name(@publication.social_destination.provider) %>. Chọn “chưa đăng” chỉ khi sender đã dừng và bạn chấp nhận rủi ro đăng trùng.</p>
+        </div>
+        <%= form_with url: resolve_outcome_video_project_publication_path(@video_project, @publication),
+                      scope: :publication,
+                      class: "space-y-4" do %>
+          <label class="form-control w-full">
+            <span class="label-text mb-1">Quyết định</span>
+            <select name="publication[decision]" class="select select-bordered w-full" required>
+              <option value="unknown">Chưa thể xác định</option>
+              <option value="occurred">Bài đã đăng</option>
+              <option value="not_occurred">Bài chưa đăng</option>
+            </select>
+          </label>
+          <label class="form-control w-full">
+            <span class="label-text mb-1">Bằng chứng kiểm tra</span>
+            <%= text_area_tag "publication[evidence]", nil, rows: 3, required: true, class: "textarea textarea-bordered w-full" %>
+          </label>
+          <label class="form-control w-full">
+            <span class="label-text mb-1">Permalink hoặc ID bài đăng (nếu đã đăng)</span>
+            <%= text_field_tag "publication[provider_reference]", nil, class: "input input-bordered w-full" %>
+          </label>
+          <label class="label w-full min-w-0 cursor-pointer justify-start gap-3">
+            <%= check_box_tag "publication[risk_confirmed]", "1", false, class: "checkbox checkbox-warning" %>
+            <span class="label-text min-w-0 flex-1 whitespace-normal">Tôi xác nhận đã kiểm tra kỹ để tránh đăng trùng</span>
+          </label>
+          <%= hidden_field_tag "publication[actor_reference]", "local-operator" %>
+          <div class="flex justify-end">
+            <%= submit_tag "Ghi nhận quyết định", class: "btn btn-warning w-full sm:w-auto" %>
+          </div>
+        <% end %>
+      </div>
+    </article>
+  <% end %>
+</section>

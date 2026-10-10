@@ -1,0 +1,23 @@
+<% content_for :title, "Sửa lịch đăng | #{@video_project.name}" %>
+
+<section class="mx-auto max-w-5xl space-y-6">
+  <div class="space-y-2">
+    <%= link_to "← #{@schedule.render_version.video_project.name}", video_project_schedule_path(@video_project, @schedule), class: "link link-hover text-sm" %>
+    <div>
+      <h1 class="text-3xl font-bold">Sửa lịch đăng</h1>
+      <p class="mt-1 text-sm text-base-content/60">Timezone đã lưu: <%= @schedule.time_zone %>. Chọn giờ tương lai nếu lần kế tiếp đã qua.</p>
+    </div>
+  </div>
+
+  <% if schedule_controls_available?(@schedule) %>
+    <%= render "form",
+               form_url: video_project_schedule_path(@video_project, @schedule),
+               form_method: :patch,
+               submit_label: "Lưu thay đổi",
+               schedule: @schedule %>
+  <% else %>
+    <div role="status" class="alert alert-info">
+      <span>Lịch đã hoàn tất hoặc đã hủy nên không còn occurrence để sửa.</span>
+    </div>
+  <% end %>
+</section>

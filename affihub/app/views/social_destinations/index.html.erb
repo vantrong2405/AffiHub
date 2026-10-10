@@ -1,0 +1,87 @@
+<% is_youtube = @social_connection.provider == "youtube" %>
+<% is_instagram = @social_connection.provider == "instagram" %>
+<% destination_name = is_instagram ? "tài khoản Instagram Business" : social_destination_name(@social_connection.provider) %>
+<% provider_name = social_provider_name(@social_connection.provider) %>
+<% content_for :title, "Chọn #{destination_name} | #{@social_connection.name}" %>
+
+<section class="mx-auto max-w-5xl space-y-6">
+  <div class="space-y-2">
+    <%= link_to "← #{@social_connection.name}", social_connection_path(@social_connection), class: "link link-hover text-sm" %>
+    <div>
+    <h1 class="text-3xl font-bold">Chọn <%= destination_name %> đăng video</h1>
+    <p class="mt-1 text-sm text-base-content/60">
+      <% if is_youtube %>
+        Tài khoản <%= provider_name %> này có thể quản lý nhiều kênh. Chọn kênh sẽ dùng để đăng video.
+      <% elsif is_instagram %>
+        Facebook Login liệt kê các Page. Chọn Page có liên kết Instagram Business đủ quyền để làm đích đăng.
+      <% else %>
+        Tài khoản <%= provider_name %> này có thể quản lý nhiều Page. Chọn Page được cấp quyền tạo nội dung.
+      <% end %>
+    </p>
+    </div>
+  </div>
+
+  <% if @available_pages.any? %>
+    <%= form_with url: social_connection_social_destinations_path(@social_connection), scope: :social_destination, class: "space-y-4" do %>
+      <div class="grid gap-4 md:grid-cols-2">
+        <% @available_pages.each_with_index do |available_page, page_index| %>
+          <% checkbox_id = "social_destination_#{page_index}" %>
+          <% availability = social_destination_availability(@social_connection.provider, available_page) %>
+          <article class="card border border-base-300 bg-base-100 shadow-sm">
+            <div class="card-body gap-4">
+              <div class="flex items-start gap-3">
+                <%= check_box_tag "social_destination[external_ids][]",
+                                  available_page.fetch("id"),
+                                  false,
+                                  id: checkbox_id,
+                                  disabled: !availability.fetch(:selectable),
+                                  class: "checkbox checkbox-primary mt-1" %>
+                <label for="<%= checkbox_id %>" class="min-w-0 flex-1 cursor-pointer space-y-1">
+                  <span class="block font-semibold"><%= available_page.fetch("name") %></span>
+                  <% if is_instagram %>
+                    <span class="block text-sm text-base-content/60">Page ID <%= available_page.fetch("id") %></span>
+                    <% if available_page.fetch("instagram_business_account_id").present? %>
+                      <span class="block text-sm text-base-content/60">Instagram Business account ID <%= available_page.fetch("instagram_business_account_id") %></span>
+                    <% else %>
+                      <span class="block text-sm text-base-content/60">Chưa liên kết Instagram Business account</span>
+                    <% end %>
+                    <% if available_page.fetch("instagram_account_type").present? %>
+                      <span class="block text-sm text-base-content/60">Loại tài khoản Instagram <%= available_page.fetch("instagram_account_type") %></span>
+                    <% end %>
+                  <% else %>
+                    <span class="block text-sm text-base-content/60"><%= destination_name.capitalize %> ID <%= available_page.fetch("id") %></span>
+                  <% end %>
+                </label>
+                <% unless is_youtube %>
+                  <% if availability.fetch(:status_label).present? %>
+                    <span class="badge <%= availability.fetch(:selectable) ? "badge-success" : "badge-warning" %>"><%= availability.fetch(:status_label) %></span>
+                  <% end %>
+                <% end %>
+              </div>
+
+              <% if availability.fetch(:warning).present? %>
+                <div role="alert" class="alert alert-warning">
+                  <span><%= availability.fetch(:warning) %></span>
+                </div>
+              <% end %>
+            </div>
+          </article>
+        <% end %>
+      </div>
+
+      <div class="flex flex-col-reverse justify-end gap-3 sm:flex-row">
+        <%= link_to "Quay lại tài khoản", social_connection_path(@social_connection), class: "btn btn-ghost w-full sm:w-auto" %>
+        <%= submit_tag(is_instagram ? "Thêm tài khoản Instagram Business đã chọn" : "Thêm #{destination_name} đã chọn",
+                       class: "btn btn-primary w-full sm:w-auto") %>
+      </div>
+    <% end %>
+  <% else %>
+    <div class="card border border-dashed border-base-300 bg-base-100">
+      <div class="card-body items-start">
+        <h2 class="card-title">Chưa có <%= destination_name %> khả dụng</h2>
+        <p class="text-base-content/70">Hãy kiểm tra quyền truy cập tài khoản <%= provider_name %>.</p>
+        <%= link_to "Quay lại tài khoản", social_connection_path(@social_connection), class: "btn btn-outline" %>
+      </div>
+    </div>
+  <% end %>
+</section>

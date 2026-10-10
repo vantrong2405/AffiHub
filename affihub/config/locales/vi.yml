@@ -1,0 +1,102 @@
+vi:
+  date:
+    formats:
+      default: "%d/%m/%Y"
+      short: "%d/%m"
+      long: "%d/%m/%Y"
+  time:
+    formats:
+      default: "%d/%m/%Y %H:%M"
+      short: "%d/%m %H:%M"
+      long: "%d/%m/%Y lúc %H:%M"
+  activerecord:
+    attributes:
+      video_project:
+        name: Tên project
+    errors:
+      messages:
+        blank: không được để trống
+  errors:
+    format: "%{attribute} %{message}"
+    messages:
+      blank: không được để trống
+  video_workflow:
+    media_metadata:
+      width: Chiều rộng
+      height: Chiều cao
+      duration_seconds: Thời lượng (giây)
+      file_size_bytes: Dung lượng (byte)
+      video_codec: Codec video
+      has_audio: Có âm thanh
+      audio_codec: Codec âm thanh
+      frame_rate: Tốc độ khung hình
+    statuses:
+      video_project:
+        draft: Nháp
+        processing: Đang xử lý
+        ready: Sẵn sàng
+        failed: Cần xử lý
+      source_asset:
+        pending: Đang chờ
+        waiting_for_download_slot: Chờ lượt tải
+        processing: Đang kiểm tra
+        ready: Sẵn sàng chỉnh sửa
+        failed: Không đọc được
+      render_version:
+        pending: Đang chờ render
+        processing: Đang render
+        ready: Đã render
+        failed: Render lỗi
+      ai_generation:
+        draft: Bản nháp
+        script_ready: Đã tạo kịch bản
+        prompts_ready: Đã tạo gợi ý cảnh
+        submitting: Đang gửi yêu cầu
+        processing: Đang tạo video
+        reconciliation_required: Cần đối soát
+        outcome_unknown: Chưa rõ kết quả
+        completed: Đã tạo xong
+        failed: Tạo video lỗi
+      social_connection:
+        connected: Đã kết nối
+        reauth_required: Cần kết nối lại
+        revoked: Đã thu hồi
+        failed: Kết nối lỗi
+      social_destination:
+        connected: Sẵn sàng đăng
+        reauth_required: Cần kết nối lại
+        revoked: Đã thu hồi
+        unavailable: Không khả dụng
+      ai_provider_connection:
+        pending_verification: Chờ xác minh
+        ready: Sẵn sàng sử dụng
+        scope_missing: Thiếu quyền sử dụng model
+        reauth_required: Cần đăng nhập lại
+        revoked: Đã thu hồi
+        failed: Kết nối lỗi
+      publication:
+        draft: Bản nháp
+        approved: Đã xác nhận
+        scheduled: Đã lên lịch
+        uploading: Đang tải video
+        processing: Đang xử lý
+        published: Đã đăng
+        failed: Đăng lỗi
+        outcome_unknown: Chưa rõ kết quả
+        manual_outcome_confirmed: Người vận hành xác nhận đã đăng
+        manual_outcome_not_occurred: Người vận hành xác nhận chưa đăng
+      workflow_run:
+        queued: Đang chờ xử lý
+        running: Đang chạy
+        reconciliation_required: Cần đối soát
+        outcome_unknown: Chưa rõ kết quả
+        completed: Hoàn tất
+        failed: Thất bại
+      outbound_attempt:
+        prepared: Đã chuẩn bị
+        submitting: Đang gửi yêu cầu
+        confirmed: Đã xác nhận
+        failed: Thất bại
+        outcome_unknown: Chưa rõ kết quả
+        manual_outcome_confirmed: Người vận hành xác nhận đã đăng
+        manual_outcome_not_occurred: Người vận hành xác nhận chưa đăng

@@ -1,0 +1,64 @@
+<% content_for :title, "Lên lịch video | #{@video_project.name}" %>
+
+<section class="mx-auto max-w-5xl space-y-6">
+  <div class="space-y-2">
+    <%= link_to "← Lịch đăng", video_project_schedules_path(@video_project), class: "link link-hover text-sm" %>
+    <div>
+      <h1 class="text-3xl font-bold">Lên lịch video</h1>
+      <p class="mt-1 text-sm text-base-content/60">Giờ được lưu cùng timezone; lịch bị lỡ sẽ không tự đăng bù.</p>
+    </div>
+  </div>
+
+  <%= form_with url: new_video_project_schedule_path(@video_project), method: :get, class: "card border border-base-300 bg-base-100" do %>
+    <div class="card-body gap-4">
+      <label class="form-control w-full">
+        <span class="label-text mb-1">Báo cáo preflight</span>
+        <%= select_tag :preflight_report_id,
+                       options_for_select(
+                         schedule_preflight_report_options(@preflight_reports),
+                         schedule_selected_preflight_report_id(@preflight_report)
+                       ),
+                       required: true,
+                       class: "select select-bordered w-full" %>
+      </label>
+      <div class="flex justify-end">
+        <%= submit_tag "Xem destination", class: "btn btn-outline w-full sm:w-auto" %>
+      </div>
+    </div>
+  <% end %>
+
+  <% if schedule_preflight_reports_empty?(@preflight_reports) %>
+    <div role="alert" class="alert alert-info">
+      <span>Project chưa có báo cáo preflight cho bản render sẵn sàng.</span>
+      <%= link_to "Mở các bản render", video_project_render_versions_path(@video_project), class: "link link-primary" %>
+    </div>
+  <% elsif schedule_preflight_report_selected?(@preflight_report) %>
+    <section class="space-y-4">
+      <div class="card border border-base-300 bg-base-100">
+        <div class="card-body gap-2">
+          <h2 class="card-title">Version <%= @render_version.version_number %></h2>
+          <p class="text-sm text-base-content/60">Preflight lúc <%= schedule_preflight_checked_at(@preflight_report) %></p>
+          <p class="text-sm text-base-content/60">Timezone mặc định trên máy này: <%= @time_zone %>.</p>
+        </div>
+      </div>
+
+      <% if schedule_destinations_present?(@blocked_social_destinations) %>
+        <div role="status" class="alert alert-warning">
+          <span>Destination chưa đạt preflight sẽ không được đưa vào lịch.</span>
+        </div>
+      <% end %>
+
+      <% if schedule_destinations_present?(@ready_social_destinations) %>
+        <%= render "form",
+                   form_url: video_project_schedules_path(@video_project),
+                   form_method: :post,
+                   submit_label: "Lên lịch video",
+                   schedule: nil %>
+      <% else %>
+        <div role="alert" class="alert alert-warning">
+          <span>Báo cáo này chưa có destination nào đạt preflight.</span>
+        </div>
+      <% end %>
+    </section>
+  <% end %>
+</section>

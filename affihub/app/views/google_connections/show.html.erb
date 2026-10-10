@@ -1,0 +1,118 @@
+<% content_for :title, google_connection_page_title(@google_connection) %>
+
+<section class="space-y-6">
+  <div class="space-y-2">
+    <%= link_to "← Kết nối Google", google_connections_path, class: "link link-hover text-sm" %>
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div class="space-y-1">
+        <h1 class="text-3xl font-bold"><%= google_integration_name(@google_connection.integration) %></h1>
+        <p class="break-all text-sm text-base-content/70"><%= @google_connection.email %></p>
+      </div>
+      <span class="badge <%= google_connection_badge_class(@google_connection.status) %>"><%= google_connection_status_label(@google_connection.status) %></span>
+    </div>
+  </div>
+
+  <% if @connection_connected %>
+    <% if @drive_integration %>
+      <div role="note" class="alert border border-info/30 bg-info/5 text-sm">
+        <span>Danh sách chỉ có thư mục mà kết nối `drive.file` hiện được phép thấy. Chọn thư mục gốc để AffiHub tự tạo thư mục riêng theo project.</span>
+      </div>
+      <% if @has_option_load_error %>
+        <div role="alert" class="alert alert-warning"><span><%= @option_load_error %></span></div>
+      <% end %>
+
+      <article class="card border border-base-300 bg-base-100">
+        <div class="card-body gap-4 p-4 sm:p-5">
+          <div class="space-y-1">
+            <h2 class="card-title">Thư mục lưu bản render</h2>
+            <p class="text-sm text-base-content/70">Mỗi Video Project sẽ có thư mục riêng bên dưới vị trí này.</p>
+          </div>
+          <%= form_with scope: :google_connection,
+                        url: google_connection_path(@google_connection),
+                        method: :patch,
+                        class: "space-y-4" do |form| %>
+            <div class="space-y-2">
+              <%= form.label :drive_parent_folder_id, "Vị trí trên Google Drive", class: "label-text font-medium" %>
+              <%= form.select :drive_parent_folder_id,
+                              google_drive_folder_options(@drive_folders, @google_connection.drive_parent_folder_id),
+                              {},
+                              class: "select select-bordered h-11 w-full" %>
+            </div>
+            <%= form.submit "Lưu cấu hình Drive", class: "btn btn-primary w-full sm:w-auto" %>
+          <% end %>
+        </div>
+      </article>
+    <% else %>
+      <div role="note" class="alert border border-info/30 bg-info/5 text-sm">
+        <span>Chọn bảng tính trong Google Picker. AffiHub chỉ xin quyền với file bạn chọn và không bật Google Cloud Billing.</span>
+      </div>
+      <% if @has_option_load_error %>
+        <div role="alert" class="alert alert-warning"><span><%= @option_load_error %></span></div>
+      <% end %>
+
+      <article class="card border border-base-300 bg-base-100"
+               data-controller="google-picker"
+               data-google-picker-app-id-value="<%= @picker_configuration.fetch(:app_id) %>"
+               data-google-picker-client-id-value="<%= @picker_configuration.fetch(:client_id) %>"
+               data-google-picker-developer-key-value="<%= @picker_configuration.fetch(:developer_key) %>"
+               data-google-picker-scope-value="<%= @picker_configuration.fetch(:scope) %>"
+               data-google-picker-spreadsheet-mime-type-value="<%= @picker_configuration.fetch(:spreadsheet_mime_type) %>">
+        <div class="card-body gap-4 p-4 sm:p-5">
+          <div class="space-y-1">
+            <h2 class="card-title">Chọn spreadsheet và tab</h2>
+            <p class="text-sm text-base-content/70">Chọn file mà tài khoản Google đã kết nối có thể truy cập. Rails sẽ xác minh file và tải danh sách tab.</p>
+          </div>
+          <%= form_with url: google_connection_path(@google_connection), method: :get,
+                        data: { google_picker_target: "form" } do %>
+            <%= hidden_field_tag :spreadsheet_id, @spreadsheet_id, data: { google_picker_target: "spreadsheetId" } %>
+          <% end %>
+          <div data-google-picker-target="host"></div>
+          <p role="status" aria-live="polite" class="text-sm text-base-content/70"
+             data-google-picker-target="status"></p>
+          <div>
+            <button type="button"
+                    class="btn btn-outline w-full sm:w-auto"
+                    data-action="google-picker#open"
+                    <%= "disabled" unless @picker_ready %>>Chọn bảng tính</button>
+          </div>
+          <% unless @picker_ready %>
+            <div role="alert" class="alert alert-warning text-sm">
+              <span>Google Picker chưa được cấu hình project number và API key cho ứng dụng.</span>
+            </div>
+          <% end %>
+
+          <% if @has_worksheets %>
+            <div class="divider my-0"></div>
+            <%= form_with scope: :google_connection,
+                          url: google_connection_path(@google_connection),
+                          method: :patch,
+                          class: "space-y-4" do |form| %>
+              <%= form.hidden_field :spreadsheet_id, value: @spreadsheet_id %>
+              <div class="space-y-2">
+                <%= form.label :worksheet_title, "Tab cần đồng bộ", class: "label-text font-medium" %>
+                <%= form.select :worksheet_title,
+                                google_worksheet_options(@worksheets, @worksheet_title),
+                                {},
+                                class: "select select-bordered h-11 w-full" %>
+              </div>
+              <%= form.submit "Lưu cấu hình Sheets", class: "btn btn-primary w-full sm:w-auto" %>
+            <% end %>
+          <% end %>
+        </div>
+      </article>
+    <% end %>
+  <% else %>
+    <article class="card border border-warning/30 bg-warning/5">
+      <div class="card-body gap-4 p-4 sm:p-5">
+        <div class="space-y-1">
+          <h2 class="card-title">Cần kết nối lại</h2>
+          <p class="text-sm">Nhánh đồng bộ đang tạm dừng. Dữ liệu trong AffiHub vẫn được giữ nguyên.</p>
+        </div>
+        <%= button_to "Kết nối lại với Google",
+                      google_connections_path(integration: @google_connection.integration),
+                      method: :post,
+                      class: "btn btn-primary w-full sm:w-auto" %>
+      </div>
+    </article>
+  <% end %>
+</section>

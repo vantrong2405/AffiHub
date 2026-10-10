@@ -1,0 +1,14 @@
+shared:
+  base_url: <%= ENV.fetch("VIENEU_BASE_URL", "http://vieneu-tts:8000") %>
+  api_key: <%= Rails.application.credentials.dig(:vieneu_tts, :api_key).to_s %>
+  speech_endpoint: /v1/audio/speech
+  model_id: vieneu-v3-turbo
+  voice_name: Mai Anh
+  response_format: wav
+  speed: 1.0
+  open_timeout_seconds: 10
+  read_timeout_seconds: 120
+
+test:
+  base_url: http://vieneu.test
+  api_key: affihub-test-key

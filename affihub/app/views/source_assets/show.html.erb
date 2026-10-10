@@ -1,0 +1,71 @@
+<% content_for :title, "#{@source_asset.file.attached? ? @source_asset.file.filename : @source_asset.source_url.presence || 'Video nguồn'} | #{@video_project.name}" %>
+
+<section class="mx-auto max-w-4xl space-y-6">
+  <div class="space-y-3">
+    <%= link_to "← #{@video_project.name}", video_project_path(@video_project), class: "link link-hover text-sm" %>
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div class="min-w-0 space-y-2">
+        <h1 class="break-all text-2xl font-bold sm:text-3xl"><%= @source_asset.file.attached? ? @source_asset.file.filename : @source_asset.source_url.presence || "Video nguồn" %></h1>
+        <p class="text-sm text-base-content/60">Nhập lúc <%= l(@source_asset.created_at, format: :long) %></p>
+      </div>
+      <%= workflow_status_badge(@source_asset.status, resource: "source_asset") %>
+    </div>
+  </div>
+
+  <% if @source_asset.waiting_for_download_slot? %>
+    <div class="alert alert-warning" role="status">
+      <span>Đã chạm giới hạn 10 lượt tải trong 60 phút. AffiHub sẽ thử lại tự động khi có lượt trống; bạn cũng có thể nhập file MP4/MOV.</span>
+    </div>
+  <% elsif @source_asset.failed? %>
+    <div class="alert alert-error" role="alert">
+      <span><%= @source_asset.download_error.presence || @source_asset.inspection_error.presence || "Không thể đọc file video. Hãy chọn một file MP4 hoặc MOV hợp lệ." %></span>
+    </div>
+  <% elsif @source_asset.pending? || @source_asset.processing? %>
+    <div class="alert alert-info" role="status">
+      <span><%= @source_asset.source_type == "url_download" && !@source_asset.file.attached? ? "Yêu cầu tải đã được nhận. Worker đang xử lý trong nền; tải lại trang sau ít phút để xem trạng thái mới." : "File đã được nhận. Worker đang kiểm tra video; tải lại trang sau ít phút để xem trạng thái mới." %></span>
+    </div>
+  <% end %>
+
+  <% if @source_asset.source_url.present? %>
+    <p class="break-all text-sm text-base-content/70">
+      Nguồn ban đầu:
+      <%= link_to @source_asset.source_url, @source_asset.source_url, class: "link link-hover", target: "_blank", rel: "noopener noreferrer" %>
+    </p>
+  <% end %>
+
+  <% if @source_asset.ready? && @source_asset.file.attached? %>
+    <div class="card border border-base-300 bg-base-100">
+      <div class="card-body gap-5">
+        <h2 class="card-title">Video gốc</h2>
+        <video controls playsinline preload="metadata" class="mx-auto max-h-[70vh] w-full max-w-sm rounded-box bg-neutral">
+          <source src="<%= url_for(@source_asset.file) %>">
+        </video>
+        <p class="text-sm text-base-content/60">Đây là source gốc. AffiHub giữ file này khi bạn chỉnh sửa hoặc render version mới.</p>
+      </div>
+    </div>
+  <% end %>
+
+  <% if @source_asset.ready? && @source_asset.media_metadata.present? %>
+    <div class="card border border-base-300 bg-base-100">
+      <div class="card-body">
+        <h2 class="card-title">Thông tin video</h2>
+        <dl class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <% @source_asset.media_metadata.each do |key, value| %>
+            <div class="rounded-box bg-base-200 p-3">
+              <dt class="text-xs font-semibold uppercase tracking-wide text-base-content/60"><%= t("video_workflow.media_metadata.#{key}", default: key.humanize) %></dt>
+              <dd class="mt-1 break-words font-medium"><%= key == "has_audio" ? (value ? "Có" : "Không") : (value.nil? ? "—" : value) %></dd>
+            </div>
+          <% end %>
+        </dl>
+      </div>
+    </div>
+  <% end %>
+
+  <div class="flex flex-col gap-2 sm:flex-row">
+    <%= link_to "Tất cả nguồn", video_project_source_assets_path(@video_project), class: "btn btn-outline w-full sm:w-auto" %>
+    <%= link_to "Thêm nguồn video", new_video_project_source_asset_path(@video_project), class: "btn btn-primary w-full sm:w-auto" %>
+    <% if @source_asset.ready? %>
+      <%= link_to "Biên tập video", new_video_project_render_version_path(@video_project, source_asset_id: @source_asset.id), class: "btn btn-secondary w-full sm:w-auto" %>
+    <% end %>
+  </div>
+</section>

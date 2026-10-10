@@ -1,0 +1,99 @@
+<% content_for :title, "Trạng thái video AI | AffiHub" %>
+
+<section class="space-y-6">
+  <div class="space-y-3">
+    <%= link_to "← #{@video_project.name}", video_project_path(@video_project), class: "link link-hover text-sm" %>
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <h1 class="text-3xl font-bold"><%= @ai_generation.input_snapshot["video_subject"].presence || "Video AI" %></h1>
+        <p class="mt-2 text-sm text-base-content/60"><%= l(@ai_generation.created_at, format: :short) %></p>
+      </div>
+      <%= workflow_status_badge(@ai_generation.status, resource: "ai_generation") %>
+    </div>
+  </div>
+
+  <% if @ai_generation.processing? || @ai_generation.submitting? %>
+    <div role="status" class="card border border-base-300 bg-base-100">
+      <div class="card-body gap-3">
+        <p class="font-medium">Đang tạo video bằng AI. Trạng thái sẽ được cập nhật khi MPT hoàn tất.</p>
+        <progress class="progress progress-primary w-full"></progress>
+      </div>
+    </div>
+  <% elsif @outbound_attempt&.manual_outcome_confirmed? %>
+    <div role="alert" class="alert alert-info">
+      <div>
+        <p class="font-medium">Bạn đã ghi nhận job xảy ra theo bằng chứng bên ngoài.</p>
+        <p>AffiHub chưa có task ID hoặc output provider xác nhận, nên generation vẫn chưa được đánh dấu hoàn tất.</p>
+        <% if @outbound_attempt.provider_reference["manual_reference"].present? %>
+          <p>Mã hoặc URL provider: <%= @outbound_attempt.provider_reference["manual_reference"] %></p>
+        <% end %>
+        <p>Bằng chứng: <%= @outbound_attempt.manual_evidence %></p>
+      </div>
+    </div>
+  <% elsif @outbound_attempt&.manual_outcome_not_occurred? %>
+    <div role="status" class="alert alert-success">
+      <div>
+        <p class="font-medium">Đã ghi nhận job chưa xảy ra theo bằng chứng bạn cung cấp.</p>
+        <p>Muốn thử lại, hãy kiểm tra ngân sách và xác nhận lại báo giá trước khi gửi.</p>
+        <p>Bằng chứng: <%= @outbound_attempt.manual_evidence %></p>
+        <%= link_to "Xem lại ngân sách và xác nhận gửi lại",
+                    edit_video_project_ai_generation_path(@video_project, @ai_generation),
+                    class: "btn btn-outline btn-sm mt-2" %>
+      </div>
+    </div>
+  <% elsif @ai_generation.outcome_unknown? || @ai_generation.reconciliation_required? %>
+    <% if @outbound_attempt&.outcome_unknown? || @outbound_attempt&.submitting? %>
+      <article class="card border border-warning bg-base-100">
+        <div class="card-body gap-4">
+          <div role="alert" class="alert alert-warning">
+            <span>Chưa xác định được kết quả yêu cầu MPT. Không gửi lại job trước khi đối soát.</span>
+          </div>
+          <% if @outbound_attempt.manual_evidence.present? %>
+            <p class="text-sm">Bằng chứng đã ghi: <%= @outbound_attempt.manual_evidence %></p>
+          <% end %>
+          <%= form_with scope: :ai_generation,
+                        url: video_project_ai_generation_path(@video_project, @ai_generation),
+                        method: :patch,
+                        class: "space-y-4" do |form| %>
+            <%= form.hidden_field :step, value: "resolve_outcome" %>
+            <div class="space-y-2">
+              <%= form.label :decision, "Kết quả đối soát", class: "label font-medium" %>
+              <%= form.select :decision,
+                              [["Đã xảy ra", "occurred"], ["Chắc chắn chưa xảy ra", "not_occurred"], ["Vẫn chưa rõ", "unknown"]],
+                              {},
+                              required: true,
+                              class: "select select-bordered w-full" %>
+            </div>
+            <div class="space-y-2">
+              <%= form.label :provider_reference, "URL hoặc mã task của provider nếu đã xảy ra", class: "label font-medium" %>
+              <%= form.text_field :provider_reference,
+                                  class: "input input-bordered w-full",
+                                  autocomplete: "off" %>
+            </div>
+            <div class="space-y-2">
+              <%= form.label :evidence, "Bằng chứng đối soát", class: "label font-medium" %>
+              <%= form.text_area :evidence,
+                                 required: true,
+                                 class: "textarea textarea-bordered min-h-24 w-full" %>
+            </div>
+            <label class="label flex w-full cursor-pointer items-start justify-start gap-3 whitespace-normal">
+              <%= form.check_box :risk_confirmed,
+                                 { required: true, class: "checkbox checkbox-warning mt-1" },
+                                 "1",
+                                 "0" %>
+              <span class="min-w-0 flex-1 whitespace-normal">Tôi đã kiểm tra bằng chứng và hiểu rủi ro chi phí nếu yêu cầu được gửi lại.</span>
+            </label>
+            <%= form.submit "Lưu quyết định đối soát", class: "btn btn-warning w-full sm:w-auto" %>
+          <% end %>
+        </div>
+      </article>
+    <% end %>
+  <% end %>
+
+  <article class="card border border-base-300 bg-base-100">
+    <div class="card-body gap-4">
+      <h2 class="card-title">Kịch bản đã duyệt</h2>
+      <p class="whitespace-pre-wrap"><%= @ai_generation.input_snapshot["video_script"] %></p>
+    </div>
+  </article>
+</section>

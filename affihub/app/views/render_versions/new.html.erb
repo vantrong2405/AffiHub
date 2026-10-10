@@ -1,0 +1,23 @@
+<% content_for :title, "Biên tập video | #{@video_project.name}" %>
+
+<section class="mx-auto max-w-7xl space-y-6">
+  <div class="space-y-3">
+    <%= link_to "← #{@video_project.name}", video_project_path(@video_project), class: "link link-hover text-sm" %>
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <div>
+        <p class="text-sm text-base-content/60">Biên tập video trên máy</p>
+        <h1 class="text-3xl font-bold">Biên tập và tạo bản render</h1>
+      </div>
+      <%= link_to "Lịch sử render", video_project_render_versions_path(@video_project), class: "btn btn-outline w-full sm:w-auto" %>
+    </div>
+  </div>
+
+  <% if @source_assets.empty? %>
+    <div class="alert alert-info" role="status">
+      <span>Project chưa có source sẵn sàng. Nhập file MP4 hoặc MOV và đợi kiểm tra hoàn tất trước khi biên tập.</span>
+      <%= link_to "Nhập video", new_video_project_source_asset_path(@video_project), class: "btn btn-primary btn-sm" %>
+    </div>
+  <% else %>
+    <%= render "form" %>
+  <% end %>
+</section>

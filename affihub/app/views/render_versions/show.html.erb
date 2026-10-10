@@ -1,0 +1,158 @@
+<% content_for :title, "Version #{@render_version.version_number} | #{@video_project.name}" %>
+
+<section class="mx-auto max-w-7xl space-y-6">
+  <div class="space-y-3">
+    <%= link_to "← #{@video_project.name}", video_project_path(@video_project), class: "link link-hover text-sm" %>
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div>
+        <p class="text-sm text-base-content/60"><%= @source_asset.file.attached? ? @source_asset.file.filename : "Source video" %></p>
+        <h1 class="text-3xl font-bold">Version <%= @render_version.version_number %></h1>
+        <p class="mt-1 text-sm text-base-content/60">Tạo lúc <%= l(@render_version.created_at, format: :long) %></p>
+      </div>
+      <div class="flex flex-wrap items-center gap-3">
+        <%= workflow_status_badge(@render_version.status, resource: "render_version") %>
+        <%= link_to "Chỉnh sửa lại", new_video_project_render_version_path(@video_project, source_asset_id: @source_asset.id), class: "btn btn-outline btn-sm" %>
+        <% if @render_version.ready? && @render_version.file.attached? %>
+          <%= link_to "Tải MP4", rails_blob_path(@render_version.file, disposition: "attachment"), class: "btn btn-primary btn-sm" %>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <% if @render_version.pending? || @render_version.processing? %>
+    <div class="alert alert-info" role="status">
+      <span>Worker đang render video. Tải lại trang sau ít phút để xem kết quả.</span>
+    </div>
+  <% elsif @render_version.failed? %>
+    <div class="alert alert-error" role="alert">
+      <span><%= @render_version.render_error.presence || "Không thể render video. Source và các version trước vẫn được giữ." %></span>
+    </div>
+  <% end %>
+
+  <div class="grid gap-4 lg:grid-cols-2">
+    <section class="card border border-base-300 bg-base-100" aria-labelledby="source-video-heading">
+      <div class="card-body gap-4">
+        <h2 id="source-video-heading" class="card-title">Video gốc</h2>
+        <% if @source_asset.file.attached? %>
+          <video controls playsinline preload="metadata" class="mx-auto max-h-[65vh] w-full max-w-sm rounded-box bg-neutral" aria-label="Video source gốc">
+            <source src="<%= url_for(@source_asset.file) %>">
+          </video>
+        <% else %>
+          <p class="text-sm text-base-content/60">Source file chưa sẵn sàng để phát.</p>
+        <% end %>
+        <dl class="grid gap-2 text-sm sm:grid-cols-2">
+          <% @source_asset.media_metadata.each do |key, value| %>
+            <div class="rounded-box bg-base-200 p-3">
+              <dt class="text-xs text-base-content/60"><%= t("video_workflow.media_metadata.#{key}", default: key.humanize) %></dt>
+              <dd class="mt-1 font-medium"><%= key == "has_audio" ? (value ? "Có" : "Không") : (value.nil? ? "—" : value) %></dd>
+            </div>
+          <% end %>
+        </dl>
+      </div>
+    </section>
+
+    <section class="card border border-base-300 bg-base-100" aria-labelledby="render-video-heading">
+      <div class="card-body gap-4">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <h2 id="render-video-heading" class="card-title">Preview render</h2>
+          <%= workflow_status_badge(@render_version.status, resource: "render_version") %>
+        </div>
+        <% if @render_version.ready? && @render_version.file.attached? %>
+          <video controls playsinline preload="metadata" class="mx-auto max-h-[65vh] w-full max-w-sm rounded-box bg-neutral" aria-label="Preview bản render">
+            <source src="<%= url_for(@render_version.file) %>">
+          </video>
+        <% else %>
+          <p class="rounded-box bg-base-200 p-6 text-sm text-base-content/70">Video render sẽ xuất hiện ở đây khi worker hoàn tất.</p>
+        <% end %>
+        <dl class="grid gap-2 text-sm sm:grid-cols-2">
+          <% @render_version.metadata.each do |key, value| %>
+            <div class="rounded-box bg-base-200 p-3">
+              <dt class="text-xs text-base-content/60"><%= t("video_workflow.media_metadata.#{key}", default: key.humanize) %></dt>
+              <dd class="mt-1 font-medium"><%= key == "has_audio" ? (value ? "Có" : "Không") : (value.nil? ? "—" : value) %></dd>
+            </div>
+          <% end %>
+        </dl>
+      </div>
+    </section>
+  </div>
+
+  <section class="card border border-base-300 bg-base-100" aria-labelledby="preflight-start-heading">
+    <div class="card-body gap-4">
+      <div>
+        <h2 id="preflight-start-heading" class="card-title">Kiểm tra toàn bộ</h2>
+        <p class="text-sm text-base-content/70">Kiểm tra source, render, worker và từng destination đã chọn. Lượt kiểm tra chỉ đọc, không đăng bài, upload media hay tạo job AI tính phí.</p>
+      </div>
+
+      <%= form_with url: video_project_preflight_reports_path(@video_project), scope: :preflight_report, class: "space-y-4" do %>
+        <%= hidden_field_tag "preflight_report[render_version_id]", @render_version.id %>
+      <% if @social_destinations.any? %>
+        <fieldset class="space-y-3">
+          <legend class="font-medium">Destination cần kiểm tra</legend>
+          <div class="grid gap-3 md:grid-cols-2">
+            <% @social_destinations.each do |social_destination| %>
+              <label class="flex min-w-0 items-start gap-3 rounded-box border border-base-300 p-4">
+                <%= check_box_tag "preflight_report[social_destination_ids][]", social_destination.id, false, class: "checkbox checkbox-primary mt-0.5" %>
+                <span class="min-w-0">
+                  <span class="block font-medium"><%= social_destination.name %></span>
+                  <span class="mt-1 block text-sm text-base-content/60"><%= social_provider_name(social_destination.provider) %> · <%= social_destination.social_connection.name %></span>
+                </span>
+                <span class="ml-auto"><%= workflow_status_badge(social_destination.status, resource: "social_destination") %></span>
+              </label>
+            <% end %>
+          </div>
+        </fieldset>
+      <% else %>
+        <div class="rounded-box bg-base-200 p-4">
+          <p class="text-sm">Chưa có destination được kết nối. Bạn vẫn có thể kiểm tra project và khả năng export local.</p>
+          <%= link_to "Mở kết nối mạng xã hội", social_connections_path, class: "link link-hover mt-2 inline-block text-sm font-medium" %>
+        </div>
+      <% end %>
+
+        <div class="flex justify-end">
+          <%= submit_tag "Kiểm tra toàn bộ", class: "btn btn-primary w-full sm:w-auto", data: { turbo_submits_with: "Đang kiểm tra…" } %>
+        </div>
+      <% end %>
+    </div>
+  </section>
+
+  <section class="card border border-base-300 bg-base-100" aria-labelledby="frame-comparison-heading">
+    <div class="card-body gap-5">
+      <div>
+        <h2 id="frame-comparison-heading" class="card-title">So sánh khung hình</h2>
+        <p class="text-sm text-base-content/60">Nhập timecode để xem khung source và render tại cùng thời điểm.</p>
+      </div>
+      <% if @comparison_error.present? %>
+        <div class="alert alert-error" role="alert"><span><%= @comparison_error %></span></div>
+      <% end %>
+      <%= form_with url: video_project_render_version_path(@video_project, @render_version), method: :get, class: "flex flex-col gap-3 sm:flex-row sm:items-end" do %>
+        <label class="form-control w-full sm:max-w-xs">
+          <span class="label-text mb-1">Timecode (giây)</span>
+          <%= number_field_tag :timecode, params[:timecode], min: 0, step: 0.1, required: true, class: "input input-bordered w-full" %>
+        </label>
+        <%= submit_tag "So sánh", class: "btn btn-outline w-full sm:w-auto" %>
+      <% end %>
+
+      <% if @frames.any? %>
+        <div class="grid gap-4 md:grid-cols-2">
+          <% @frames.each do |frame| %>
+            <article class="card border border-base-300 bg-base-200">
+              <div class="card-body gap-3">
+                <h3 class="font-semibold">Timecode <%= number_with_precision(frame.fetch(:timestamp_seconds), precision: 2, strip_insignificant_zeros: true) %> giây</h3>
+                <div class="grid grid-cols-2 gap-3">
+                  <div class="space-y-2">
+                    <img src="<%= frame.fetch(:source_frame) %>" alt="Khung source tại <%= frame.fetch(:timestamp_seconds) %> giây" class="w-full rounded-box bg-neutral">
+                    <p class="text-center text-xs">Nguồn</p>
+                  </div>
+                  <div class="space-y-2">
+                    <img src="<%= frame.fetch(:render_frame) %>" alt="Khung render tại <%= frame.fetch(:timestamp_seconds) %> giây" class="w-full rounded-box bg-neutral">
+                    <p class="text-center text-xs">Bản render</p>
+                  </div>
+                </div>
+              </div>
+            </article>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  </section>
+</section>

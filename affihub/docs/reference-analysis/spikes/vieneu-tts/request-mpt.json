@@ -1,0 +1,7 @@
+{
+  "model": "vieneu-v3-turbo",
+  "input": "Xin chào. Đây là bản kiểm tra giọng đọc tiếng Việt cho AffiHub.",
+  "voice": "Mai Anh",
+  "response_format": "mp3",
+  "speed": 1.0
+}

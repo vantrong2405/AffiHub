@@ -1,0 +1,14 @@
+<% content_for :title, "Sửa quy tắc tự trả lời" %>
+
+<section class="mx-auto max-w-3xl space-y-6">
+  <div class="space-y-2">
+    <%= link_to "← #{@auto_reply_rule.social_destination.name}", auto_reply_rule_path(@auto_reply_rule), class: "link link-hover text-sm" %>
+    <h1 class="text-3xl font-bold">Sửa quy tắc</h1>
+    <p class="text-sm text-base-content/70">Đích đã chọn được giữ cố định để tránh chuyển nhầm câu trả lời.</p>
+  </div>
+
+  <%= render "form",
+             auto_reply_rule: @auto_reply_rule,
+             social_destinations: [],
+             editing: true %>
+</section>

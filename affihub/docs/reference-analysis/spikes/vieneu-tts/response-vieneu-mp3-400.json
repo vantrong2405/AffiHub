@@ -1,0 +1,7 @@
+{
+  "error": {
+    "message": "response_format 'mp3' not supported; use 'pcm' or 'wav'",
+    "type": "invalid_request_error",
+    "code": 400
+  }
+}

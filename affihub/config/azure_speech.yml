@@ -1,0 +1,15 @@
+shared:
+  endpoint: <%= ENV.fetch("AZURE_SPEECH_ENDPOINT", "") %>
+  region: <%= ENV.fetch("AZURE_SPEECH_REGION", "") %>
+  api_key: <%= Rails.application.credentials.dig(:azure_speech, :api_key).to_s %>
+  voice: <%= ENV.fetch("AZURE_SPEECH_VOICE", "vi-VN-HoaiMyNeural") %>
+  output_format: riff-24khz-16bit-mono-pcm
+  open_timeout_seconds: 10
+  read_timeout_seconds: 120
+  estimate_max_age_seconds: 3600
+
+test:
+  endpoint: https://azure-speech.test/cognitiveservices/v1
+  region: test-region
+  api_key: affihub-test-key
+  voice: vi-VN-HoaiMyNeural

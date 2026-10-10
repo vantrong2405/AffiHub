@@ -1,0 +1,49 @@
+<% content_for :title, "Lịch đăng | #{@video_project.name}" %>
+
+<section class="space-y-6">
+  <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+    <div class="space-y-2">
+      <%= link_to "← #{@video_project.name}", video_project_path(@video_project), class: "link link-hover text-sm" %>
+      <div>
+        <h1 class="text-3xl font-bold">Lịch đăng</h1>
+        <p class="mt-1 text-sm text-base-content/60">Theo dõi giờ đăng, timezone, trạng thái pause và các lần bị lỡ.</p>
+      </div>
+    </div>
+    <%= link_to "Lên lịch video", new_video_project_schedule_path(@video_project), class: "btn btn-primary w-full sm:w-auto" %>
+  </div>
+
+  <% if schedules_present?(@schedules) %>
+    <section class="card border border-base-300 bg-base-100" aria-labelledby="schedule-list-heading">
+      <div class="card-body gap-0 p-0">
+        <h2 id="schedule-list-heading" class="px-5 py-4 font-semibold">Lần chạy kế tiếp</h2>
+        <ul class="divide-y divide-base-300 border-t border-base-300">
+          <% @schedules.each do |schedule| %>
+            <li class="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+              <div class="min-w-0 space-y-2">
+                <div class="flex flex-wrap items-center gap-2">
+                  <h3 class="font-semibold">Version <%= schedule.render_version.version_number %></h3>
+                  <%= schedule_status_badge(schedule) %>
+                  <span class="badge badge-outline"><%= schedule_recurrence_label(schedule) %></span>
+                </div>
+                <p class="text-sm text-base-content/70">
+                  <%= schedule_next_occurrence_label(schedule) %>
+                  · <%= schedule.time_zone %>
+                </p>
+                <p class="text-sm text-base-content/60"><%= schedule_destination_names(schedule) %></p>
+              </div>
+              <%= link_to "Mở lịch", video_project_schedule_path(@video_project, schedule), class: "btn btn-outline w-full sm:w-auto" %>
+            </li>
+          <% end %>
+        </ul>
+      </div>
+    </section>
+  <% else %>
+    <section class="card border border-base-300 bg-base-100">
+      <div class="card-body items-start gap-3">
+        <h2 class="card-title">Chưa có lịch đăng</h2>
+        <p class="text-sm text-base-content/70">Chọn một báo cáo preflight đã đạt để tạo lịch một lần hoặc lặp lại.</p>
+        <%= link_to "Tạo lịch đầu tiên", new_video_project_schedule_path(@video_project), class: "btn btn-primary w-full sm:w-auto" %>
+      </div>
+    </section>
+  <% end %>
+</section>

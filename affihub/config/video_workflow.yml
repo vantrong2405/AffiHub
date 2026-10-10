@@ -1,0 +1,307 @@
+shared:
+  lease_duration_seconds: 60
+  limits:
+    source_file_max_bytes: 1073741824
+    project_media_asset_max_bytes: 20971520
+    render_segment_max_count: 50
+    render_overlay_max_count: 20
+    render_text_max_characters: 1000
+    delogo_region_max_count: 20
+  source_download:
+    max_starts_per_window: 10
+    window_seconds: 3600
+    connect_timeout_seconds: 5
+    proxy_bind_host: 127.0.0.1
+    allowed_hosts:
+      - youtube.com
+      - youtube-nocookie.com
+      - youtu.be
+      - googlevideo.com
+      - googleusercontent.com
+      - facebook.com
+      - fb.watch
+      - fbcdn.net
+      - fbsbx.com
+      - instagram.com
+      - cdninstagram.com
+      - tiktok.com
+      - tiktokv.com
+      - tiktokcdn.com
+      - tiktokcdn-us.com
+    platform_hosts:
+      youtube:
+        - youtube.com
+        - youtube-nocookie.com
+        - youtu.be
+        - googlevideo.com
+        - googleusercontent.com
+      facebook:
+        - facebook.com
+        - fb.watch
+        - fbcdn.net
+        - fbsbx.com
+      instagram:
+        - instagram.com
+        - cdninstagram.com
+      tiktok:
+        - tiktok.com
+        - tiktokv.com
+        - tiktokcdn.com
+        - tiktokcdn-us.com
+    blocked_ip_ranges:
+      - 0.0.0.0/8
+      - 10.0.0.0/8
+      - 100.64.0.0/10
+      - 127.0.0.0/8
+      - 169.254.0.0/16
+      - 172.16.0.0/12
+      - 192.0.0.0/24
+      - 192.0.2.0/24
+      - 192.88.99.0/24
+      - 192.168.0.0/16
+      - 198.18.0.0/15
+      - 198.51.100.0/24
+      - 203.0.113.0/24
+      - 224.0.0.0/4
+      - 240.0.0.0/4
+      - "::/128"
+      - "::1/128"
+      - "::ffff:0:0/96"
+      - 64:ff9b::/96
+      - 64:ff9b:1::/48
+      - 100::/64
+      - 100:0:0:1::/64
+      - 2001::/23
+      - 2001:db8::/32
+      - 2002::/16
+      - 3fff::/20
+      - 5f00::/16
+      - fc00::/7
+      - fe80::/10
+      - fec0::/10
+      - ff00::/8
+  publication_quota:
+    max_per_destination: 5
+    window_seconds: 86400
+  publication_workflow:
+    operation: publication_publish
+    publish_stage: publish
+    safe_error_codes:
+      schedule_preflight_blocked: schedule_preflight_blocked
+      schedule_preflight_failed: schedule_preflight_failed
+      schedule_paused: schedule_paused
+      schedule_cancelled: schedule_cancelled
+      quota_exhausted: publication_quota_exhausted
+  schedule:
+    recurrence_values:
+      - once
+      - daily
+      - weekly
+    auto_publish_paused_by_default: false
+    jitter_min_seconds: 300
+    jitter_max_seconds: 1800
+    max_execution_window_seconds: 1800
+    scheduler_operation: publication_publish
+    scheduler_stage: publish
+  auto_responder:
+    control_scope_key: global
+    paused_by_default: false
+    rule_types:
+      default: default
+      keyword: keyword
+    default_rule_type: default
+    enabled_by_default: true
+    comment_event_type: comment
+    workflow_operation: auto_reply
+    reply_stage: reply
+    worker_id_prefix: auto-reply
+    manual_decisions:
+      occurred: occurred
+      not_occurred: not_occurred
+      unknown: unknown
+    manual_outcome_statuses:
+      occurred: manual_outcome_confirmed
+      not_occurred: manual_outcome_not_occurred
+      unknown: outcome_unknown
+    ambiguous_error_codes:
+      - network_request_failed
+      - invalid_json_response
+    ambiguous_http_error_prefixes:
+      - graph_api_http_5
+    audit_events:
+      comment_received: auto_reply_comment_received
+      sent: auto_reply_sent
+      failed: auto_reply_failed
+      outcome_unknown: auto_reply_outcome_unknown
+      manual_outcome_resolved: auto_reply_manual_outcome_resolved
+    safe_error_codes:
+      comment_destination_missing: auto_reply_comment_destination_missing
+      comment_payload_invalid: auto_reply_comment_payload_invalid
+      default_rule_missing: auto_reply_default_rule_missing
+      reply_response_invalid: auto_reply_reply_response_invalid
+      reply_failed: auto_reply_reply_failed
+      reply_outcome_unknown: auto_reply_outcome_unknown
+      network_request_failed: network_request_failed
+      invalid_json_response: invalid_json_response
+      worker_lease_lost: auto_reply_worker_lease_lost
+  media:
+    ffmpeg_command: ffmpeg
+    ffmpeg_timeout_seconds: 1800
+    ffmpeg_threads: 2
+    ffmpeg_font_file: /usr/share/fonts/truetype/noto/NotoSans-Regular.ttf
+    ffprobe_command: ffprobe
+    ffprobe_timeout_seconds: 30
+    ffprobe_max_output_bytes: 1048576
+  render_profile:
+    width: 1080
+    height: 1920
+    frame_rate: 30
+    video_codec: libx264
+    video_preset: veryfast
+    audio_codec: aac
+    video_crf: 23
+  preflight:
+    frame_interval_seconds: 1
+    worker_heartbeat_timeout_seconds: 300
+    worker_process_kind: Worker
+    project_check_order:
+      - source
+      - render
+      - worker
+      - ai_estimate
+      - paid_ai
+      - google_drive
+      - google_sheets
+      - publish_readiness
+    destination_check_order:
+      - connector
+      - media_transfer
+      - content_policy
+      - publishing_cap
+      - permissions
+      - quota
+    production_gate_statuses:
+      tiktok_public_restricted: public_restricted
+      tiktok_audited_in_configuration: audited_in_configuration
+      external_review_not_verified: not_verified
+    tiktok_disallowed_overlay_types:
+      - logo
+      - text
+    output_video_codec: h264
+    output_audio_codec: aac
+    active_ai_generation_statuses:
+      - submitting
+      - processing
+      - reconciliation_required
+      - outcome_unknown
+  statuses:
+    video_project:
+      default: draft
+      values:
+        draft: draft
+        processing: processing
+        ready: ready
+        failed: failed
+    source_asset:
+      default: pending
+      values:
+        pending: pending
+        waiting_for_download_slot: waiting_for_download_slot
+        processing: processing
+        ready: ready
+        failed: failed
+    render_version:
+      default: pending
+      values:
+        pending: pending
+        processing: processing
+        ready: ready
+        failed: failed
+    publication:
+      default: draft
+      values:
+        draft: draft
+        approved: approved
+        scheduled: scheduled
+        uploading: uploading
+        processing: processing
+        published: published
+        failed: failed
+        outcome_unknown: outcome_unknown
+        manual_outcome_confirmed: manual_outcome_confirmed
+        manual_outcome_not_occurred: manual_outcome_not_occurred
+    auto_reply_event:
+      default: queued
+      values:
+        queued: queued
+        sent: sent
+        failed: failed
+        outcome_unknown: outcome_unknown
+        manual_outcome_confirmed: manual_outcome_confirmed
+        manual_outcome_not_occurred: manual_outcome_not_occurred
+    schedule:
+      default: active
+      values:
+        active: active
+        paused: paused
+        completed: completed
+        cancelled: cancelled
+    schedule_occurrence:
+      default: scheduled
+      values:
+        scheduled: scheduled
+        dispatched: dispatched
+        missed: missed
+        skipped: skipped
+        failed: failed
+        manual_outcome_not_occurred: manual_outcome_not_occurred
+    workflow_run:
+      default: queued
+      values:
+        queued: queued
+        running: running
+        reconciliation_required: reconciliation_required
+        outcome_unknown: outcome_unknown
+        completed: completed
+        failed: failed
+    ai_generation:
+      default: draft
+      values:
+        draft: draft
+        script_ready: script_ready
+        prompts_ready: prompts_ready
+        submitting: submitting
+        processing: processing
+        reconciliation_required: reconciliation_required
+        outcome_unknown: outcome_unknown
+        completed: completed
+        failed: failed
+    ai_generation_scene:
+      default: draft
+      values:
+        draft: draft
+        submitting: submitting
+        processing: processing
+        reconciliation_required: reconciliation_required
+        outcome_unknown: outcome_unknown
+        completed: completed
+        failed: failed
+    outbound_attempt:
+      default: prepared
+      values:
+        prepared: prepared
+        submitting: submitting
+        confirmed: confirmed
+        failed: failed
+        outcome_unknown: outcome_unknown
+        manual_outcome_confirmed: manual_outcome_confirmed
+        manual_outcome_not_occurred: manual_outcome_not_occurred
+test:
+  media:
+    ffmpeg_command: ffmpeg
+    ffmpeg_timeout_seconds: 15
+    ffmpeg_threads: 2
+    ffmpeg_font_file: /usr/share/fonts/truetype/noto/NotoSans-Regular.ttf
+    ffprobe_command: ffprobe
+    ffprobe_timeout_seconds: 1
+    ffprobe_max_output_bytes: 1048576

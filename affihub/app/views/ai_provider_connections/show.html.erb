@@ -1,0 +1,132 @@
+<% content_for :title, "Tài khoản AI | AffiHub" %>
+<% presentation = ai_provider_connection_presentation(
+     connection: @ai_provider_connection,
+     provider_presentation: @provider_presentation,
+     callback_origin: @callback_origin,
+     callback_origin_matches: @callback_origin_matches
+   ) %>
+<% status_notice = presentation.fetch(:status_notice) %>
+<% permissions = presentation.fetch(:permissions) %>
+<% model_catalog = presentation.fetch(:model_catalog) %>
+<% management_action = presentation.fetch(:management_action) %>
+<% quota_and_pricing_sources = presentation.fetch(:quota_and_pricing_sources) %>
+
+<section class="mx-auto max-w-4xl space-y-6">
+  <div class="space-y-2">
+    <%= link_to "← Danh sách tài khoản AI", ai_provider_connections_path, class: "link link-hover text-sm" %>
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <div class="min-w-0">
+        <p class="text-sm text-base-content/60"><%= presentation.fetch(:provider_name) %></p>
+        <h1 class="break-words text-3xl font-bold"><%= presentation.fetch(:account_name) %></h1>
+        <p class="break-all text-sm text-base-content/60"><%= @ai_provider_connection.account_email %></p>
+      </div>
+      <%= workflow_status_badge(presentation.fetch(:status), resource: "ai_provider_connection") %>
+    </div>
+  </div>
+
+  <% if status_notice %>
+    <div class="<%= status_notice.fetch(:class_name) %>" role="<%= status_notice.fetch(:role) %>">
+      <div>
+        <h2 class="font-semibold"><%= status_notice.fetch(:heading) %></h2>
+        <p class="text-sm"><%= status_notice.fetch(:detail) %></p>
+      </div>
+    </div>
+  <% end %>
+
+  <div class="grid gap-4 sm:grid-cols-2">
+    <article class="card border border-base-300 bg-base-100 shadow-sm">
+      <div class="card-body gap-2">
+        <h2 class="card-title text-base">Quyền sử dụng</h2>
+        <p class="text-sm"><%= permissions.fetch(:message) %></p>
+        <p class="text-xs text-base-content/60"><%= permissions.fetch(:detail) %></p>
+      </div>
+    </article>
+
+    <article class="card border border-base-300 bg-base-100 shadow-sm">
+      <div class="card-body gap-2">
+        <h2 class="card-title text-base">Token và dữ liệu tài khoản</h2>
+        <p class="text-sm">Access token, refresh token và ID token được mã hóa trong database local.</p>
+        <p class="text-xs text-base-content/60">Token không được đưa vào HTML, form hoặc log. Lần xác minh gần nhất: <%= presentation.fetch(:last_verified_label) %>.</p>
+      </div>
+    </article>
+  </div>
+
+  <% if quota_and_pricing_sources %>
+    <section class="card border border-base-300 bg-base-100 shadow-sm" aria-labelledby="quota-pricing-sources-heading">
+      <div class="card-body gap-3">
+        <div>
+          <h2 id="quota-pricing-sources-heading" class="card-title text-base">Nguồn hạn mức và giá</h2>
+          <p class="text-sm text-base-content/60">Project: <code><%= quota_and_pricing_sources.fetch(:project_id) %></code></p>
+        </div>
+        <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+          <%= link_to "Hạn mức Gemini API theo project",
+                      quota_and_pricing_sources.fetch(:quota_url),
+                      class: "link link-hover",
+                      target: "_blank",
+                      rel: "noopener noreferrer" %>
+          <%= link_to "Bảng giá Gemini API",
+                      quota_and_pricing_sources.fetch(:pricing_url),
+                      class: "link link-hover",
+                      target: "_blank",
+                      rel: "noopener noreferrer" %>
+        </div>
+      </div>
+    </section>
+  <% end %>
+
+  <% if model_catalog.fetch(:enabled) %>
+    <section class="card border border-base-300 bg-base-100 shadow-sm" aria-labelledby="provider-models-heading">
+    <div class="card-body gap-4">
+      <div>
+        <h2 id="provider-models-heading" class="card-title"><%= model_catalog.fetch(:heading) %></h2>
+        <p class="text-sm text-base-content/60"><%= model_catalog.fetch(:detail) %></p>
+      </div>
+      <% if model_catalog.fetch(:has_options) %>
+        <%= form_with model: @ai_provider_connection, url: ai_provider_connection_path(@ai_provider_connection), method: :patch, class: "flex flex-col gap-3 sm:flex-row sm:items-end" do |form| %>
+          <div class="form-control w-full">
+            <%= form.label :selected_model, "Model sử dụng", class: "label" %>
+            <%= form.select :selected_model, options_for_select(model_catalog.fetch(:options), model_catalog.fetch(:selected_model)),
+                            { include_blank: "Chọn model" },
+                            class: "select select-bordered w-full" %>
+          </div>
+          <%= form.submit "Lưu model", class: "btn btn-primary w-full sm:w-auto" %>
+        <% end %>
+      <% else %>
+        <div class="alert alert-info" role="status">
+          <p><%= model_catalog.fetch(:empty) %></p>
+        </div>
+      <% end %>
+    </div>
+    </section>
+  <% else %>
+    <section class="card border border-base-300 bg-base-100 shadow-sm" aria-labelledby="provider-models-heading">
+      <div class="card-body gap-2">
+        <h2 id="provider-models-heading" class="card-title"><%= model_catalog.fetch(:heading) %></h2>
+        <p class="text-sm text-base-content/70"><%= model_catalog.fetch(:detail) %></p>
+      </div>
+    </section>
+  <% end %>
+
+  <section class="card border border-base-300 bg-base-100 shadow-sm">
+    <div class="card-body gap-4">
+      <h2 class="card-title">Quản lý kết nối</h2>
+      <div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+        <% if management_action %>
+          <% if management_action.fetch(:kind) == :button %>
+            <%= button_to management_action.fetch(:label), management_action.fetch(:path),
+                          params: management_action.fetch(:params),
+                          class: "btn btn-primary w-full sm:w-auto" %>
+          <% else %>
+            <%= link_to management_action.fetch(:label), management_action.fetch(:href),
+                        class: "btn btn-primary w-full sm:w-auto" %>
+            <p class="text-sm text-base-content/60">Callback: <code class="break-all"><%= management_action.fetch(:callback_origin) %></code></p>
+          <% end %>
+        <% end %>
+        <%= button_to "Ngắt kết nối", ai_provider_connection_path(@ai_provider_connection),
+                      method: :delete,
+                      class: "btn btn-error btn-outline w-full sm:w-auto",
+                      data: { turbo_confirm: "Ngắt kết nối sẽ xóa token khỏi database local. Tiếp tục?" } %>
+      </div>
+    </div>
+  </section>
+</section>

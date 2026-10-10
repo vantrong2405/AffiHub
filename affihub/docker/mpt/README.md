@@ -1,0 +1,104 @@
+# Image MoneyPrinterTurbo
+
+Image này build MoneyPrinterTurbo từ commit v1.3.8 đã pin và áp dụng hai patch:
+
+- `0001-support-vieneu-wav.patch` cấu hình Chatterbox gửi WAV tới VieNeu-TTS và lưu file
+  thành `audio.wav`.
+- `0002-tts-fallback-callback.patch` gửi narration cùng Azure voice đã duyệt tới callback Rails
+  có chữ ký khi VieNeu-TTS không tạo được `SubMaker`. MPT đánh dấu task lỗi nếu Rails không trả WAV hợp lệ.
+
+Build từ thư mục `affihub/`:
+
+```sh
+rtk docker build -f docker/mpt/Dockerfile -t affihub-mpt-wav .
+```
+
+Build đã được kiểm tra thành công với command trên, MPT commit đã pin, cả hai patch và
+`requirements.txt`. Smoke trong private Docker network với key giả xác nhận Redis `PONG`, health
+check `/ping`, đọc task sentinel qua `/api/v1/tasks` sau khi restart cả MPT lẫn Redis, và giữ được
+một queue marker qua Redis restart. Sentinel được ghi trực tiếp vào Redis; không gửi video job trả
+phí.
+
+Smoke bổ sung ngày 2026-10-07 lưu một `AiGeneration` ở trạng thái `processing` trong Rails trước khi
+restart MPT. Một tiến trình Rails mới đọc generation đã lưu, reconcile task sentinel đã hoàn tất,
+tải và attach đủ bốn output, tạo một `SourceAsset`, enqueue đúng một inspection job; poll lặp lại
+không tạo output hoặc job trùng. Smoke dùng file sentinel và rollback dữ liệu Rails sau khi kiểm tra;
+không gọi provider trả phí. Chưa xác minh MPT tự tiếp tục video đang chạy, callback Azure thật,
+VieNeu/Azure thật hoặc MoviePy xử lý WAV.
+
+Đã lặp lại phần recovery không phát sinh phí ngày 2026-10-11: task sentinel hoàn tất vẫn đọc được
+qua API sau khi restart MPT và Redis; một Rails process mới reconcile generation trong test DB,
+tải/attach đủ output và tạo đúng một `SourceAsset`. Poll lần nữa giữ nguyên attachment và source
+asset. Test DB hiện dùng không có bảng Solid Queue nên lần lặp này không xác minh durable enqueue;
+khẳng định enqueue đúng một inspection job ở trên thuộc smoke 2026-10-07. Không có video job trả
+phí nào được gửi.
+
+Smoke runtime riêng ngày 2026-10-11 chạy image `affihub-mpt-wav:smoke-20261007` và Redis 7 trên
+Docker network cô lập, không publish port ra host. Dùng API key/callback secret giả và tạo một
+Redis task hash sentinel đã hoàn tất; `GET /api/v1/tasks` trả đúng `task_id`, `state=1` và
+`request_id` trước restart, sau restart Redis, rồi sau restart MPT. `/ping` trả `pong` sau khi
+MPT khởi động lại. Không gọi `POST /api/v1/videos` hoặc provider trả phí. Smoke này xác nhận task
+đã hoàn tất có thể tra cứu bền qua Redis/MPT restart; không xác nhận MPT tiếp tục tác vụ provider
+đang chạy, Rails/Solid Queue worker restart, hay enqueue bền giữa hai database.
+
+Image `affihub-mpt-wav:recovery-20261011` được build sau khi thêm recovery cho task bị mất worker.
+Smoke cô lập ghi hai task sentinel `state=4`: task không còn trong queue được MPT đổi thành
+`state=-2`, `failed_stage=mpt_restart`; task còn trong queue không bị đánh dấu interrupted và được
+queue handler dispatch (sentinel dùng handler cố ý không tồn tại, nên bị loại an toàn thành
+`state=-1`). Lặp lại bằng cách ghi task `state=4` khi MPT đang chạy rồi restart container cũng trả
+`state=-2`. Không gửi `POST /api/v1/videos`, không gọi provider và không dùng credentials thật.
+Đây xác minh owner-loss signaling với task sentinel; chưa xác minh một request MuAPI thật có thể
+reconcile hay chi phí bên provider sau khi MPT bị kill.
+
+## Cấu hình runtime
+
+- `MPT_API_KEY`: bắt buộc để xác thực request Rails tới MPT.
+- `MPT_APP_REDIS_HOST`: bắt buộc để bật Redis task queue/state. Có thể cấu hình thêm
+  `MPT_APP_REDIS_PORT`, `MPT_APP_REDIS_DB` và `MPT_APP_REDIS_PASSWORD`.
+- `MPT_TTS_FALLBACK_CALLBACK_URL`: URL Rails nội bộ, ví dụ
+  `http://affihub/internal/mpt/tts_fallback` trên private application network.
+- `MPT_TTS_CALLBACK_SECRET`: secret phải trùng với cấu hình Rails.
+- `VIENEU_TTS_BASE_URL`, `VIENEU_TTS_API_KEY`, `VIENEU_TTS_MODEL_ID` và
+  `VIENEU_TTS_VOICE`: tùy chọn khi giá trị mặc định không khớp với service VieNeu riêng.
+
+Giữ Rails, MPT, Redis và VieNeu trên private application network. Entrypoint kiểm tra Redis
+trước khi khởi động MPT và yêu cầu Redis bật AOF (`appendonly yes`). Mount volume bền cho Redis
+tại `/data` và cho MPT tại `/MoneyPrinterTurbo/storage`; image tạo storage directory với owner
+`mpt` để process non-root ghi được vào volume. Health check gọi endpoint `/ping`; không publish
+cổng 8080 ra host.
+
+Redis giữ task state và queued work qua lần restart đã smoke. MPT chỉ chạy một API process trên
+Redis state dùng chung: startup giữ entry còn trong queue để dispatch lại, đồng thời đổi task
+`processing` không còn queue thành `interrupted` (`state=-2`). Rails map trạng thái này sang
+`OutcomeUnknown`, lưu audit trên attempt đã xác nhận và dừng poll; không gửi lại video task. Không
+dùng nhiều MPT process/replica chung Redis vì startup một process không thể kết luận task không còn
+worker ở process khác. Recovery smoke với sentinel không chứng minh request MuAPI thật đã xảy ra,
+đã bị hủy hay có thể truy hồi; cổng paid flow vẫn đóng đến khi kiểm chứng đúng runtime/provider.
+
+## Worker Rails
+
+Production Rails dùng Solid Queue trên database `affihub_production_queue`. Docker image bật
+Solid Queue supervisor trong Puma; schema queue được quản lý riêng với database chính. Có thể
+kiểm tra cấu hình worker trước deploy bằng:
+
+Smoke runtime ngày 2026-10-11 dùng hai DB development local. Một Rails runner tạo workflow AI
+sentinel có lease hết hạn và enqueue `WorkflowRuns::SweepJob` vào queue cô lập `recovery_smoke`,
+rồi process runner kết thúc. Một `bin/jobs start` process mới, dùng config tạm chỉ nghe queue đó và
+bỏ scheduler recurring, nhận job đã lưu: run chuyển sang `queued`, audit `lease_expired` được ghi,
+outbox được xóa sau khi Solid Queue nhận `AiGenerations::ReconcileJob` vào `default`. Smoke xác
+nhận job và trạng thái qua DB rồi xóa toàn bộ record/queue job sentinel. Không worker nào xử lý
+reconcile job; không gọi MPT hay provider trả phí. Điều này xác nhận job tồn tại qua lúc Rails
+producer đã dừng và được worker process mới xử lý, nhưng chưa xác nhận kill worker giữa khi đang
+thực thi job hoặc resume một provider task đang chạy.
+
+```sh
+RAILS_ENV=production rtk bin/jobs check --skip-recurring
+```
+
+`--skip-recurring` validates worker and dispatcher settings without connecting to the production
+database; run `rtk bin/jobs check` against the deployment environment to validate its recurring
+schedule as well.
+
+`RAILS_ENV=production rtk bin/jobs start` có thể dùng khi chạy worker tách khỏi Puma. Không chạy
+đồng thời worker tách rời và plugin Puma trên cùng deployment nếu cấu hình process chưa được chủ
+động phân chia.

@@ -1,0 +1,15 @@
+shared:
+  command: yt-dlp
+  version: 2026.08.19
+  timeout_seconds: 300
+  socket_timeout_seconds: 5
+  retries: 1
+  fragment_retries: 1
+  max_file_size_bytes: 1073741824
+  native_downloaders:
+    - http:native
+    - m3u8:native
+    - dash:native
+
+test:
+  timeout_seconds: 1

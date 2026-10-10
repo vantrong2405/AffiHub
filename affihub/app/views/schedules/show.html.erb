@@ -1,0 +1,119 @@
+<% content_for :title, "Lịch đăng | #{@video_project.name}" %>
+
+<section class="space-y-6">
+  <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+    <div class="space-y-2">
+      <%= link_to "← Lịch đăng", video_project_schedules_path(@video_project), class: "link link-hover text-sm" %>
+      <div class="flex flex-wrap items-center gap-3">
+        <h1 class="text-3xl font-bold">Version <%= @schedule.render_version.version_number %></h1>
+        <%= schedule_status_badge(@schedule) %>
+      </div>
+      <p class="text-sm text-base-content/70"><%= schedule_recurrence_label(@schedule) %> · Timezone: <%= @schedule.time_zone %></p>
+    </div>
+
+    <% if schedule_controls_available?(@schedule) %>
+      <div class="flex flex-col gap-2 sm:flex-row">
+        <%= link_to "Sửa lịch", edit_video_project_schedule_path(@video_project, @schedule), class: "btn btn-outline w-full sm:w-auto" %>
+        <% if schedule_resume_available?(@schedule) %>
+          <%= button_to "Tiếp tục lịch",
+                        video_project_schedule_path(@video_project, @schedule),
+                        method: :patch,
+                        params: { schedule: { status: "active" } },
+                        class: "btn btn-primary w-full sm:w-auto" %>
+        <% else %>
+          <%= button_to "Tạm dừng lịch",
+                        video_project_schedule_path(@video_project, @schedule),
+                        method: :patch,
+                        params: { schedule: { status: "paused" } },
+                        class: "btn btn-outline w-full sm:w-auto" %>
+        <% end %>
+        <%= button_to "Hủy lịch",
+                      video_project_schedule_path(@video_project, @schedule),
+                      method: :delete,
+                      class: "btn btn-ghost w-full text-error sm:w-auto",
+                      form: { data: { turbo_confirm: "Hủy lịch này và bỏ qua các occurrence chưa chạy?" } } %>
+      </div>
+    <% end %>
+  </div>
+
+  <section class="grid gap-4 lg:grid-cols-2">
+    <article class="card border border-base-300 bg-base-100">
+      <div class="card-body gap-3">
+        <h2 class="card-title">Lần chạy kế tiếp</h2>
+        <% if schedule_next_occurrence_available?(@schedule) %>
+          <p class="text-xl font-semibold"><%= schedule_next_occurrence_time(@schedule) %></p>
+          <p class="text-sm text-base-content/60">Thời gian hiển thị theo <%= @schedule.time_zone %>.</p>
+        <% else %>
+          <p class="text-sm text-base-content/70">Lịch không còn lần chạy kế tiếp.</p>
+        <% end %>
+        <p class="text-sm text-base-content/60">Destination: <%= schedule_destination_names(@schedule) %></p>
+      </div>
+    </article>
+
+    <article class="card border border-base-300 bg-base-100">
+      <div class="card-body gap-3">
+        <h2 class="card-title">Quota trong 24 giờ</h2>
+        <% if schedule_quota_summary_present?(@quota_summary) %>
+          <ul class="divide-y divide-base-300">
+            <% @quota_summary.each do |entry| %>
+              <li class="flex flex-col gap-1 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between">
+                <span class="font-medium"><%= schedule_quota_destination(entry).name %></span>
+                <span class="text-sm"><%= schedule_quota_usage_label(entry) %></span>
+                <%= schedule_quota_release_notice_element(entry, @schedule) %>
+              </li>
+            <% end %>
+          </ul>
+        <% else %>
+          <p class="text-sm text-base-content/60">Lịch chưa có destination.</p>
+        <% end %>
+      </div>
+    </article>
+  </section>
+
+  <section class="space-y-3" aria-labelledby="schedule-occurrences-heading">
+    <div>
+      <h2 id="schedule-occurrences-heading" class="text-xl font-bold">Các lần chạy</h2>
+      <p class="text-sm text-base-content/60">Lần bị lỡ hoặc bỏ qua không được tự đăng bù.</p>
+    </div>
+
+    <% if schedule_occurrences_present?(@occurrences) %>
+      <div class="card border border-base-300 bg-base-100">
+        <ul class="divide-y divide-base-300">
+          <% @occurrences.each do |occurrence| %>
+            <li class="space-y-3 px-5 py-4">
+              <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p class="font-semibold"><%= schedule_occurrence_time(occurrence, @schedule) %></p>
+                  <p class="text-sm text-base-content/60">Timezone: <%= @schedule.time_zone %></p>
+                </div>
+                <%= schedule_occurrence_status_badge(occurrence) %>
+              </div>
+
+              <%= schedule_occurrence_note_element(occurrence) %>
+
+              <% if schedule_occurrence_publications_present?(occurrence) %>
+                <ul class="space-y-2">
+                  <% occurrence.publications.each do |publication| %>
+                    <li class="flex flex-col gap-2 rounded-box border border-base-300 p-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div class="flex flex-wrap items-center gap-2">
+                        <span class="font-medium"><%= publication.social_destination.name %></span>
+                        <%= schedule_publication_status_badge(publication) %>
+                      </div>
+                      <%= link_to "Mở bài đăng", video_project_publication_path(@video_project, publication), class: "btn btn-ghost btn-sm" %>
+                    </li>
+                  <% end %>
+                </ul>
+              <% end %>
+            </li>
+          <% end %>
+        </ul>
+      </div>
+    <% else %>
+      <div class="card border border-base-300 bg-base-100">
+        <div class="card-body">
+          <p class="py-6 text-center text-sm text-base-content/60">Chưa có occurrence cho lịch này.</p>
+        </div>
+      </div>
+    <% end %>
+  </section>
+</section>

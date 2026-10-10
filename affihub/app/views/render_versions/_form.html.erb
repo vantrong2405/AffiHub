@@ -1,0 +1,193 @@
+<%= form_with url: video_project_render_versions_path(@video_project), scope: :render_version, class: "space-y-6", data: { controller: "render-version-form" } do %>
+  <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,0.8fr)]">
+    <div class="space-y-6">
+      <section class="card border border-base-300 bg-base-100" aria-labelledby="source-preview-heading">
+        <div class="card-body gap-4">
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h2 id="source-preview-heading" class="card-title">Video gốc</h2>
+              <p class="text-sm text-base-content/60">Preview này là file gốc; hiệu ứng chỉ có trong MP4 sau khi render.</p>
+            </div>
+            <label class="form-control w-full sm:max-w-xs">
+              <span class="label-text mb-1">Nguồn video</span>
+              <%= select_tag "render_version[source_asset_id]",
+                options_for_select(@source_assets.map { |source_asset| [source_asset.file.attached? ? source_asset.file.filename.to_s : "Video #{source_asset.id}", source_asset.id] }, @selected_source_asset&.id),
+                class: "select select-bordered w-full" %>
+            </label>
+          </div>
+          <% if @selected_source_asset&.file&.attached? %>
+            <video controls playsinline preload="metadata" class="mx-auto max-h-[65vh] w-full max-w-sm rounded-box bg-neutral" aria-label="Preview source video">
+              <source src="<%= url_for(@selected_source_asset.file) %>">
+            </video>
+          <% end %>
+          <% if @selected_source_asset %>
+            <div class="grid gap-2 text-sm sm:grid-cols-3">
+              <p><span class="text-base-content/60">Thời lượng:</span> <%= @selected_source_asset.media_metadata["duration_seconds"] || "—" %> giây</p>
+              <p><span class="text-base-content/60">Kích thước:</span> <%= @selected_source_asset.media_metadata["width"] || "—" %> × <%= @selected_source_asset.media_metadata["height"] || "—" %></p>
+              <p><span class="text-base-content/60">Audio:</span> <%= @selected_source_asset.media_metadata["has_audio"] ? "Có" : "Không" %></p>
+            </div>
+          <% end %>
+        </div>
+      </section>
+
+      <section id="timeline-editor" class="card border border-base-300 bg-base-100" aria-labelledby="timeline-heading">
+        <div class="card-body gap-4">
+          <div class="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 id="timeline-heading" class="card-title">Timeline</h2>
+              <p class="text-sm text-base-content/60">Các đoạn được nối theo thứ tự. Thời gian tính bằng giây của source.</p>
+            </div>
+            <button type="button" class="btn btn-outline btn-sm" data-action="render-version-form#add" data-collection-target="segments" data-template-target="segmentTemplate">Thêm đoạn</button>
+          </div>
+
+          <div data-render-version-form-target="segments" class="space-y-3">
+            <% @segment_forms.each_with_index do |segment, index| %>
+              <fieldset class="rounded-box border border-base-300 p-4" data-editor-item>
+                <div class="mb-3 flex items-center justify-between gap-2">
+                  <legend class="font-semibold">Đoạn <%= index + 1 %></legend>
+                  <% if index.positive? %>
+                    <button type="button" class="btn btn-ghost btn-xs text-error" data-action="render-version-form#remove">Xóa đoạn</button>
+                  <% end %>
+                </div>
+                <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                  <label class="form-control">
+                    <span class="label-text mb-1">Bắt đầu (giây)</span>
+                    <%= number_field_tag "render_version[segments][][start_seconds]", segment["start_seconds"], min: 0, step: 0.1, required: true, class: "input input-bordered w-full" %>
+                  </label>
+                  <label class="form-control">
+                    <span class="label-text mb-1">Kết thúc (giây)</span>
+                    <%= number_field_tag "render_version[segments][][end_seconds]", segment["end_seconds"], min: 0.1, step: 0.1, required: true, class: "input input-bordered w-full" %>
+                  </label>
+                  <label class="form-control">
+                    <span class="label-text mb-1">Tốc độ</span>
+                    <%= select_tag "render_version[segments][][speed]", options_for_select([["1×", "1.0"], ["2×", "2.0"]], segment["speed"].to_s), class: "select select-bordered w-full" %>
+                  </label>
+                  <label class="form-control">
+                    <span class="label-text mb-1">Âm thanh nguồn</span>
+                    <%= select_tag "render_version[segments][][audio_mode]", options_for_select([["Giữ âm thanh", "keep"], ["Tắt âm thanh", "mute"]], segment["audio_mode"]), class: "select select-bordered w-full" %>
+                  </label>
+                  <label class="form-control">
+                    <span class="label-text mb-1">Âm lượng (0–2)</span>
+                    <%= number_field_tag "render_version[segments][][audio_volume]", segment["audio_volume"], min: 0, max: 2, step: 0.1, class: "input input-bordered w-full" %>
+                  </label>
+                </div>
+                <div class="mt-4 space-y-2">
+                  <div class="flex justify-between text-xs text-base-content/60">
+                    <span><%= segment["start_seconds"] %> giây</span>
+                    <span><%= segment["end_seconds"] %> giây</span>
+                  </div>
+                  <progress class="progress progress-primary w-full" value="<%= segment["end_seconds"].to_f - segment["start_seconds"].to_f %>" max="<%= @selected_source_asset&.media_metadata&.fetch("duration_seconds", 1).to_f %>"></progress>
+                </div>
+              </fieldset>
+            <% end %>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <aside class="space-y-6" aria-label="Điều chỉnh render">
+      <section class="card border border-base-300 bg-base-100" aria-labelledby="canvas-heading">
+        <div class="card-body gap-4">
+          <h2 id="canvas-heading" class="card-title">Khung hình và nền</h2>
+          <label class="form-control">
+            <span class="label-text mb-1">Cách đặt video</span>
+            <%= select_tag "render_version[canvas][mode]", options_for_select([["Vừa khung", "fit"], ["Cắt khung", "crop"]], @edit_config.dig("canvas", "mode")), class: "select select-bordered w-full" %>
+          </label>
+          <label class="form-control">
+            <span class="label-text mb-1">Nền khung dọc</span>
+            <%= select_tag "render_version[canvas][background][type]", options_for_select([["Làm mờ source", "blur"], ["Màu nền", "color"], ["Ảnh trong project", "image"], ["Video trong project", "video"]], @edit_config.dig("canvas", "background", "type")), class: "select select-bordered w-full" %>
+          </label>
+          <label class="form-control">
+            <span class="label-text mb-1">Màu nền (#RRGGBB)</span>
+            <%= text_field_tag "render_version[canvas][background][color]", @edit_config.dig("canvas", "background", "color") || "#111111", pattern: "#[0-9a-fA-F]{6}", class: "input input-bordered w-full" %>
+          </label>
+          <label class="form-control">
+            <span class="label-text mb-1">Ảnh nền / logo</span>
+            <%= select_tag "render_version[canvas][background][project_media_asset_id]", options_for_select(@project_media_assets.map { |asset| [asset.file.filename.to_s, asset.id] }, @edit_config.dig("canvas", "background", "project_media_asset_id")), include_blank: "Chọn ảnh", class: "select select-bordered w-full" %>
+          </label>
+          <label class="form-control">
+            <span class="label-text mb-1">Video nền</span>
+            <%= select_tag "render_version[canvas][background][source_asset_id]", options_for_select(@source_assets.map { |source_asset| [source_asset.file.attached? ? source_asset.file.filename.to_s : "Video #{source_asset.id}", source_asset.id] }, @edit_config.dig("canvas", "background", "source_asset_id")), include_blank: "Chọn video", class: "select select-bordered w-full" %>
+          </label>
+        </div>
+      </section>
+
+      <section class="card border border-base-300 bg-base-100" aria-labelledby="filters-heading">
+        <div class="card-body gap-4">
+          <h2 id="filters-heading" class="card-title">Màu sắc</h2>
+          <label class="form-control">
+            <span class="label-text mb-1">Độ sáng (−1 đến 1)</span>
+            <%= number_field_tag "render_version[filters][brightness]", @edit_config.dig("filters", "brightness"), min: -1, max: 1, step: 0.1, class: "input input-bordered w-full" %>
+          </label>
+          <label class="form-control">
+            <span class="label-text mb-1">Tương phản (0 đến 2)</span>
+            <%= number_field_tag "render_version[filters][contrast]", @edit_config.dig("filters", "contrast"), min: 0, max: 2, step: 0.1, class: "input input-bordered w-full" %>
+          </label>
+        </div>
+      </section>
+
+      <section class="card border border-base-300 bg-base-100" aria-labelledby="overlays-heading">
+        <div class="card-body gap-4">
+          <div class="flex items-center justify-between gap-2">
+            <div>
+              <h2 id="overlays-heading" class="card-title">Chữ, phụ đề và logo</h2>
+              <p class="text-sm text-base-content/60">Thời gian và vị trí tính theo khung render.</p>
+            </div>
+            <button type="button" class="btn btn-outline btn-sm" data-action="render-version-form#add" data-collection-target="overlays" data-template-target="overlayTemplate">Thêm lớp</button>
+          </div>
+          <div data-render-version-form-target="overlays" class="space-y-3">
+            <% @overlay_forms.each do |overlay| %>
+              <%= render "overlay_fields", overlay: overlay %>
+            <% end %>
+          </div>
+        </div>
+      </section>
+
+      <section class="card border border-base-300 bg-base-100" aria-labelledby="delogo-heading">
+        <div class="card-body gap-4">
+          <div class="flex items-center justify-between gap-2">
+            <div>
+              <h2 id="delogo-heading" class="card-title">Gỡ logo cố định</h2>
+              <p class="text-sm text-base-content/60">Vùng tính theo pixel của source. Source gốc luôn được giữ.</p>
+            </div>
+            <button type="button" class="btn btn-outline btn-sm" data-action="render-version-form#add" data-collection-target="delogoRegions" data-template-target="delogoRegionTemplate">Thêm vùng</button>
+          </div>
+          <div data-render-version-form-target="delogoRegions" class="space-y-3">
+            <% @delogo_region_forms.each do |region| %>
+              <%= render "delogo_region_fields", region: region %>
+            <% end %>
+          </div>
+        </div>
+      </section>
+    </aside>
+  </div>
+
+  <div class="flex flex-col gap-2 rounded-box border border-base-300 bg-base-100 p-3 sm:flex-row sm:justify-end">
+    <%= link_to "Hủy", video_project_path(@video_project), class: "btn btn-ghost w-full sm:w-auto" %>
+    <%= submit_tag "Tạo bản render", class: "btn btn-primary w-full sm:w-auto" %>
+  </div>
+
+  <template data-render-version-form-target="segmentTemplate">
+    <fieldset class="rounded-box border border-base-300 p-4" data-editor-item>
+      <div class="mb-3 flex items-center justify-between gap-2">
+        <legend class="font-semibold">Đoạn mới</legend>
+        <button type="button" class="btn btn-ghost btn-xs text-error" data-action="render-version-form#remove">Xóa đoạn</button>
+      </div>
+      <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <label class="form-control"><span class="label-text mb-1">Bắt đầu (giây)</span><input class="input input-bordered w-full" type="number" name="render_version[segments][][start_seconds]" min="0" step="0.1" required></label>
+        <label class="form-control"><span class="label-text mb-1">Kết thúc (giây)</span><input class="input input-bordered w-full" type="number" name="render_version[segments][][end_seconds]" min="0.1" step="0.1" required></label>
+        <label class="form-control"><span class="label-text mb-1">Tốc độ</span><select class="select select-bordered w-full" name="render_version[segments][][speed]"><option value="1.0">1×</option><option value="2.0">2×</option></select></label>
+        <label class="form-control"><span class="label-text mb-1">Âm thanh nguồn</span><select class="select select-bordered w-full" name="render_version[segments][][audio_mode]"><option value="keep">Giữ âm thanh</option><option value="mute">Tắt âm thanh</option></select></label>
+        <label class="form-control"><span class="label-text mb-1">Âm lượng (0–2)</span><input class="input input-bordered w-full" type="number" name="render_version[segments][][audio_volume]" min="0" max="2" step="0.1" value="1"></label>
+      </div>
+    </fieldset>
+  </template>
+
+  <template data-render-version-form-target="overlayTemplate">
+    <%= render "overlay_fields", overlay: {} %>
+  </template>
+
+  <template data-render-version-form-target="delogoRegionTemplate">
+    <%= render "delogo_region_fields", region: {} %>
+  </template>
+<% end %>

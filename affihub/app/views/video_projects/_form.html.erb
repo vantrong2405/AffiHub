@@ -1,0 +1,19 @@
+<%= form_with model: video_project, class: "card border border-base-300 bg-base-100" do |form| %>
+  <div class="card-body gap-5">
+    <% if video_project.errors.any? %>
+      <div class="alert alert-error" role="alert">
+        <span><%= video_project.errors.full_messages.to_sentence %></span>
+      </div>
+    <% end %>
+
+    <div class="form-control w-full">
+      <%= form.label :name, "Tên project", class: "label font-medium" %>
+      <%= form.text_field :name, class: "input input-bordered w-full", required: true, autofocus: true, maxlength: 255 %>
+    </div>
+
+    <div class="card-actions justify-end">
+      <%= link_to "Hủy", video_project.persisted? ? video_project_path(video_project) : video_projects_path, class: "btn btn-ghost" %>
+      <%= form.submit submit_label, class: "btn btn-primary" %>
+    </div>
+  </div>
+<% end %>

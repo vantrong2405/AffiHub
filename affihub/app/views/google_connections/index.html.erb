@@ -1,0 +1,72 @@
+<% content_for :title, google_connections_page_title %>
+
+<section class="space-y-6">
+  <div class="space-y-2">
+    <%= link_to "← Video Projects", video_projects_path, class: "link link-hover text-sm" %>
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <div class="space-y-1">
+        <h1 class="text-3xl font-bold">Kết nối Google</h1>
+        <p class="text-sm text-base-content/70">Drive và Sheets là nhánh đồng bộ tùy chọn; AffiHub vẫn giữ dữ liệu chính trên máy này.</p>
+      </div>
+      <span class="badge badge-neutral badge-outline">Không cần thẻ thanh toán</span>
+    </div>
+  </div>
+
+  <div role="note" class="alert border border-info/30 bg-info/5 text-sm">
+    <span>Dùng quota API tiêu chuẩn của Google. AffiHub không bật Cloud Billing hoặc mua thêm quota; dung lượng Drive theo tài khoản Google của bạn.</span>
+  </div>
+
+  <% unless @oauth_configured %>
+    <div role="alert" class="alert alert-warning">
+      <div>
+        <h2 class="font-semibold">Chưa cấu hình OAuth client</h2>
+        <p class="text-sm">Cần cấu hình OAuth client ID và secret trong Rails credentials để bắt đầu đăng nhập. Bước này không yêu cầu bật billing hay thêm thẻ.</p>
+      </div>
+    </div>
+  <% end %>
+
+  <section class="grid grid-cols-1 gap-4 md:grid-cols-2" aria-label="Chọn dịch vụ Google">
+    <% %w[drive sheets].each do |integration| %>
+      <article class="card border border-base-300 bg-base-100">
+        <div class="card-body gap-4 p-4 sm:p-5">
+          <div class="space-y-1">
+            <h2 class="card-title"><%= google_integration_name(integration) %></h2>
+            <p class="text-sm text-base-content/70"><%= google_integration_description(integration) %></p>
+          </div>
+          <%= link_to "Thiết lập #{google_integration_name(integration)}",
+                      new_google_connection_path(integration:),
+                      class: "btn btn-outline w-full sm:w-auto" %>
+        </div>
+      </article>
+    <% end %>
+  </section>
+
+  <section class="space-y-3" aria-labelledby="google-accounts-heading">
+    <div>
+      <h2 id="google-accounts-heading" class="text-xl font-semibold">Tài khoản đã kết nối</h2>
+      <p class="text-sm text-base-content/60">Mỗi kết nối chỉ cấp quyền cho dịch vụ bạn chọn.</p>
+    </div>
+
+    <% if @has_google_connections %>
+      <ul class="divide-y divide-base-300 rounded-box border border-base-300 bg-base-100">
+        <% @google_connections.each do |google_connection| %>
+          <li class="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+            <div class="min-w-0 space-y-1">
+              <h3 class="font-semibold"><%= google_integration_name(google_connection.integration) %></h3>
+              <p class="break-all text-sm text-base-content/60"><%= google_connection.email %></p>
+            </div>
+            <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <span class="badge <%= google_connection_badge_class(google_connection.status) %>"><%= google_connection_status_label(google_connection.status) %></span>
+              <%= link_to "Mở cấu hình", google_connection_path(google_connection), class: "btn btn-outline btn-sm w-full sm:w-auto" %>
+            </div>
+          </li>
+        <% end %>
+      </ul>
+    <% else %>
+      <div class="rounded-box border border-dashed border-base-300 bg-base-100 p-5 sm:p-6">
+        <h3 class="font-semibold">Chưa có tài khoản Google nào</h3>
+        <p class="mt-1 text-sm text-base-content/70">Kết nối riêng Drive hoặc Sheets nếu muốn đồng bộ. Luồng render và đăng bài local vẫn hoạt động khi chưa kết nối.</p>
+      </div>
+    <% end %>
+  </section>
+</section>
