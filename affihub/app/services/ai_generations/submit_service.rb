@@ -198,7 +198,8 @@ class AiGenerations::SubmitService < ApplicationService
 
       return step_fail!("Task MPT đã lưu nhưng outbound attempt chưa được xác nhận.")
     end
-    return step_fail!("Outbound attempt chưa ở trạng thái cần đối soát.") unless outbound_attempt.outcome_unknown?
+    return step_fail!("Outbound attempt chưa ở trạng thái cần đối soát.") unless
+      outbound_attempt.submitting? || outbound_attempt.outcome_unknown?
 
     step_reconcile_task
   end

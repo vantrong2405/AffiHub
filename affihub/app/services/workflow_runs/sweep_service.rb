@@ -6,6 +6,7 @@ class WorkflowRuns::SweepService < ApplicationService
   # @return [WorkflowRuns::SweepService] the configured service
   def initialize
     @swept_count = 0
+    @recovery_jobs = []
     super()
   end
 
@@ -13,7 +14,9 @@ class WorkflowRuns::SweepService < ApplicationService
   #
   # @return [Boolean] whether the sweep completed
   def call
-    step_sweep_expired_runs
+    return false unless step_sweep_expired_runs
+    return false unless step_enqueue_recovery_jobs
+
     success?
   end
 
@@ -38,8 +41,34 @@ class WorkflowRuns::SweepService < ApplicationService
           stage: workflow_run.stage,
           details: { status: next_status.to_s }
         )
+        recovery_job = step_recovery_job(workflow_run)
+        @recovery_jobs << recovery_job if recovery_job
         @swept_count += 1
       end
+    end
+  end
+
+  def step_enqueue_recovery_jobs
+    @recovery_jobs.each do |job_class, job_arguments|
+      return step_fail!("Không thể xếp hàng khôi phục workflow.") unless job_class.perform_later(*job_arguments)
+    end
+    true
+  end
+
+  def step_recovery_job(workflow_run)
+    workflowable = workflow_run.workflowable
+
+    case workflowable
+    when DriveExport
+      [ DriveExports::UploadJob, [ workflowable.id ] ]
+    when Publication
+      [ Publications::PublishJob, [ workflow_run.id ] ]
+    when AutoReplyEvent
+      return if workflow_run.outbound_attempts.where(status: unresolved_attempt_statuses).exists?
+
+      [ AutoResponder::ProcessJob, [ workflow_run.id ] ]
+    when AiGeneration
+      [ AiGenerations::ReconcileJob, [ workflowable.id ] ]
     end
   end
 
